@@ -36,7 +36,7 @@
 
 \setcounter{table}{-1}
 
-\setcounter{section}{-1}
+%\setcounter{section}{-1}
 \setcounter{secnumdepth}{3}%見出しの番号をどの深さまで入れるか
 
 \renewcommand{\figurename}{Fig.}
@@ -86,7 +86,33 @@
 
 \clearpage
 
-\section{研究背景}
-\subsection{空中回収の概要}
+\section{序論}
+\subsection{研究背景}
+近年，宇宙開発の分野において，安全かつ効率的な宇宙飛行士の地球帰還手段の確立が求められている．特に，緊急時における迅速な帰還能力は，宇宙ミッションの成功と宇宙飛行士の安全確保に不可欠である．このような背景から，パラフォイルを用いた宇宙飛行士の地球帰還システムが注目されている．パラフォイルは，従来のパラシュートに比べて高い制御性と滑空性能を有しており，精密な着陸地点への誘導が可能である．そのため，パラフォイルを活用した帰還システムは，宇宙飛行士の安全性向上とミッション成功率の向上に寄与すると期待されている．本研究では，パラフォイルを用いた宇宙飛行士の地球帰還システムの設計と最適化を目的とし，その性能評価と実用化に向けた課題解決を目指す．
+\subsection{パラフォイルの仕組み}
+この節では，パラフォイルの基本的な仕組みについて説明する．パラフォイルは，展開可能な柔軟構造を有し，端部の形状を変形させることで姿勢の変更及び軌道制御が可能な落下傘を指す(図(\ref{fig:para_real}))．
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/パラフォイル_実機正面図.jpeg}
+  \caption{The X-38 prototype of the Crew Return Vehicle is suspended under its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001.\cite{ref_NASA}}
+  \label{fig:para_real}
+\end{figure}
+パラフォイルはキャノピー，ペイロード，そしてテザーから構成されている．パラフォイルのキャノピーは，翼型断面を有し，揚力を発生させることで滑空飛行を実現する．ペイロードは，パラフォイルに吊り下げられた物体であり，テザーはキャノピーとペイロードを接続する．
+パラフォイルは前進時にキャノピーが空気を取り込み，空気流のせきとめ圧（ラム圧）でセルを膨らませて翼形状を保持する.パラフォイルは減速や降下に用いられるパラシュートと比べてアスペクト比が大きく，端面が翼型形状であるため滑空飛行が可能となる．\\
+パラフォイルの制御は，主にテザーの端部を引くことで行われ、テザーの片端を引く非対称制御とテザーの両端を引く対称制御の2通りの制御方法を使い分ける．非対称制御では，例としてテザーの右側を引くとキャノピーの右後部が下がることでバンク角が発生し、向心力が働くことで左旋回が可能となる．対称制御では，両端のテザーを引くことでキャノピーの後縁が下がり揚抗比が変化することで前進速度を制御できる．
 
+%テザーの端部を引っ張ると，キャノピーの形状が変化し，揚力の分布が変わることで姿勢や進行方向を制御できる．例えば，右側のテザーを引っ張ると，右側の揚力が増加し，左側に旋回することが可能となる．
+
+
+\subsection{先行研究}
+
+\subsection{研究目的}
+
+\begin{thebibliography}{1}
+%\bibitem{ref1} 李家 賢一，航空機設計法 実践編
+%- 小型ジェット旅客機からハイブリッド電動航空機の概念設計まで -，pp. 14―32.
+\bibitem[NASA,2001]{ref_NASA}The National Aeronautics and Space Administration, The X-38 prototype of the Crew Return Vehicle is suspended under
+its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001, from
+<https://www.nasa.gov/image-detail/amf-ec01-0339-146/>, (参照日2024年1月2日)
+\end{thebibliography}
 \end{document}
