@@ -1,0 +1,92 @@
+\documentclass[fleqn,12pt]{ltjsarticle}
+% 他のタイプセットエンジンを使ってビルドする場合は， \documentclass[dvipdfmx]{jsarticle} などとする．
+% パッケージの読み込み
+\usepackage{comment}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{amssymb, amsmath}
+\usepackage{longtable}
+\usepackage{subcaption}
+\usepackage{hyperref}
+
+% Document margins
+\usepackage[a4paper, left=25mm, right=10mm, top=25mm, bottom=15mm]{geometry}
+
+\setlength{\mathindent}{2em}
+% Line spacing
+\usepackage[labelformat=simple]{caption}
+\captionsetup[table]{labelsep=space}
+\captionsetup[figure]{labelsep=space}
+\counterwithin{figure}{section}
+\counterwithin{table}{section}
+
+% Header and Footer (コメントアウトの指示を維持)
+%\pagestyle{fancy}
+%\fancyhead{} % Clear all header fields
+%\fancyfoot{} % Clear all footer fields
+%\fancyhead[L]{航空宇宙機設計に関する報告書}
+%\fancyhead[R]{\thepage}
+%\fancyfoot[C]{}
+%\renewcommand{\headrulewidth}{0.4pt}
+%\renewcommand{\footrulewidth}{0pt}
+% === 修正終了 ===
+
+
+\setcounter{table}{-1}
+
+\setcounter{section}{-1}
+\setcounter{secnumdepth}{3}%見出しの番号をどの深さまで入れるか
+
+\renewcommand{\figurename}{Fig.}
+\renewcommand{\tablename}{Table}
+\makeatletter
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+    {1.5\Cvs \@plus.5\Cdp \@minus.2\Cdp}%
+    {.5\Cvs \@plus.3\Cdp}%
+    {\reset@font\centering\Large\bfseries}}
+\makeatother
+
+
+%表紙用の大きなフォントの定義
+\def\HUGE{\fontsize{18pt}{22pt}\selectfont}
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+\vspace*{8\baselineskip}
+2025年度
+\vspace*{2\baselineskip}
+
+\HUGE
+航空機設計仕様書
+\vspace*{9\baselineskip}
+
+2025年8月
+\vspace*{2\baselineskip}
+
+東京理科大学創域理工学部機械航空宇宙工学科
+\vspace*{1\baselineskip}
+
+小笠原研究室
+\vspace*{3\baselineskip}
+
+\begin{tabular}{ll}
+7522095 & 舟木 悠太 \\
+
+\end{tabular}
+\end{center}
+\end{titlepage}
+
+% 目次
+\setcounter{tocdepth}{3}
+\tableofcontents
+
+\clearpage
+
+\section{研究背景}
+\subsection{空中回収の概要}
+
+\end{document}
