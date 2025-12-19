@@ -1,7 +1,8 @@
+
 \documentclass[fleqn,12pt]{ltjsarticle}
 % 他のタイプセットエンジンを使ってビルドする場合は， \documentclass[dvipdfmx]{jsarticle} などとする．
 % パッケージの読み込み
-\usepackage{comment}
+%\usepackage{comment}
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{float}
@@ -10,10 +11,12 @@
 \usepackage{longtable}
 \usepackage{subcaption}
 \usepackage{hyperref}
-
+\usepackage{bm}
 % Document margins
 \usepackage[a4paper, left=25mm, right=10mm, top=25mm, bottom=15mm]{geometry}
-
+% ▼▼▼ 追加設定: 式番号を (セクション番号.式番号) の形式にする ▼▼▼
+\numberwithin{equation}{section}
+% ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 \setlength{\mathindent}{2em}
 % Line spacing
 \usepackage[labelformat=simple]{caption}
@@ -128,26 +131,26 @@ Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画
 \subsection{研究目的}
 
 \section{座標系とモデルの定義}
-本モデルでは、ペイロードは剛体として扱うが、キャノピーは入射角 $\Gamma$（キャノピーとペイロードの相対角）を通して、システムに対してキャノピー上の回転中心を中心に回転できるものとする。
-本モデルは以下の4つの座標系を持つ。
+本モデルでは，ペイロードは剛体として扱うが，キャノピーは入射角 $\Gamma$（キャノピーとペイロードの相対角）を通して，システムに対してキャノピー上の回転中心を中心に回転できるものとする．
+本モデルは以下の4つの座標系を持つ．
 
 \begin{itemize}
-    \item \textbf{慣性座標系 ($O_I-X_I Y_I Z_I$)}: 原点 $O_I$ は地上の任意の点、$X_I$ 軸は北、$Y_I$ 軸は東、$Z_I$ 軸は下方向とする。
-    \item \textbf{機体座標系 ($O_B-X_B Y_B Z_B$)}: 原点 $O_B$ は全システムの質量中心、$X_B$ 軸は機体正面、$X_B-Y_B$ 面はシステム対称面とする。
-    \item \textbf{キャノピー座標系 ($O_C-X_C Y_C Z_C$)}: 原点 $O_C$ はキャノピーの回転中心位置、$X_C$ 軸はキャノピー正面、$X_C-Z_C$ 面はキャノピー対称面とする。
-    \item \textbf{空力座標系 ($O_A-X_A Y_A Z_A$)}: 原点 $O_A$ はキャノピーの空力中心位置（前縁から $0.25\bar{c}$）、$X_A$ 軸はキャノピー正面、$X_A-Z_A$ 面はキャノピー対称面とする。
+    \item \textbf{慣性座標系 ($O_I-X_I Y_I Z_I$)}: 原点 $O_I$ は地上の任意の点，$X_I$ 軸は北，$Y_I$ 軸は東，$Z_I$ 軸は下方向とする．
+    \item \textbf{機体座標系 ($O_B-X_B Y_B Z_B$)}: 原点 $O_B$ は全システムの質量中心，$X_B$ 軸は機体正面，$X_B-Y_B$ 面はシステム対称面とする．
+    \item \textbf{キャノピー座標系 ($O_C-X_C Y_C Z_C$)}: 原点 $O_C$ はキャノピーの回転中心位置，$X_C$ 軸はキャノピー正面，$X_C-Z_C$ 面はキャノピー対称面とする．
+    \item \textbf{空力座標系 ($O_A-X_A Y_A Z_A$)}: 原点 $O_A$ はキャノピーの空力中心位置（前縁から $0.25\bar{c}$），$X_A$ 軸はキャノピー正面，$X_A-Z_A$ 面はキャノピー対称面とする．
 \end{itemize}
 
-また、運動を表現するにあたりペイロードの質量中心に点 $S$ を定義する。
-このシステムでは、全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される。
+また，運動を表現するにあたりペイロードの質量中心に点 $S$ を定義する．
+このシステムでは，全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される．
 
 \section{パラフォイルの運動方程式}
 
 \subsection{キネマティクス（運動学）}
-6自由度のパラフォイルモデル運動方程式は、全システムの質量中心における3つの慣性位置成分 $[x, y, z]^T$ および3つのオイラー角 $[\phi, \theta, \psi]^T$ により、式(2.1)、(2.2)で表される。
+6自由度のパラフォイルモデル運動方程式は，全システムの質量中心における3つの慣性位置成分 $[x, y, z]^T$ および3つのオイラー角 $[\phi, \theta, \psi]^T$ により，式(\ref{eq:kinematics_trans})，(\ref{eq:kinematics_rot})で表される．
 
 \begin{equation}
-\begin{bmatrix} \dot{x} \\ \dot{y} \\ \dot{z} \end{bmatrix} = [\bm{T}_{IB}]^T \begin{bmatrix} u \\ v \\ w \end{bmatrix} \tag{2.1}
+\begin{bmatrix} \dot{x} \\ \dot{y} \\ \dot{z} \end{bmatrix} = [\bm{T}_{IB}]^T \begin{bmatrix} u \\ v \\ w \end{bmatrix} \label{eq:kinematics_trans}
 \end{equation}
 
 \begin{equation}
@@ -157,44 +160,44 @@ Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画
 0 & \cos\phi & -\sin\phi \\ 
 0 & \sin\phi/\cos\theta & \cos\phi/\cos\theta 
 \end{bmatrix} 
-\begin{bmatrix} p \\ q \\ r \end{bmatrix} \tag{2.2}
+\begin{bmatrix} p \\ q \\ r \end{bmatrix} \label{eq:kinematics_rot}
 \end{equation}
-ここで、$\sin(\alpha) \equiv s_\alpha$、$\cos(\alpha) \equiv c_\alpha$、$\tan(\alpha) \equiv t_\alpha$ とする。
-また、$ [\bm{T}_{IB}] $ は慣性座標系から機体座標系への変換行列である。
+ここで，$\sin(\alpha) \equiv s_\alpha$，$\cos(\alpha) \equiv c_\alpha$，$\tan(\alpha) \equiv t_\alpha$ とする．
+また，$ [\bm{T}_{IB}] $ は慣性座標系から機体座標系への変換行列である．
 
 \begin{equation}
 [\bm{T}_{IB}] = \begin{bmatrix}
 c_\theta c_\psi & c_\theta s_\psi & -s_\theta \\
 s_\phi s_\theta c_\psi - c_\phi s_\psi & s_\phi s_\theta s_\psi + c_\phi c_\psi & s_\phi c_\theta \\
 c_\phi s_\theta c_\psi + s_\phi s_\psi & c_\phi s_\theta s_\psi - s_\phi c_\psi & c_\phi c_\theta
-\end{bmatrix} \tag{2.3}
+\end{bmatrix} \label{eq:matrix_tib}
 \end{equation}
 
 \subsection{ダイナミクス（動力学）}
-非線形運動方程式は、全システム質量中心において力とモーメントを合計し、線形運動量と角運動量を定義することにより得られる。
+非線形運動方程式は，全システム質量中心において力とモーメントを合計し，線形運動量と角運動量を定義することにより得られる．
 
 \noindent \textbf{・線形運動量}
 \begin{equation}
-\begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} = \frac{1}{m}(\bm{F}_W + \bm{F}_A + \bm{F}_S) - \bm{S}_{\omega B} \begin{bmatrix} u \\ v \\ w \end{bmatrix} \tag{2.4}
+\begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} = \frac{1}{m}(\bm{F}_W + \bm{F}_A + \bm{F}_S) - \bm{S}_{\omega B} \begin{bmatrix} u \\ v \\ w \end{bmatrix} \label{eq:dynamics_trans}
 \end{equation}
 
 \noindent \textbf{・角運動量}
 \begin{equation}
-\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [\bm{I}_T]^{-1} \left\{ \bm{M}_A + \bm{S}_{CP \cdot B} \times \bm{F}_A + \bm{S}_{CS \cdot B} \times \bm{F}_S - \bm{S}_{\omega B}[\bm{I}_T] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \tag{2.5}
+\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [\bm{I}_T]^{-1} \left\{ \bm{M}_A + \bm{S}_{CP \cdot B} \times \bm{F}_A + \bm{S}_{CS \cdot B} \times \bm{F}_S - \bm{S}_{\omega B}[\bm{I}_T] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \label{eq:dynamics_rot}
 \end{equation}
 
-ここで、$\bm{S}_{\omega B}$ は機体軸における角速度のクロス積行列であり以下に示される。
+ここで，$\bm{S}_{\omega B}$ は機体軸における角速度のクロス積行列であり以下に示される．
 \begin{equation}
 \bm{S}_{\omega B} = \begin{bmatrix}
 0 & -r & q \\
 r & 0 & -p \\
 -q & p & 0
-\end{bmatrix} \tag{2.6}
+\end{bmatrix} \label{eq:skew_omega}
 \end{equation}
 
-また、$ [\bm{I}_T] $ は全システムの慣性モーメントであり、キャノピー・ペイロードの慣性モーメントを平行軸の定理（$I = I_{cg} + md^2$）を用いて表される（益川, 2016）。
+また，$ [\bm{I}_T] $ は全システムの慣性モーメントであり，キャノピー・ペイロードの慣性モーメントを平行軸の定理（$I = I_{cg} + md^2$）を用いて表される（益川, 2016）．
 
-キャノピーやペイロードで生じた力を全システム質量中心で表すために、距離ベクトル $\vec{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される。$\bm{S}_{a \cdot b}^A$ はクロス積行列であり、座標系 $A$ において点 $a$ から点 $b$ までの距離を表す。
+キャノピーやペイロードで生じた力を全システム質量中心で表すために，距離ベクトル $\vec{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される．$\bm{S}_{a \cdot b}^A$ はクロス積行列であり，座標系 $A$ において点 $a$ から点 $b$ までの距離を表す．
 
 \begin{equation}
 \bm{S}_{a \cdot b}^A \times \bm{F} = \begin{bmatrix}
@@ -202,111 +205,111 @@ r & 0 & -p \\
 r_z & 0 & -r_x \\
 -r_y & r_x & 0
 \end{bmatrix}
-\begin{bmatrix} F_X \\ F_Y \\ F_Z \end{bmatrix} \tag{2.7}
+\begin{bmatrix} F_X \\ F_Y \\ F_Z \end{bmatrix} \label{eq:moment_cross}
 \end{equation}
 
 \section{力の定義}
-式(2.4)の線形運動量は、重力項 $\bm{F}_W$、キャノピーとペイロードに生じる空力項（キャノピー $\bm{F}_A$、ペイロード $\bm{F}_S$）によって定義される。重力項は式(2.8)で表され、全システム質量中心に生じる。
+式(\ref{eq:dynamics_trans})の線形運動量は，重力項 $\bm{F}_W$，キャノピーとペイロードに生じる空力項（キャノピー $\bm{F}_A$，ペイロード $\bm{F}_S$）によって定義される．重力項は式(\ref{eq:force_gravity})で表され，全システム質量中心に生じる．
 
 \begin{equation}
-\bm{F}_W = [\bm{T}_{IB}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \tag{2.8}
+\bm{F}_W = [\bm{T}_{IB}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \label{eq:force_gravity}
 \end{equation}
 
 \subsection{キャノピーの空力}
-キャノピーの空力項を定義する前に、キャノピー座標系における空力速度 $[u_c, v_c, w_c]^T$ 及び角速度 $[p_c, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する。
+キャノピーの空力項を定義する前に，キャノピー座標系における空力速度 $[u_c, v_c, w_c]^T$ 及び角速度 $[p_c, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する．
 
 \begin{equation}
-\begin{bmatrix} u_c \\ v_c \\ w_c \end{bmatrix} = [\bm{T}_{BC}] \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B} \begin{bmatrix} \Delta x_c \\ \Delta y_c \\ \Delta z_c \end{bmatrix} + [\bm{T}_{BC}]^T \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix} \right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \tag{2.9}
+\begin{bmatrix} u_c \\ v_c \\ w_c \end{bmatrix} = [\bm{T}_{BC}] \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B} \begin{bmatrix} \Delta x_c \\ \Delta y_c \\ \Delta z_c \end{bmatrix} + [\bm{T}_{BC}]^T \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix} \right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:canopy_vel}
 \end{equation}
 
 \begin{equation}
-\begin{bmatrix} p_c \\ q_c \\ r_c \end{bmatrix} = [\bm{T}_{BC}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \tag{2.10}
+\begin{bmatrix} p_c \\ q_c \\ r_c \end{bmatrix} = [\bm{T}_{BC}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \label{eq:canopy_ang_vel}
 \end{equation}
 
-ここで、$\Delta x_c, \Delta y_c, \Delta z_c$ は機体座標系における質量中心からキャノピー回転中心までの距離、$\Delta x_p, \Delta y_p, \Delta z_p$ はキャノピー座標系におけるキャノピー回転中心から空力中心までの距離である。
-また、$ [\bm{T}_{BC}] $ は機体座標系からキャノピー座標系への変換行列である。
+ここで，$\Delta x_c, \Delta y_c, \Delta z_c$ は機体座標系における質量中心からキャノピー回転中心までの距離，$\Delta x_p, \Delta y_p, \Delta z_p$ はキャノピー座標系におけるキャノピー回転中心から空力中心までの距離である．
+また，$ [\bm{T}_{BC}] $ は機体座標系からキャノピー座標系への変換行列である．
 
 \begin{equation}
 [\bm{T}_{BC}] = \begin{bmatrix}
 \cos\Gamma & 0 & -\sin\Gamma \\
 0 & 1 & 0 \\
 \sin\Gamma & 0 & \cos\Gamma
-\end{bmatrix} \tag{2.11}
+\end{bmatrix} \label{eq:matrix_tbc}
 \end{equation}
 
-キャノピー座標系における空力角は以下で定義される。キャノピーの合成空力速度は $V_C = \sqrt{u_c^2 + v_c^2 + w_c^2}$ である。
-
-\begin{equation}
-\alpha = \tan^{-1} \left( \frac{w_c}{u_c} \right) \tag{2.12}
-\end{equation}
-\begin{equation}
-\beta = \sin^{-1} \left( \frac{v_c}{V_C} \right) \tag{2.13}
-\end{equation}
-
-キャノピーに生じる空力項 $\bm{F}_A$ は、キャノピーの空力座標系の原点に作用し、式(2.14)〜式(2.16)で表される。
+キャノピー座標系における空力角は以下で定義される．キャノピーの合成空力速度は $V_C = \sqrt{u_c^2 + v_c^2 + w_c^2}$ である．
 
 \begin{equation}
-\bm{F}_A = \frac{1}{2} \rho V_C^2 S_C [\bm{T}_{BC}]^T [\bm{T}_{AC}] \begin{bmatrix} -C_D \\ C_Y \beta \\ -C_L \end{bmatrix} \tag{2.14}
+\alpha = \tan^{-1} \left( \frac{w_c}{u_c} \right) \label{eq:alpha}
+\end{equation}
+\begin{equation}
+\beta = \sin^{-1} \left( \frac{v_c}{V_C} \right) \label{eq:beta}
+\end{equation}
+
+キャノピーに生じる空力項 $\bm{F}_A$ は，キャノピーの空力座標系の原点に作用し，式(\ref{eq:force_aero})〜式(\ref{eq:coeff_cl})で表される．
+
+\begin{equation}
+\bm{F}_A = \frac{1}{2} \rho V_C^2 S_C [\bm{T}_{BC}]^T [\bm{T}_{AC}] \begin{bmatrix} -C_D \\ C_Y \beta \\ -C_L \end{bmatrix} \label{eq:force_aero}
 \end{equation}
 
 \begin{equation}
-C_D = C_{D0} + C_{D\alpha^2}\alpha^2 + C_{D\delta_a}\delta_a + C_{D\delta_s}\delta_s \tag{2.15}
+C_D = C_{D0} + C_{D\alpha^2}\alpha^2 + C_{D\delta_a}\delta_a + C_{D\delta_s}\delta_s \label{eq:coeff_cd}
 \end{equation}
 \begin{equation}
-C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a + C_{L\delta_s}\delta_s \tag{2.16}
+C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a + C_{L\delta_s}\delta_s \label{eq:coeff_cl}
 \end{equation}
 
-ここで、$ [\bm{T}_{AC}] $ は空力中心からキャノピー座標系への変換行列であり、迎角 $\alpha$ によって定義される。
+ここで，$ [\bm{T}_{AC}] $ は空力中心からキャノピー座標系への変換行列であり，迎角 $\alpha$ によって定義される．
 
 \begin{equation}
 [\bm{T}_{AC}] = \begin{bmatrix}
 \cos\alpha & 0 & -\sin\alpha \\
 0 & 1 & 0 \\
 \sin\alpha & 0 & \cos\alpha
-\end{bmatrix} \tag{2.17}
+\end{bmatrix} \label{eq:matrix_tac}
 \end{equation}
 
 \subsection{ペイロードの空力}
-ペイロードに作用する空力項は形状抗力によって定義され、キャノピーと同様にペイロードにおいても大気風の要素を考慮した空力速度 $[u_S, v_S, w_S]^T$ を用いる。ペイロードの合成空力速度は $V_S = \sqrt{u_S^2 + v_S^2 + w_S^2}$ である。
+ペイロードに作用する空力項は形状抗力によって定義され，キャノピーと同様にペイロードにおいても大気風の要素を考慮した空力速度 $[u_S, v_S, w_S]^T$ を用いる．ペイロードの合成空力速度は $V_S = \sqrt{u_S^2 + v_S^2 + w_S^2}$ である．
 
 \begin{equation}
-\bm{F}_S = -\frac{1}{2} \rho V_S S_S C_{DS} \begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} \tag{2.18}
+\bm{F}_S = -\frac{1}{2} \rho V_S S_S C_{DS} \begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} \label{eq:force_payload}
 \end{equation}
 
 \begin{equation}
-\begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix} \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B} \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix}_S \right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \tag{2.19}
+\begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix} \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B} \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix}_S \right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:payload_vel}
 \end{equation}
-※式(2.19)内の $\Delta x_p$ 等の添字は、文脈よりペイロード位置に関する変数と推測される。
+※式(\ref{eq:payload_vel})内の $\Delta x_p$ 等の添字は，文脈よりペイロード位置に関する変数と推測される．
 
 \section{モーメントの定義}
-式(2.5)の角運動量は、質量中心に生じるモーメント $\bm{M}_A$、キャノピーとペイロードに生じる空力モーメント（キャノピー $\bm{S}_{CP \cdot B} \times \bm{F}_A$、ペイロード $\bm{S}_{CS \cdot B} \times \bm{F}_S$）によって定義される。質量中心に生じるモーメント $\bm{M}_A$ は式(2.20)で表される。
+式(\ref{eq:dynamics_rot})の角運動量は，質量中心に生じるモーメント $\bm{M}_A$，キャノピーとペイロードに生じる空力モーメント（キャノピー $\bm{S}_{CP \cdot B} \times \bm{F}_A$，ペイロード $\bm{S}_{CS \cdot B} \times \bm{F}_S$）によって定義される．質量中心に生じるモーメント $\bm{M}_A$ は式(\ref{eq:moment_aero})で表される．
 
 \begin{equation}
-\bm{M}_A = \frac{1}{2} \rho V_C^2 S_p [\bm{T}_{BC}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \tag{2.20}
+\bm{M}_A = \frac{1}{2} \rho V_C^2 S_p [\bm{T}_{BC}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
 \end{equation}
 
 \begin{equation}
-C_l = C_{l\phi}\phi + C_{lp} \frac{p_c b}{2V_C} + C_{l\delta_a}\delta_a \frac{d}{b} \tag{2.21}
+C_l = C_{l\phi}\phi + C_{lp} \frac{p_c b}{2V_C} + C_{l\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_roll}
 \end{equation}
 
 \begin{equation}
-C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_C} \tag{2.22}
+C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_C} \label{eq:coeff_pitch}
 \end{equation}
 
 \begin{equation}
-C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \tag{2.23}
+C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_yaw}
 \end{equation}
 
-また、操舵量に関して非対称ブレーキ $\delta_a$ および対称ブレーキ $\delta_s$ は左右の操舵量 $\delta_R, \delta_L$ を用いて以下で表される。
+また，操舵量に関して非対称ブレーキ $\delta_a$ および対称ブレーキ $\delta_s$ は左右の操舵量 $\delta_R, \delta_L$ を用いて以下で表される．
 
 \begin{equation}
-\delta_a = \delta_R - \delta_L \tag{2.24}
+\delta_a = \delta_R - \delta_L \label{eq:deflection_asym}
 \end{equation}
 \begin{equation}
-\delta_s = \min(\delta_R, \delta_L) \tag{2.25}
+\delta_s = \min(\delta_R, \delta_L) \label{eq:deflection_sym}
 \end{equation}
 
-以上を全システム中心で合計することで、式(2.4)の線形運動量と(2.5)の角運動量が構成される。
+以上を全システム中心で合計することで，式(\ref{eq:dynamics_trans})の線形運動量と(\ref{eq:dynamics_rot})の角運動量が構成される．
 
 \begin{thebibliography}{1}
 %\bibitem{ref1} 李家 賢一，航空機設計法 実践編
@@ -319,7 +322,7 @@ United Launch Alliance
 Denver, CO
 Roy A. Haggard**
 Vertigo
-Lake Elsinore, CA, AIAA SPACE 2008 Conference & Exposition
+Lake Elsinore, CA, AIAA SPACE 2008 Conference \& Exposition % ほんとはand→& 
 9 - 11 September 2008, San Diego, California(2008)
 \bibitem[NASA,2001]{ref_NASA}The National Aeronautics and Space Administration, The X-38 prototype of the Crew Return Vehicle is suspended under
 its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001, from
