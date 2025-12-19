@@ -1,0 +1,369 @@
+<div class="titlepage">
+<div class="center">
+<p>2025年度</p>
+<p>航空機設計仕様書</p>
+<p>2025年8月</p>
+<p>東京理科大学創域理工学部機械航空宇宙工学科</p>
+<p>小笠原研究室</p>
+<table>
+<tbody>
+<tr>
+<td style="text-align: left;">7522095</td>
+<td style="text-align: left;">舟木 悠太</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><span>1.5</span> <span>.5</span>
+<span><strong></strong></span><span>序論</span></p>
+<h2 id="研究背景">研究背景</h2>
+<h2 id="パラフォイルの仕組み">パラフォイルの仕組み</h2>
+<p>この節では，パラフォイルの基本的な仕組みについて説明する．パラフォイルは，展開可能な柔軟構造を有し，端部の形状を変形させることで姿勢の変更及び軌道制御が可能な落下傘を指す(図(<a
+href="#fig:para_real" data-reference-type="ref"
+data-reference="fig:para_real">1</a>))．</p>
+<figure id="fig:para_real" data-latex-placement="H">
+<p>    <img src="画像/パラフォイル_実機正面図.jpeg" style="width:60.0%"
+alt="image" />  </p>
+<p>  <span id="fig:para_real" data-label="fig:para_real"></span></p>
+<figcaption>The X-38 prototype of the Crew Return Vehicle is suspended
+under its giant 7,500-square-foot parafoil during its eighth free flight
+on Thursday, December 13, 2001.<span class="citation"
+data-cites="ref_NASA"></span></figcaption>
+</figure>
+<p>パラフォイルはキャノピー，ペイロード，そしてテザーから構成されている．パラフォイルのキャノピーは，翼型断面を有し，揚力を発生させることで滑空飛行を実現する．ペイロードは，パラフォイルに吊り下げられた物体であり，テザーはキャノピーとペイロードを接続する．
+パラフォイルは前進時にキャノピーが空気を取り込み，空気流のせきとめ圧（ラム圧）でセルを膨らませて翼形状を保持する.パラフォイルは減速や降下に用いられるパラシュートと比べてアスペクト比が大きく，端面が翼型形状であるため滑空飛行が可能となる．<br />
+パラフォイルの制御は，主にテザーの端部を引くことで行われ、テザーの片端を引く非対称制御とテザーの両端を引く対称制御の2通りの制御方法を使い分ける．非対称制御では，例としてテザーの右側を引くとキャノピーの右後部が下がることでバンク角が発生し、向心力が働くことで左旋回が可能となる．対称制御では，両端のテザーを引くことでキャノピーの後縁が下がり揚抗比が変化することで前進速度を制御できる．</p>
+<h2 id="先行研究">先行研究</h2>
+<h3 id="gmar3rd-generation-mid-air-retrieval-の手順">3GMAR(3rd
+Generation Mid-Air Retrieval )の手順</h3>
+<p>空中回収において，ヘリコプターとパラフォイルが安定した会合を行うため，会合時の衝撃荷重及び相対速度の低減及び空中回収に適したパラフォイルの種類の研究が行われてきた．
+Deanらは，3GMAR(3rd Generation Mid-Air Retrieval
+)という空中回収の方式を提案した．3GMARの手順は以下の通りである(図(<a
+href="#fig:para_real" data-reference-type="ref"
+data-reference="fig:para_real">1</a>))．</p>
+<figure id="fig:3gMAR" data-latex-placement="H">
+<p>    <img src="画像/3GMARの概念図.jpg" style="width:80.0%"
+alt="image" />  </p>
+<p>  <span id="fig:3gMAR" data-label="fig:3gMAR"></span></p>
+<figcaption>The process of 3GMAR.<span class="citation"
+data-cites="ref_mar_past_pre"></span></figcaption>
+</figure>
+<p>3GMARではフックが取り付けられた回収ヘリコプターが，ドローグパラシュートが取り付けられたパラフォイルに接近し，ドローグにフックをかけて回収する．
+この時の手順は接近，会合，引き上げの3段階に分けられる．接近段階では，ヘリコプターは、パラフォイルをパイロットが目視で確認できるまでパラフォイルに向かって飛行する．
+その後，回収ヘリコプターはパラフォイルと右斜め編隊を組み，パラフォイルより約15m高い高度を維持し，パラフォイルの中心線の左側に約15m離れて位置する．このときヘリコプターとパラフォイルとの相対速度はほぼ0m/sとなる．
+会合段階では，ヘリコプターはパラフォイルに向かって徐々に接近し，ドローグパラシュートにフックをかける．
+引き上げ段階では，ヘリコプターはドローグパラシュートを引き上げる．この際，係合ラインに張力がかかり，パラフォイルのサスペンションラインに取り付けられた「スライダー」と呼ばれる部品が引き上げられキャノピーが収縮する．これにより，パラフォイルの揚力が減少し，ヘリコプターへの負荷が軽減される．<br />
+3GMARでは，パラフォイルがヘリコプターの前方を滑空するため，ヘリコプターのパイロットがパラフォイルを追跡するのが容易である上，ヘリコプターとパラフォイルの相対速度が小さいため，会合時の衝撃荷重が低減される．これにより，安全かつ効率的な空中回収が可能となる．
+その一方，3GMARではパラフォイルが自律制御を行うことは想定されていないため，風などの外乱やパラフォイルの初期値のずれによりパラフォイルがヘリコプターから離れた方向に移動する可能性がある．したがって空中回収の成功は、ヘリコプターの性能及びパイロットの技術に依存している．(<span
+class="citation" data-cites="ref_mar_past_pre"></span>)</p>
+<h3
+id="空中回収におけるパラフォイルの自律誘導">空中回収におけるパラフォイルの自律誘導</h3>
+<p>Mariらは，ATLAS
+Vに搭載されたRD-180エンジンの空中回収を計画するにあたって，パラフォイルに自律誘導システムを導入することを検討した．ペイロードの内部にGPSを搭載することで，パラフォイル展開後にペイロードの位置情報を取得し，目標地点に向かって自律的に誘導することを目的としている．
+このシステムは実証されておらず，(<span class="citation"
+data-cites="ref_mar_atlas"></span>)</p>
+<h2 id="研究目的">研究目的</h2>
+<p><span>1.5</span> <span>.5</span>
+<span><strong></strong></span><span>座標系とモデルの定義</span>
+本モデルでは，ペイロードは剛体として扱うが，キャノピーは入射角 <span
+class="math inline"><em>Γ</em></span>（キャノピーとペイロードの相対角）を通して，システムに対してキャノピー上の回転中心を中心に回転できるものとする．
+本モデルは以下の4つの座標系を持つ．</p>
+<ul>
+<li><p><strong>慣性座標系 (<span
+class="math inline"><em>O</em><sub><em>I</em></sub> − <em>X</em><sub><em>I</em></sub><em>Y</em><sub><em>I</em></sub><em>Z</em><sub><em>I</em></sub></span>)</strong>:
+原点 <span class="math inline"><em>O</em><sub><em>I</em></sub></span>
+は地上の任意の点，<span
+class="math inline"><em>X</em><sub><em>I</em></sub></span> 軸は北，<span
+class="math inline"><em>Y</em><sub><em>I</em></sub></span> 軸は東，<span
+class="math inline"><em>Z</em><sub><em>I</em></sub></span>
+軸は下方向とする．</p></li>
+<li><p><strong>機体座標系 (<span
+class="math inline"><em>O</em><sub><em>B</em></sub> − <em>X</em><sub><em>B</em></sub><em>Y</em><sub><em>B</em></sub><em>Z</em><sub><em>B</em></sub></span>)</strong>:
+原点 <span class="math inline"><em>O</em><sub><em>B</em></sub></span>
+は全システムの質量中心，<span
+class="math inline"><em>X</em><sub><em>B</em></sub></span>
+軸は機体正面，<span
+class="math inline"><em>X</em><sub><em>B</em></sub> − <em>Y</em><sub><em>B</em></sub></span>
+面はシステム対称面とする．</p></li>
+<li><p><strong>キャノピー座標系 (<span
+class="math inline"><em>O</em><sub><em>C</em></sub> − <em>X</em><sub><em>C</em></sub><em>Y</em><sub><em>C</em></sub><em>Z</em><sub><em>C</em></sub></span>)</strong>:
+原点 <span class="math inline"><em>O</em><sub><em>C</em></sub></span>
+はキャノピーの回転中心位置，<span
+class="math inline"><em>X</em><sub><em>C</em></sub></span>
+軸はキャノピー正面，<span
+class="math inline"><em>X</em><sub><em>C</em></sub> − <em>Z</em><sub><em>C</em></sub></span>
+面はキャノピー対称面とする．</p></li>
+<li><p><strong>空力座標系 (<span
+class="math inline"><em>O</em><sub><em>A</em></sub> − <em>X</em><sub><em>A</em></sub><em>Y</em><sub><em>A</em></sub><em>Z</em><sub><em>A</em></sub></span>)</strong>:
+原点 <span class="math inline"><em>O</em><sub><em>A</em></sub></span>
+はキャノピーの空力中心位置（前縁から <span
+class="math inline">0.25<em>c̄</em></span>），<span
+class="math inline"><em>X</em><sub><em>A</em></sub></span>
+軸はキャノピー正面，<span
+class="math inline"><em>X</em><sub><em>A</em></sub> − <em>Z</em><sub><em>A</em></sub></span>
+面はキャノピー対称面とする．</p></li>
+</ul>
+<p>また，運動を表現するにあたりペイロードの質量中心に点 <span
+class="math inline"><em>S</em></span> を定義する．
+このシステムでは，全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される．</p>
+<p><span>1.5</span> <span>.5</span>
+<span><strong></strong></span><span>パラフォイルの運動方程式</span></p>
+<h2 id="キネマティクス運動学">キネマティクス（運動学）</h2>
+<p>6自由度のパラフォイルモデル運動方程式は，全システムの質量中心における3つの慣性位置成分
+<span
+class="math inline">[<em>x</em>, <em>y</em>, <em>z</em>]<sup><em>T</em></sup></span>
+および3つのオイラー角 <span
+class="math inline">[<em>ϕ</em>, <em>θ</em>, <em>ψ</em>]<sup><em>T</em></sup></span>
+により，式(<a href="#eq:kinematics_trans" data-reference-type="ref"
+data-reference="eq:kinematics_trans">[eq:kinematics_trans]</a>)，(<a
+href="#eq:kinematics_rot" data-reference-type="ref"
+data-reference="eq:kinematics_rot">[eq:kinematics_rot]</a>)で表される．</p>
+<p><span class="math display">$$\begin{equation}
+\begin{bmatrix} \dot{x} \\ \dot{y} \\ \dot{z} \end{bmatrix} =
+[\bm{T}_{IB}]^T \begin{bmatrix} u \\ v \\ w \end{bmatrix}
+\label{eq:kinematics_trans}
+\end{equation}$$</span></p>
+<p><span class="math display">$$\begin{equation}
+\begin{bmatrix} \dot{\phi} \\ \dot{\theta} \\ \dot{\psi} \end{bmatrix} =
+\begin{bmatrix}
+1 &amp; \sin\phi\tan\theta &amp; \cos\phi\tan\theta \\
+0 &amp; \cos\phi &amp; -\sin\phi \\
+0 &amp; \sin\phi/\cos\theta &amp; \cos\phi/\cos\theta
+\end{bmatrix}
+\begin{bmatrix} p \\ q \\ r \end{bmatrix} \label{eq:kinematics_rot}
+\end{equation}$$</span> ここで，<span
+class="math inline">sin (<em>α</em>) ≡ <em>s</em><sub><em>α</em></sub></span>，<span
+class="math inline">cos (<em>α</em>) ≡ <em>c</em><sub><em>α</em></sub></span>，<span
+class="math inline">tan (<em>α</em>) ≡ <em>t</em><sub><em>α</em></sub></span>
+とする． また，<span
+class="math inline">[<strong>T</strong><sub><em>I</em><em>B</em></sub>]</span>
+は慣性座標系から機体座標系への変換行列である．</p>
+<p><span class="math display">$$\begin{equation}
+[\bm{T}_{IB}] = \begin{bmatrix}
+c_\theta c_\psi &amp; c_\theta s_\psi &amp; -s_\theta \\
+s_\phi s_\theta c_\psi - c_\phi s_\psi &amp; s_\phi s_\theta s_\psi +
+c_\phi c_\psi &amp; s_\phi c_\theta \\
+c_\phi s_\theta c_\psi + s_\phi s_\psi &amp; c_\phi s_\theta s_\psi -
+s_\phi c_\psi &amp; c_\phi c_\theta
+\end{bmatrix} \label{eq:matrix_tib}
+\end{equation}$$</span></p>
+<h2 id="ダイナミクス動力学">ダイナミクス（動力学）</h2>
+<p>非線形運動方程式は，全システム質量中心において力とモーメントを合計し，線形運動量と角運動量を定義することにより得られる．</p>
+<p><strong>・線形運動量</strong> <span
+class="math display">$$\begin{equation}
+\begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} =
+\frac{1}{m}(\bm{F}_W + \bm{F}_A + \bm{F}_S) - \bm{S}_{\omega B}
+\begin{bmatrix} u \\ v \\ w \end{bmatrix} \label{eq:dynamics_trans}
+\end{equation}$$</span></p>
+<p><strong>・角運動量</strong> <span
+class="math display">$$\begin{equation}
+\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} =
+[\bm{I}_T]^{-1} \left\{ \bm{M}_A + \bm{S}_{CP \cdot B} \times \bm{F}_A +
+\bm{S}_{CS \cdot B} \times \bm{F}_S - \bm{S}_{\omega B}[\bm{I}_T]
+\begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\}
+\label{eq:dynamics_rot}
+\end{equation}$$</span></p>
+<p>ここで，<span
+class="math inline"><strong>S</strong><sub><em>ω</em><em>B</em></sub></span>
+は機体軸における角速度のクロス積行列であり以下に示される． <span
+class="math display">$$\begin{equation}
+\bm{S}_{\omega B} = \begin{bmatrix}
+0 &amp; -r &amp; q \\
+r &amp; 0 &amp; -p \\
+-q &amp; p &amp; 0
+\end{bmatrix} \label{eq:skew_omega}
+\end{equation}$$</span></p>
+<p>また，<span
+class="math inline">[<strong>I</strong><sub><em>T</em></sub>]</span>
+は全システムの慣性モーメントであり，キャノピー・ペイロードの慣性モーメントを平行軸の定理（<span
+class="math inline"><em>I</em> = <em>I</em><sub><em>c</em><em>g</em></sub> + <em>m</em><em>d</em><sup>2</sup></span>）を用いて表される（益川,
+2016）．</p>
+<p>キャノピーやペイロードで生じた力を全システム質量中心で表すために，距離ベクトル
+<span
+class="math inline"><em>r⃗</em> = [<em>r</em><sub><em>x</em></sub>, <em>r</em><sub><em>y</em></sub>, <em>r</em><sub><em>z</em></sub>]<sup><em>T</em></sup></span>
+を用いて外積で表現される．<span
+class="math inline"><strong>S</strong><sub><em>a</em> ⋅ <em>b</em></sub><sup><em>A</em></sup></span>
+はクロス積行列であり，座標系 <span class="math inline"><em>A</em></span>
+において点 <span class="math inline"><em>a</em></span> から点 <span
+class="math inline"><em>b</em></span> までの距離を表す．</p>
+<p><span class="math display">$$\begin{equation}
+\bm{S}_{a \cdot b}^A \times \bm{F} = \begin{bmatrix}
+0 &amp; -r_z &amp; r_y \\
+r_z &amp; 0 &amp; -r_x \\
+-r_y &amp; r_x &amp; 0
+\end{bmatrix}
+\begin{bmatrix} F_X \\ F_Y \\ F_Z \end{bmatrix} \label{eq:moment_cross}
+\end{equation}$$</span></p>
+<p><span>1.5</span> <span>.5</span>
+<span><strong></strong></span><span>力の定義</span> 式(<a
+href="#eq:dynamics_trans" data-reference-type="ref"
+data-reference="eq:dynamics_trans">[eq:dynamics_trans]</a>)の線形運動量は，重力項
+<span
+class="math inline"><strong>F</strong><sub><em>W</em></sub></span>，キャノピーとペイロードに生じる空力項（キャノピー
+<span
+class="math inline"><strong>F</strong><sub><em>A</em></sub></span>，ペイロード
+<span
+class="math inline"><strong>F</strong><sub><em>S</em></sub></span>）によって定義される．重力項は式(<a
+href="#eq:force_gravity" data-reference-type="ref"
+data-reference="eq:force_gravity">[eq:force_gravity]</a>)で表され，全システム質量中心に生じる．</p>
+<p><span class="math display">$$\begin{equation}
+\bm{F}_W = [\bm{T}_{IB}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix}
+\label{eq:force_gravity}
+\end{equation}$$</span></p>
+<h2 id="キャノピーの空力">キャノピーの空力</h2>
+<p>キャノピーの空力項を定義する前に，キャノピー座標系における空力速度
+<span
+class="math inline">[<em>u</em><sub><em>c</em></sub>, <em>v</em><sub><em>c</em></sub>, <em>w</em><sub><em>c</em></sub>]<sup><em>T</em></sup></span>
+及び角速度 <span
+class="math inline">[<em>p</em><sub><em>c</em></sub>, <em>q</em><sub><em>c</em></sub>, <em>r</em><sub><em>c</em></sub>]<sup><em>T</em></sup></span>
+をキャノピーの入射角 <span class="math inline"><em>Γ</em></span>
+と大気風を考慮して定義する．</p>
+<p><span class="math display">$$\begin{equation}
+\begin{bmatrix} u_c \\ v_c \\ w_c \end{bmatrix} = [\bm{T}_{BC}] \left(
+\begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B}
+\begin{bmatrix} \Delta x_c \\ \Delta y_c \\ \Delta z_c \end{bmatrix} +
+[\bm{T}_{BC}]^T \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p
+\end{bmatrix} \right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY}
+\\ V_{WZ} \end{bmatrix} \label{eq:canopy_vel}
+\end{equation}$$</span></p>
+<p><span class="math display">$$\begin{equation}
+\begin{bmatrix} p_c \\ q_c \\ r_c \end{bmatrix} = [\bm{T}_{BC}]
+\begin{bmatrix} p \\ q \\ r \end{bmatrix} \label{eq:canopy_ang_vel}
+\end{equation}$$</span></p>
+<p>ここで，<span
+class="math inline"><em>Δ</em><em>x</em><sub><em>c</em></sub>, <em>Δ</em><em>y</em><sub><em>c</em></sub>, <em>Δ</em><em>z</em><sub><em>c</em></sub></span>
+は機体座標系における質量中心からキャノピー回転中心までの距離，<span
+class="math inline"><em>Δ</em><em>x</em><sub><em>p</em></sub>, <em>Δ</em><em>y</em><sub><em>p</em></sub>, <em>Δ</em><em>z</em><sub><em>p</em></sub></span>
+はキャノピー座標系におけるキャノピー回転中心から空力中心までの距離である．
+また，<span
+class="math inline">[<strong>T</strong><sub><em>B</em><em>C</em></sub>]</span>
+は機体座標系からキャノピー座標系への変換行列である．</p>
+<p><span class="math display">$$\begin{equation}
+[\bm{T}_{BC}] = \begin{bmatrix}
+\cos\Gamma &amp; 0 &amp; -\sin\Gamma \\
+0 &amp; 1 &amp; 0 \\
+\sin\Gamma &amp; 0 &amp; \cos\Gamma
+\end{bmatrix} \label{eq:matrix_tbc}
+\end{equation}$$</span></p>
+<p>キャノピー座標系における空力角は以下で定義される．キャノピーの合成空力速度は
+<span class="math inline">$V_C = \sqrt{u_c^2 + v_c^2 + w_c^2}$</span>
+である．</p>
+<p><span class="math display">$$\begin{equation}
+\alpha = \tan^{-1} \left( \frac{w_c}{u_c} \right) \label{eq:alpha}
+\end{equation}$$</span> <span class="math display">$$\begin{equation}
+\beta = \sin^{-1} \left( \frac{v_c}{V_C} \right) \label{eq:beta}
+\end{equation}$$</span></p>
+<p>キャノピーに生じる空力項 <span
+class="math inline"><strong>F</strong><sub><em>A</em></sub></span>
+は，キャノピーの空力座標系の原点に作用し，式(<a href="#eq:force_aero"
+data-reference-type="ref"
+data-reference="eq:force_aero">[eq:force_aero]</a>)〜式(<a
+href="#eq:coeff_cl" data-reference-type="ref"
+data-reference="eq:coeff_cl">[eq:coeff_cl]</a>)で表される．</p>
+<p><span class="math display">$$\begin{equation}
+\bm{F}_A = \frac{1}{2} \rho V_C^2 S_C [\bm{T}_{BC}]^T [\bm{T}_{AC}]
+\begin{bmatrix} -C_D \\ C_Y \beta \\ -C_L \end{bmatrix}
+\label{eq:force_aero}
+\end{equation}$$</span></p>
+<p><span class="math display">$$\begin{equation}
+C_D = C_{D0} + C_{D\alpha^2}\alpha^2 + C_{D\delta_a}\delta_a +
+C_{D\delta_s}\delta_s \label{eq:coeff_cd}
+\end{equation}$$</span> <span class="math display">$$\begin{equation}
+C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a +
+C_{L\delta_s}\delta_s \label{eq:coeff_cl}
+\end{equation}$$</span></p>
+<p>ここで，<span
+class="math inline">[<strong>T</strong><sub><em>A</em><em>C</em></sub>]</span>
+は空力中心からキャノピー座標系への変換行列であり，迎角 <span
+class="math inline"><em>α</em></span> によって定義される．</p>
+<p><span class="math display">$$\begin{equation}
+[\bm{T}_{AC}] = \begin{bmatrix}
+\cos\alpha &amp; 0 &amp; -\sin\alpha \\
+0 &amp; 1 &amp; 0 \\
+\sin\alpha &amp; 0 &amp; \cos\alpha
+\end{bmatrix} \label{eq:matrix_tac}
+\end{equation}$$</span></p>
+<h2 id="ペイロードの空力">ペイロードの空力</h2>
+<p>ペイロードに作用する空力項は形状抗力によって定義され，キャノピーと同様にペイロードにおいても大気風の要素を考慮した空力速度
+<span
+class="math inline">[<em>u</em><sub><em>S</em></sub>, <em>v</em><sub><em>S</em></sub>, <em>w</em><sub><em>S</em></sub>]<sup><em>T</em></sup></span>
+を用いる．ペイロードの合成空力速度は <span class="math inline">$V_S =
+\sqrt{u_S^2 + v_S^2 + w_S^2}$</span> である．</p>
+<p><span class="math display">$$\begin{equation}
+\bm{F}_S = -\frac{1}{2} \rho V_S S_S C_{DS} \begin{bmatrix} u_S \\ v_S
+\\ w_S \end{bmatrix} \label{eq:force_payload}
+\end{equation}$$</span></p>
+<p><span class="math display">$$\begin{equation}
+\begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} = \begin{bmatrix} 1
+&amp; 0 &amp; 0 \\ 0 &amp; 1 &amp; 0 \\ 0 &amp; 0 &amp; 1 \end{bmatrix}
+\left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B}
+\begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix}_S
+\right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ}
+\end{bmatrix} \label{eq:payload_vel}
+\end{equation}$$</span> ※式(<a href="#eq:payload_vel"
+data-reference-type="ref"
+data-reference="eq:payload_vel">[eq:payload_vel]</a>)内の <span
+class="math inline"><em>Δ</em><em>x</em><sub><em>p</em></sub></span>
+等の添字は，文脈よりペイロード位置に関する変数と推測される．</p>
+<p><span>1.5</span> <span>.5</span>
+<span><strong></strong></span><span>モーメントの定義</span> 式(<a
+href="#eq:dynamics_rot" data-reference-type="ref"
+data-reference="eq:dynamics_rot">[eq:dynamics_rot]</a>)の角運動量は，質量中心に生じるモーメント
+<span
+class="math inline"><strong>M</strong><sub><em>A</em></sub></span>，キャノピーとペイロードに生じる空力モーメント（キャノピー
+<span
+class="math inline"><strong>S</strong><sub><em>C</em><em>P</em> ⋅ <em>B</em></sub> × <strong>F</strong><sub><em>A</em></sub></span>，ペイロード
+<span
+class="math inline"><strong>S</strong><sub><em>C</em><em>S</em> ⋅ <em>B</em></sub> × <strong>F</strong><sub><em>S</em></sub></span>）によって定義される．質量中心に生じるモーメント
+<span class="math inline"><strong>M</strong><sub><em>A</em></sub></span>
+は式(<a href="#eq:moment_aero" data-reference-type="ref"
+data-reference="eq:moment_aero">[eq:moment_aero]</a>)で表される．</p>
+<p><span class="math display">$$\begin{equation}
+\bm{M}_A = \frac{1}{2} \rho V_C^2 S_p [\bm{T}_{BC}]^T \begin{bmatrix} b
+\cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix}
+\label{eq:moment_aero}
+\end{equation}$$</span></p>
+<p><span class="math display">$$\begin{equation}
+C_l = C_{l\phi}\phi + C_{lp} \frac{p_c b}{2V_C} + C_{l\delta_a}\delta_a
+\frac{d}{b} \label{eq:coeff_roll}
+\end{equation}$$</span></p>
+<p><span class="math display">$$\begin{equation}
+C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_C}
+\label{eq:coeff_pitch}
+\end{equation}$$</span></p>
+<p><span class="math display">$$\begin{equation}
+C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b}
+\label{eq:coeff_yaw}
+\end{equation}$$</span></p>
+<p>また，操舵量に関して非対称ブレーキ <span
+class="math inline"><em>δ</em><sub><em>a</em></sub></span>
+および対称ブレーキ <span
+class="math inline"><em>δ</em><sub><em>s</em></sub></span>
+は左右の操舵量 <span
+class="math inline"><em>δ</em><sub><em>R</em></sub>, <em>δ</em><sub><em>L</em></sub></span>
+を用いて以下で表される．</p>
+<p><span class="math display">$$\begin{equation}
+\delta_a = \delta_R - \delta_L \label{eq:deflection_asym}
+\end{equation}$$</span> <span
+class="math display"><em>δ</em><sub><em>s</em></sub> = min (<em>δ</em><sub><em>R</em></sub>, <em>δ</em><sub><em>L</em></sub>)</span></p>
+<p>以上を全システム中心で合計することで，式(<a href="#eq:dynamics_trans"
+data-reference-type="ref"
+data-reference="eq:dynamics_trans">[eq:dynamics_trans]</a>)の線形運動量と(<a
+href="#eq:dynamics_rot" data-reference-type="ref"
+data-reference="eq:dynamics_rot">[eq:dynamics_rot]</a>)の角運動量が構成される．</p>
+<div class="thebibliography">
+<p><span>1</span> The Past, Present, and Future of Mid-Air Retrieval
+Dean S. Jorgensen•, Roy A. Haggardt and Glen J. Brown Vertigo, Inc.,
+Lake Elsinore, California 92531, 18th AIM Aerodynamic DeceleratorS
+ystems Technology Conference and Seminar(2005) Partial Rocket Reuse
+Using Mid-Air Recovery Mari Gravlee*, Bernard Kutter†, Frank Zegler‡,
+Brooke Mosley§ United Launch Alliance Denver, CO Roy A. Haggard**
+Vertigo Lake Elsinore, CA, AIAA SPACE 2008 Conference &amp; Exposition 9
+- 11 September 2008, San Diego, California(2008) The National
+Aeronautics and Space Administration, The X-38 prototype of the Crew
+Return Vehicle is suspended under its giant 7,500-square-foot parafoil
+during its eighth free flight on Thursday, December 13, 2001, from
+&lt;https://www.nasa.gov/image-detail/amf-ec01-0339-146/&gt;,
+(参照日2024年1月2日)</p>
+</div>
