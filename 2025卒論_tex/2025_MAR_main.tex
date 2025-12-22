@@ -129,24 +129,32 @@ Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画
 パラフォイルはキャノピー，ペイロード，そしてテザーから構成されている．パラフォイルのキャノピーは，翼型断面を有し，揚力を発生させることで滑空飛行を実現する．ペイロードは，パラフォイルに吊り下げられた物体であり，テザーはキャノピーとペイロードを接続する．
 パラフォイルは前進時にキャノピーが空気を取り込み，空気流のせきとめ圧（ラム圧）でセルを膨らませて翼形状を保持する.パラフォイルは減速や降下に用いられるパラシュートと比べてアスペクト比が大きく，端面が翼型形状であるため滑空飛行が可能となる．\\
 パラフォイルの制御は，主にテザーの端部を引くことで行われ、テザーの片端を引く非対称制御とテザーの両端を引く対称制御の2通りの制御方法を使い分ける．非対称制御では，例としてテザーの右側を引くとキャノピーの右後部が下がることでバンク角が発生し、向心力が働くことで左旋回が可能となる．対称制御では，両端のテザーを引くことでキャノピーの後縁が下がり揚抗比が変化することで前進速度を制御できる．
+% =======================================================
+% ▼▼▼ 以降：誘導理論パート（3つの大セクションに再編） ▼▼▼
+% =======================================================
 
-%テザーの端部を引っ張ると，キャノピーの形状が変化し，揚力の分布が変わることで姿勢や進行方向を制御できる．例えば，右側のテザーを引っ張ると，右側の揚力が増加し，左側に旋回することが可能となる．
-\section{運動方程式と独立変数変換}
-パラフォイルの状態ベクトルを $\mathbf{x} = [x, y, \psi, h]^T$ とし，対気速度 $V$，飛行経路角 $\gamma$（降下角），旋回半径 $r$ を用いると，時間 $t$ に関する運動方程式は以下のように記述される．
+% =========================================
+% 第2章 軌道計画 (Trajectory Planning)
+% =========================================
+\section{軌道計画}
+本章では，パラフォイルが目標地点へ到達するための軌道生成アルゴリズムについて述べる．エネルギー管理の観点から独立変数を高度に変換し，幾何学的な最短経路問題（Dubins Path）を用いて基準軌道を生成する手法を採用する．
+
+\subsection{独立変数の変換と簡易運動方程式}
+パラフォイルの状態ベクトルを $\mathbf{x} = [x, y, \psi, h]^T$ とし，対気速度 $V$，飛行経路角 $\gamma$（降下角），旋回半径 $R$ を用いると，時間 $t$ に関する簡易運動方程式は以下のように記述される．
 \begin{equation}
-    \dot{x} = V \cos \gamma \cos \psi, \quad \dot{y} = V \cos \gamma \sin \psi, \quad \dot{\psi} = \frac{V \cos \gamma}{r}, \quad \dot{h} = V \sin \gamma
+    \dot{x} = V \cos \gamma \cos \psi, \quad \dot{y} = V \cos \gamma \sin \psi, \quad \dot{\psi} = \frac{V \cos \gamma}{R}, \quad \dot{h} = V \sin \gamma
 \end{equation}
 ここで，目標高度への到達を確実にするため，独立変数を時間 $t$ から消費高度 $\tau$ に変換する考察を行う．$\tau$ は飛行開始時の高度 $h_0$ からの低下分として $\tau = h_0 - h$ と定義される．
 $d\tau = -\dot{h} dt = -V \sin \gamma dt$ より，高度微分形式の運動方程式が得られる．
 \begin{equation}
-    x' = \frac{dx}{d\tau} = -\frac{\cos \psi}{\tan \gamma}, \quad y' = \frac{dy}{d\tau} = -\frac{\sin \psi}{\tan \gamma}, \quad \psi' = -\frac{1}{r \tan \gamma}
+    x' = \frac{dx}{d\tau} = -\frac{\cos \psi}{\tan \gamma}, \quad y' = \frac{dy}{d\tau} = -\frac{\sin \psi}{\tan \gamma}, \quad \psi' = -\frac{1}{R \tan \gamma}
 \end{equation}
 本システムの実装においては，この関係性を基礎とし，必要な水平距離を稼ぐために必要な高度（コスト）を計算している．
 
-\section{Dubins経路の解析的解法}
+\subsection{Dubins経路の解析的解法}
 水平面の経路計画には，Dubins曲線を採用する．本システムでは，始点 $\bm{S}=(x_s, y_s, \psi_s)$ から終点 $\bm{E}=(x_e, y_e, \psi_e)$ への最短経路を，数値探索ではなく幾何学的な解析解として求めている．
 
-\subsection{座標変換と正規化}
+\subsubsection{座標変換と正規化}
 計算を簡略化するため，問題を最小旋回半径 $R$ で正規化し，始点が原点 $(0,0)$ かつ方位 $0$ となるような局所座標系へ変換する．
 
 まず，始点から終点への相対ベクトルを計算し，始点方位 $\psi_s$ だけ回転させる．
@@ -167,9 +175,8 @@ $d\tau = -\dot{h} dt = -V \sin \gamma dt$ より，高度微分形式の運動�
     \beta  &= \mod((\psi_e - \psi_s) - \theta, 2\pi)
 \end{align}
 
-\subsection{各モードの経路長計算}
+\subsubsection{各モードの経路長計算}
 正規化された空間において，経路は「第1旋回区間（長さ $t$）」「直線区間（長さ $p$）」「第2旋回区間（長さ $q$）」の3要素で構成される．これらはすべて無次元化された長さ（角度）である．
-
 主要な4つのCSC（Curve-Straight-Curve）モードにおける構成要素は以下の通り計算される．なお，計算結果が実数解を持たない（ルートの中が負になる）場合，そのモードは幾何学的に成立しない．
 
 \subsubsection{LSL (Left-Straight-Left)}
@@ -220,31 +227,33 @@ LSRの対称形である．
     q = \mod\left(\beta - \text{atan2}\left(\cos\alpha - \cos\beta, d - \sin\alpha - \sin\beta\right), 2\pi\right)
 \end{equation}
 
-\subsection{最適経路の選択}
+\subsubsection{最適経路の選択}
 上記の各モードについて総コスト $L_{total} = |t| + |p| + |q|$ を計算し，最小となるモードを選択する．
 最終的な物理空間での経路長は $L_{phy} = L_{total} \times R$ となる．
 
-\section{経路コストと物理的制約}
+\subsection{経路コストと物理的制約}
 求めた幾何学的経路長を，高度消費コストに換算する．
 幾何学的長さ（旋回角 $t, q$，直線長 $p$）から，消費高度としての総コスト $\tau_{path}$ は次式で求められる．
 \begin{equation}
     \tau_{path} = |R \tan \gamma (t + q) + (p \cdot R) \tan \gamma_G|
 \end{equation}
-ここで，シミュレーション実装上の重要な物理的制約として，旋回半径 $R$ は固定値ではなく，真対気速度 $V_{\text{TAS}}$ に依存する変数として扱う．
+ここで，$\gamma_G$ は対地滑空角である．
+また，シミュレーション実装上の重要な物理的制約として，旋回半径 $R$ は固定値ではなく，真対気速度 $V_{\text{TAS}}$ に依存する変数として扱う．
 \begin{equation}
     R(h) = \frac{V_{\text{TAS}}(h)^2}{g \tan \phi_{\max}}
 \end{equation}
+ここで $\phi_{\max}$ は最大バンク角である．
 高高度では空気密度低下により $V_{\text{TAS}}$ が増大するため，旋回半径 $R$ も増大する．本システムでは初期高度における $R$ を基準値として採用し，物理的に破綻のない経路を生成している．
 
-\section{高度マージンと待機旋回戦略}
-\subsection{高度マージン $\eta$}
+\subsection{高度マージンと待機旋回戦略}
+\subsubsection{高度マージン $\eta$}
 利用可能な総高度を $\tau_f$（現在高度），最短Dubins経路のコストを $\tau_{min}$ とすると，高度マージン $\eta$ は以下のように定義される．
 \begin{equation}
     \eta = \frac{\tau_f - \tau_{min}}{\tau_{360}}, \quad \text{where } \tau_{360} = |2\pi R \tan \gamma|
 \end{equation}
 $\eta$ は「あと何周旋回できる余裕があるか」を意味する指標である．
 
-\subsection{Loiter（待機旋回）による調整}
+\subsubsection{Loiter（待機旋回）による調整}
 本システムでは，パラフォイルの操作性（半径 $R$ を連続的に変化させることの難しさ）を考慮し，修正ダビンズ経路（半径拡大）の代わりに，**整数回の待機旋回（Loiter）**を採用している．
 \begin{equation}
     N_{orbit} = \lfloor \eta \rfloor
@@ -252,7 +261,7 @@ $\eta$ は「あと何周旋回できる余裕があるか」を意味する指�
 $N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大半を消費する．
 なお，$\eta$ の小数部分（端数）に相当する高度誤差や，風によるドリフト誤差については，次節の反復補正によって吸収する．
 
-\section{反復法による風外乱補正 (Iterative Wind Correction)}
+\subsection{反復法による風外乱補正 (Iterative Wind Correction)}
 風がある場合，対地座標系における位置 $\bm{P}_g$ は，対気座標系における位置 $\bm{P}_a$ と風速ベクトル $\bm{W}$ を用いて記述される．
 \begin{equation}
     \bm{P}_g(t) = \bm{P}_a(t) + \int_{0}^{t} \bm{W} \, d\tau
@@ -261,7 +270,7 @@ $N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大�
 
 本実装では，以下の反復アルゴリズム（Shooting Method）によりこれを解決している．
 
-\paragraph{Iterative Wind Correction Algorithm}
+\subsubsection{Iterative Wind Correction Algorithm}
 \begin{enumerate}
     \item 初期推定として，対気目標点を地上目標点と同一に設定する．
     \[ \bm{T}_{\text{air}}^{(0)} \leftarrow \bm{T}_{\text{target}} \]
@@ -283,13 +292,20 @@ $N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大�
 
 この手法により，旋回中の沈下速度変化（バンク角による $L/D$ 低下）や，高度による風速・密度の変化を含めた，物理的に整合性の取れた解を得ることができる．
 
-\section{風上着陸 (Wind-Up Landing)}
+\subsection{風上着陸 (Wind-Up Landing)}
 最終進入（Final Leg）において対地速度を最小化するため，着陸方位 $\psi_f$ は風向と正対するように自動設定される．
 \begin{equation}
     \psi_f = \text{atan2}(-W_y, -W_x)
 \end{equation}
 この $\psi_f$ をDubins経路の終端条件として与えることで，どのような風況であっても安全な着陸経路が生成される．
-\section{座標系とモデルの定義}
+
+% =========================================
+% 第3章 6自由度モデルの説明 (6-DOF Model)
+% =========================================
+\section{6自由度モデルの説明}
+本章では，パラフォイルシステムの詳細なダイナミクスを表現するための6自由度数理モデルについて述べる．
+
+\subsection{座標系とモデルの定義}
 本モデルでは，ペイロードは剛体として扱うが，キャノピーは入射角 $\Gamma$（キャノピーとペイロードの相対角）を通して，システムに対してキャノピー上の回転中心を中心に回転できるものとする．
 本モデルは以下の4つの座標系を持つ．
 
@@ -303,9 +319,9 @@ $N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大�
 また，運動を表現するにあたりペイロードの質量中心に点 $S$ を定義する．
 このシステムでは，全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される．
 
-\section{パラフォイルの運動方程式}
+\subsection{パラフォイルの運動方程式}
 
-\subsection{キネマティクス（運動学）}
+\subsubsection{キネマティクス（運動学）}
 6自由度のパラフォイルモデル運動方程式は，全システムの質量中心における3つの慣性位置成分 $[x, y, z]^T$ および3つのオイラー角 $[\phi, \theta, \psi]^T$ により，式(\ref{eq:kinematics_trans})，(\ref{eq:kinematics_rot})で表される．
 
 \begin{equation}
@@ -332,7 +348,7 @@ c_\phi s_\theta c_\psi + s_\phi s_\psi & c_\phi s_\theta s_\psi - s_\phi c_\psi 
 \end{bmatrix} \label{eq:matrix_tib}
 \end{equation}
 
-\subsection{ダイナミクス（動力学）}
+\subsubsection{ダイナミクス（動力学）}
 非線形運動方程式は，全システム質量中心において力とモーメントを合計し，線形運動量と角運動量を定義することにより得られる．
 
 \noindent \textbf{・線形運動量}
@@ -354,9 +370,9 @@ r & 0 & -p \\
 \end{bmatrix} \label{eq:skew_omega}
 \end{equation}
 
-また，$ [\bm{I}_T] $ は全システムの慣性モーメントであり，キャノピー・ペイロードの慣性モーメントを平行軸の定理（$I = I_{cg} + md^2$）を用いて表される（益川, 2016）．
+また，$ [\bm{I}_T] $ は全システムの慣性モーメントであり，キャノピー・ペイロードの慣性モーメントを平行軸の定理（$I = I_{cg} + md^2$）を用いて表される．
 
-キャノピーやペイロードで生じた力を全システム質量中心で表すために，距離ベクトル $\vec{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される．$\bm{S}_{a \cdot b}^A$ はクロス積行列であり，座標系 $A$ において点 $a$ から点 $b$ までの距離を表す．
+キャノピーやペイロードで生じた力を全システム質量中心で表すために，距離ベクトル $\bm{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される．$\bm{S}_{a \cdot b}^A$ はクロス積行列であり，座標系 $A$ において点 $a$ から点 $b$ までの距離を表す．
 
 \begin{equation}
 \bm{S}_{a \cdot b}^A \times \bm{F} = \begin{bmatrix}
@@ -367,14 +383,14 @@ r_z & 0 & -r_x \\
 \begin{bmatrix} F_X \\ F_Y \\ F_Z \end{bmatrix} \label{eq:moment_cross}
 \end{equation}
 
-\section{力の定義}
+\subsection{力の定義}
 式(\ref{eq:dynamics_trans})の線形運動量は，重力項 $\bm{F}_W$，キャノピーとペイロードに生じる空力項（キャノピー $\bm{F}_A$，ペイロード $\bm{F}_S$）によって定義される．重力項は式(\ref{eq:force_gravity})で表され，全システム質量中心に生じる．
 
 \begin{equation}
 \bm{F}_W = [\bm{T}_{IB}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \label{eq:force_gravity}
 \end{equation}
 
-\subsection{キャノピーの空力}
+\subsubsection{キャノピーの空力}
 キャノピーの空力項を定義する前に，キャノピー座標系における空力速度 $[u_c, v_c, w_c]^T$ 及び角速度 $[p_c, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する．
 
 \begin{equation}
@@ -428,7 +444,7 @@ C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a + C_{L\delta_s}\delta_s
 \end{bmatrix} \label{eq:matrix_tac}
 \end{equation}
 
-\subsection{ペイロードの空力}
+\subsubsection{ペイロードの空力}
 ペイロードに作用する空力項は形状抗力によって定義され，キャノピーと同様にペイロードにおいても大気風の要素を考慮した空力速度 $[u_S, v_S, w_S]^T$ を用いる．ペイロードの合成空力速度は $V_S = \sqrt{u_S^2 + v_S^2 + w_S^2}$ である．
 
 \begin{equation}
@@ -438,13 +454,12 @@ C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a + C_{L\delta_s}\delta_s
 \begin{equation}
 \begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix} \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B} \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix}_S \right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:payload_vel}
 \end{equation}
-※式(\ref{eq:payload_vel})内の $\Delta x_p$ 等の添字は，文脈よりペイロード位置に関する変数と推測される．
 
-\section{モーメントの定義}
+\subsection{モーメントの定義}
 式(\ref{eq:dynamics_rot})の角運動量は，質量中心に生じるモーメント $\bm{M}_A$，キャノピーとペイロードに生じる空力モーメント（キャノピー $\bm{S}_{CP \cdot B} \times \bm{F}_A$，ペイロード $\bm{S}_{CS \cdot B} \times \bm{F}_S$）によって定義される．質量中心に生じるモーメント $\bm{M}_A$ は式(\ref{eq:moment_aero})で表される．
 
 \begin{equation}
-\bm{M}_A = \frac{1}{2} \rho V_C^2 S_p [\bm{T}_{BC}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
+\bm{M}_A = \frac{1}{2} \rho V_C^2 S_C [\bm{T}_{BC}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
 \end{equation}
 
 \begin{equation}
@@ -458,6 +473,7 @@ C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_C} \label{eq:coeff_pit
 \begin{equation}
 C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_yaw}
 \end{equation}
+ここで $d$ はブレーキラインの作用点間距離，$b$ はスパンである．
 
 また，操舵量に関して非対称ブレーキ $\delta_a$ および対称ブレーキ $\delta_s$ は左右の操舵量 $\delta_R, \delta_L$ を用いて以下で表される．
 
@@ -470,14 +486,18 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 
 以上を全システム中心で合計することで，式(\ref{eq:dynamics_trans})の線形運動量と(\ref{eq:dynamics_rot})の角運動量が構成される．
 
-\section{制御系設計の概要}
+% =========================================
+% 第4章 誘導方法 (Guidance Method)
+% =========================================
+\section{誘導方法}
+\subsection{制御系設計の概要}
 本研究では，パラフォイルの誘導制御において，定常旋回理論に基づくフィードフォワード（FF）則と，モデル予測制御（MPC）によるフィードバック則を組み合わせた2自由度制御系を提案する．
 パラフォイルのような非線形性が強いシステムにおいて，MPCの計算負荷を低減しつつ目標軌道への追従性を高めるため，FF則により公称入力を与え，MPCによりモデル化誤差や外乱を補償する構成とする．
 また，GPSによる対地速度のみが観測可能であるという制約を考慮し，運動学的関係に基づく簡易的な外乱（風）推定器を導入する．
 
-\section{制御対象のモデリングと線形化}
+\subsection{制御対象のモデリングと線形化}
 
-\subsection{非線形モデルの線形化}
+\subsubsection{非線形モデルの線形化}
 パラフォイルの6自由度運動方程式は，一般に以下の非線形常微分方程式系で表される．
 \begin{equation}
     \dot{\boldsymbol{x}}(t) = \boldsymbol{f}(\boldsymbol{x}(t), \boldsymbol{u}(t))
@@ -490,7 +510,7 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 \end{equation}
 ここで，$\boldsymbol{A}_c, \boldsymbol{B}_c$ は平衡点におけるヤコビ行列である．
 
-\subsection{拡張状態モデルの定義}
+\subsubsection{拡張状態モデルの定義}
 本研究では，誘導目標に対する追従誤差を最小化するため，制御用状態ベクトル $\boldsymbol{x}_c$ を以下のように定義して使用する．ここでは，姿勢角に加え，目標経路からの横偏差（Cross-Track Error）$y_e$ を状態に含めることで，経路追従機能を持たせている．
 \begin{equation}
     \boldsymbol{x}_c = \left[ p, \ r, \ \phi, \ \psi, \ y_e \right]^T
@@ -511,10 +531,10 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
     \end{bmatrix}
 \end{equation}
 
-\section{フィードフォワード誘導則の導出}
+\subsection{フィードフォワード誘導則の導出}
 モデルの非線形性を補償するため，定常的な釣り合い舵角をフィードフォワード入力として与える．
 
-\subsection{定常旋回の釣り合い条件}
+\subsubsection{定常旋回の釣り合い条件}
 定常旋回中において，機体座標系のヨーレート $r$ とバンク角 $\phi$ の間には，遠心力と揚力の水平成分の釣り合いから以下の運動学的関係が成り立つ．
 \begin{equation}
     r = \frac{g}{V} \sin \phi \cos \theta
@@ -527,7 +547,7 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
     \label{eq:moment_balance}
 \end{equation}
 
-\subsection{逆ダイナミクスに基づく操作量決定}
+\subsubsection{逆ダイナミクスに基づく操作量決定}
 式(\ref{eq:turn_rate})を式(\ref{eq:moment_balance})に代入し，操作量 $\delta_a$ について整理すると，目標バンク角 $\phi_{ref}$ を実現するために必要なフィードフォワード入力 $u_{FF}$ が得られる．
 \begin{equation}
     u_{FF}(t) = \left( - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}} \right) \left( \frac{g}{V(t)^2} \cos \theta(t) \right) \sin \phi_{ref}(t)
@@ -535,7 +555,7 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 \end{equation}
 この $u_{FF}$ をMPCのコスト関数における目標入力値として使用する．
 
-\section{外乱推定モデル}
+\subsection{外乱推定モデル}
 本システムではGPSによる対地速度 $\boldsymbol{v}_g$ のみが観測可能であるため，以下の運動学的関係を用いて風外乱 $\boldsymbol{w}$ を推定する．
 \begin{equation}
     \boldsymbol{v}_g = \boldsymbol{v}_a + \boldsymbol{w}
@@ -547,17 +567,17 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 \end{equation}
 この推定値にはセンサノイズが含まれるため，ローパスフィルタ（LPF）を介して平滑化した値 $\hat{\boldsymbol{d}}$ をMPCの予測モデルに入力する．
 
-\section{モデル予測制御 (MPC) の定式化}
+\subsection{モデル予測制御 (MPC) の定式化}
 フィードバック制御器として，入力制約および状態制約を明示的に扱える線形MPCを採用する．
 
-\subsection{モデルの離散化}
+\subsubsection{モデルの離散化}
 デジタル制御系での実装のため，制御周期 $T_s$ を用いてモデルを離散化する．入力がサンプリング区間内で一定値をとる0次ホールド（Zero-Order Hold）を仮定すると，離散時間状態方程式は次式となる．
 \begin{equation}
     \boldsymbol{x}_{k+1} = \boldsymbol{A}_d \boldsymbol{x}_k + \boldsymbol{B}_d \boldsymbol{u}_k + \boldsymbol{E}_d \hat{\boldsymbol{d}}_k
 \end{equation}
 ここで，$\boldsymbol{A}_d = e^{\boldsymbol{A} T_s}$，$\boldsymbol{B}_d = \int_0^{T_s} e^{\boldsymbol{A} \tau} d\tau \boldsymbol{B}$ である．
 
-\subsection{最適制御問題の定式化}
+\subsubsection{最適制御問題の定式化}
 MPCは，各時刻 $k$ において，有限区間（予測ホライゾン $N$）の最適制御問題を解く．
 
 \subsubsection{予測モデルの構築}
@@ -591,10 +611,11 @@ MPCは，各時刻 $k$ において，有限区間（予測ホライゾン $N$�
 \end{equation}
 以上により，本制御問題は制約付き二次計画問題（QP）に定式化され，凸最適化アルゴリズムにより大域的最適解 $\boldsymbol{U}^*$ が一意に求まる．
 
-\section{実装と整合性}
+\subsection{実装と整合性}
 本システムでは，物理シミュレーションの計算ステップ $\Delta t$ と制御周期 $T_s$ が異なるマルチレート環境を想定している（$T_s > \Delta t$）．
 Receding Horizon 戦略に基づき，算出された最適入力列 $\boldsymbol{U}^*$ の第1要素 $\boldsymbol{u}^*_0$ のみを制御入力として採用し，次の制御周期までその値を保持する（0次ホールド）．
 これにより，離散化モデルの仮定とシミュレーション実装の整合性が保たれる．
+
 \begin{thebibliography}{1}
 %\bibitem{ref1} 李家 賢一，航空機設計法 実践編
 %- 小型ジェット旅客機からハイブリッド電動航空機の概念設計まで -，pp. 14―32.
