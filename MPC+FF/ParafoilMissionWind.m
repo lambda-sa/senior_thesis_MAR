@@ -209,6 +209,120 @@ classdef ParafoilMissionWind < ParafoilMission
             air_data.time = t_unique;
             air_data.position = [x(idx), y(idx), z(idx)];
         end
+
+        % ============================================================
+        %  ★追加: 12変数 (6-DOF) 状態量の出力
+        % ============================================================
+        function stateTable = export_6dof_state(obj)
+            % EXPORT_6DOF_STATE
+            % シミュレーション結果から、以下の12変数を計算してテーブルで返す
+            % 1:u, 2:v, 3:w (Body速度)
+            % 4:p, 5:q, 6:r (Body角速度)
+            % 7:phi, 8:theta, 9:psi (Euler角)
+            % 10:N, 11:E, 12:D (NED位置)
+            
+            % 1. 基本データの取得 (Ground Frame)
+            T = obj.export_detailed_trajectory('Ground');
+            if isempty(T), error('データがありません'); end
+            
+            time = T.Time;
+            
+            % --- 位置 (NED) ---
+            % T.Position = [North, East, Altitude]
+            % D = -Altitude (Depth)
+            N = T.Position(:,1);
+            E = T.Position(:,2);
+            D = -T.Position(:,3);
+            
+            % --- 姿勢角 (Euler) ---
+            % T.Euler_RPY = [phi, theta, psi]
+            Phi   = T.Euler_RPY(:,1);
+            Theta = T.Euler_RPY(:,2);
+            Psi   = T.Euler_RPY(:,3);
+            
+            % --- 対気速度ベクトル (NED Frame) ---
+            % ※u,v,wは「空気に対する」機体の挙動なので、V_Airを使う
+            V_Air_NED = T.V_Air; % [Vn, Ve, Vd]
+            
+            % データ点数
+            n_steps = length(time);
+            
+            % 結果格納用配列
+            u = zeros(n_steps, 1);
+            v = zeros(n_steps, 1);
+            w = zeros(n_steps, 1);
+            p = zeros(n_steps, 1);
+            q = zeros(n_steps, 1);
+            r = zeros(n_steps, 1);
+            
+            % --- 微分による角速度算出用 ---
+            % Euler角の時間微分 (dPhi/dt, dTheta/dt, dPsi/dt)
+            dPhi   = gradient(unwrap(Phi), time);
+            dTheta = gradient(unwrap(Theta), time);
+            dPsi   = gradient(unwrap(Psi), time);
+            
+            % ループ計算
+            for i = 1:n_steps
+                % 現在の姿勢
+                ph = Phi(i); th = Theta(i); ps = Psi(i);
+                
+                % ----------------------------------------------------
+                % 1. 機体速度 (u, v, w) の計算
+                % ----------------------------------------------------
+                % NED座標系の速度ベクトルを、機体座標系へ回転させる
+                % V_body = R_nb' * V_ned  (R_nb: Body to NED DCM)
+                
+                cph = cos(ph); sph = sin(ph);
+                cth = cos(th); sth = sin(th);
+                cps = cos(ps); sps = sin(ps);
+                
+                % Body -> NED 回転行列 (Z-Y-X順)
+                R_nb = [ ...
+                    cth*cps,  sph*sth*cps - cph*sps,  cph*sth*cps + sph*sps;
+                    cth*sps,  sph*sth*sps + cph*cps,  cph*sth*sps - sph*cps;
+                   -sth,      sph*cth,                cph*cth ...
+                ];
+            
+                % NED -> Body (転置)
+                R_bn = R_nb';
+                
+                % 変換実行
+                V_ned_vec = V_Air_NED(i, :)'; % 列ベクトル
+                V_body_vec = R_bn * V_ned_vec;
+                
+                u(i) = V_body_vec(1);
+                v(i) = V_body_vec(2); % 横滑りなし仮定ならほぼ0になるはず
+                w(i) = V_body_vec(3);
+                
+                % ----------------------------------------------------
+                % 2. 機体角速度 (p, q, r) の計算
+                % ----------------------------------------------------
+                % Euler角速度 -> 機体角速度 の変換式 (Kinematic Equations)
+                % p = dphi - dpsi * sin(theta)
+                % q = dtheta * cos(phi) + dpsi * cos(theta) * sin(phi)
+                % r = -dtheta * sin(phi) + dpsi * cos(theta) * cos(phi)
+                
+                d_ph = dPhi(i); d_th = dTheta(i); d_ps = dPsi(i);
+                
+                p(i) = d_ph - d_ps * sth;
+                q(i) = d_th * cph + d_ps * cth * sph;
+                r(i) = -d_th * sph + d_ps * cth * cph;
+            end
+            
+            % --- テーブル作成 ---
+            stateTable = table(u, v, w, p, q, r, Phi, Theta, Psi, N, E, D, ...
+                'VariableNames', {'u','v','w', 'p','q','r', 'phi','theta','psi', 'N','E','D'});
+            
+            % 単位情報の付与 (Properties.VariableUnits)
+            stateTable.Properties.VariableUnits = { ...
+                'm/s', 'm/s', 'm/s', ... % u, v, w
+                'rad/s', 'rad/s', 'rad/s', ... % p, q, r
+                'rad', 'rad', 'rad', ... % phi, theta, psi
+                'm', 'm', 'm' ... % N, E, D
+            };
+            
+            fprintf('  -> 6-DOF State Variables (12 states) computed.\n');
+        end
         
         function plot_wind_comparison(obj)
             if isempty(obj.Planner.ResultDataWind), warning('No result data.'); return; end
@@ -243,6 +357,7 @@ classdef ParafoilMissionWind < ParafoilMission
                 drawnow limitrate;
             end
         end
+
 
         % ============================================================
         %  対地・対気 同時アニメーション

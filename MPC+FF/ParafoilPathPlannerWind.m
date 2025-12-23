@@ -88,5 +88,7 @@ classdef ParafoilPathPlannerWind < ParafoilPathPlanner
             title(sprintf('Wind Flight Path\nWind: [%.1f, %.1f] m/s', wx, wy));
             view([-45, 30]);
         end
+
+        
     end
 end

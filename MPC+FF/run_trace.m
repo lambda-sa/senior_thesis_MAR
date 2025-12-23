@@ -132,3 +132,24 @@ mission.animate_dual_views(speed_factor);
 
 % フェーズ別の静止画グラフを表示
 mission.plot_phases_static();
+
+%% --- 6. 12変数データの出力 ---
+fprintf('\n=== Exporting 12-State Variables ===\n');
+
+% 12変数テーブルを取得
+state12 = mission.export_6dof_state();
+
+% 内容の確認 (最初の5行)
+disp(head(state12, 5));
+
+% ExcelやCSVに保存する場合
+% writetable(state12, 'simulation_12states.csv');
+% fprintf('Saved to simulation_12states.csv\n');
+
+% グラフで確認 (角速度 p, q, r)
+figure('Name', 'Body Rates', 'Color', 'w');
+plot(mission.TrajectoryLogGround.Time, state12.p, 'r', 'DisplayName', 'p (Roll Rate)'); hold on;
+plot(mission.TrajectoryLogGround.Time, state12.q, 'g', 'DisplayName', 'q (Pitch Rate)');
+plot(mission.TrajectoryLogGround.Time, state12.r, 'b', 'DisplayName', 'r (Yaw Rate)');
+grid on; legend; xlabel('Time [s]'); ylabel('Rad/s');
+title('Body Angular Rates');
