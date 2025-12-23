@@ -8,14 +8,14 @@ clear; clc; close all;
 excelFileName = 'parafoil_parameters_SRC.xlsx'; 
 
 % 目標着地位置 (North, East, Altitude) [m]
-target_pos = [0, 5000, 3000];       
+target_pos = [0, 0, 3000];       
 
 % ファイナルレグ長
-L_final = 1000;                
+L_final = 10;                
 
 % 風速ベクトル (North, East) [m/s]
 % 例: 北へ5m/s, 西へ3m/s (かなり強い風を設定して補正能力を見る)
-wind_vector_2d = [3; -3]; 
+wind_vector_2d = [0; 0]; 
 
 %% --- 2. ミッション初期化 & 実行 ---
 fprintf('=== Simulation Start ===\n');

@@ -59,31 +59,81 @@ end
 
 % --- Helper Functions (Same as before) ---
 function [px, py, pyaw] = generate_course(lengths, mode, c, step_size)
+    % GENERATE_COURSE (厳密解版)
+    % オイラー積分(近似)ではなく、円の幾何学式を用いて正確な座標を計算します。
+    
     px = [0.0]; py = [0.0]; pyaw = [0.0];
+    
     for i = 1:length(mode)
-        m = mode{i}; l = lengths(i);
-        if strcmp(m, 'S'), d = step_size; else, d = deg2rad(3.0); if d/c > step_size, d = step_size * c; end, end
-        pd = 0.0;
-        while pd < l - (step_size/2)
+        m = mode{i}; 
+        l = lengths(i);
+        
+        if l < 1e-6, continue; end
+        
+        % ステップ数の計算
+        n_steps = floor(l / step_size);
+        
+        % メインループ
+        for k = 1:n_steps
             cx = px(end); cy = py(end); cyaw = pyaw(end);
+            
             if strcmp(m, 'S')
-                nx = cx + step_size * cos(cyaw); ny = cy + step_size * sin(cyaw); nyaw = cyaw; pd = pd + step_size;
+                % 直線: そのまま進む
+                nx = cx + step_size * cos(cyaw);
+                ny = cy + step_size * sin(cyaw);
+                nyaw = cyaw;
             else
-                dist = d / c;
-                nx = cx + dist * cos(cyaw); ny = cy + dist * sin(cyaw);
-                if strcmp(m, 'L'), nyaw = cyaw + d; else, nyaw = cyaw - d; end
-                pd = pd + dist;
+                % 旋回: 厳密な円弧計算
+                % 弦長近似ではなく、積分形を使用:
+                % x = integral(cos(theta)) = sin(theta)
+                % y = integral(sin(theta)) = -cos(theta)
+                
+                d_ang = step_size * c; % 角度変化量
+                
+                if strcmp(m, 'L')
+                    % 左旋回 (角度が増える)
+                    % nx = cx + (sin(cyaw + d_ang) - sin(cyaw)) / c;
+                    % ny = cy + (cos(cyaw) - cos(cyaw + d_ang)) / c;
+                    % nyaw = cyaw + d_ang;
+                    
+                    % 安定性のために相対移動量として計算
+                    nx = cx + (sin(cyaw + d_ang) - sin(cyaw)) / c;
+                    ny = cy - (cos(cyaw + d_ang) - cos(cyaw)) / c;
+                    nyaw = cyaw + d_ang;
+                    
+                elseif strcmp(m, 'R')
+                    % 右旋回 (角度が減る)
+                    % 右旋回は曲率が -c 扱いと同義
+                    % nx = cx + (sin(cyaw - d_ang) - sin(cyaw)) / -c;
+                    % ny = cy + (cos(cyaw) - cos(cyaw - d_ang)) / -c;
+                    
+                    nx = cx - (sin(cyaw - d_ang) - sin(cyaw)) / c;
+                    ny = cy + (cos(cyaw - d_ang) - cos(cyaw)) / c;
+                    nyaw = cyaw - d_ang;
+                end
             end
-            px(end+1)=nx; py(end+1)=ny; pyaw(end+1)=nyaw;
+            px(end+1) = nx; py(end+1) = ny; pyaw(end+1) = nyaw;
         end
-        rem = l - pd;
-        if rem > 1e-3
+        
+        % 端数処理 (Rem) - 最後の隙間を埋める
+        rem = l - n_steps * step_size;
+        if rem > 1e-4
             cx = px(end); cy = py(end); cyaw = pyaw(end);
             if strcmp(m, 'S')
-                px(end+1)=cx+rem*cos(cyaw); py(end+1)=cy+rem*sin(cyaw); pyaw(end+1)=cyaw;
+                px(end+1) = cx + rem * cos(cyaw);
+                py(end+1) = cy + rem * sin(cyaw);
+                pyaw(end+1) = cyaw;
             else
-                px(end+1)=cx+rem*cos(cyaw); py(end+1)=cy+rem*sin(cyaw);
-                if strcmp(m,'L'), pyaw(end+1)=cyaw+rem*c; else, pyaw(end+1)=cyaw-rem*c; end
+                d_rem = rem * c;
+                if strcmp(m, 'L')
+                    px(end+1) = cx + (sin(cyaw + d_rem) - sin(cyaw)) / c;
+                    py(end+1) = cy - (cos(cyaw + d_rem) - cos(cyaw)) / c;
+                    pyaw(end+1) = cyaw + d_rem;
+                elseif strcmp(m, 'R')
+                    px(end+1) = cx - (sin(cyaw - d_rem) - sin(cyaw)) / c;
+                    py(end+1) = cy + (cos(cyaw - d_rem) - cos(cyaw)) / c;
+                    pyaw(end+1) = cyaw - d_rem;
+                end
             end
         end
     end

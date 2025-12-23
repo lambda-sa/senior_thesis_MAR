@@ -420,7 +420,7 @@ classdef ParafoilMissionWind < ParafoilMission
                 set(hPointA, 'XData', PA(2), 'YData', PA(1), 'ZData', PA(3));
                 set(hHeadA,  'XData', [PA(2), PA(2)+v], 'YData', [PA(1), PA(1)+u], 'ZData', [PA(3), PA(3)-w]);
                 
-                sgtitle(sprintf('Time: %.1fs / Alt: %.0fm / Bank: %.1f\circ', t_curr, PG(3), rad2deg(E(1))));
+                sgtitle(sprintf('Time: %.1fs / Alt: %.0fm / Bank: %.1f\\circ', t_curr, PG(3), rad2deg(E(1))));
                 drawnow limitrate;
             end
         end
