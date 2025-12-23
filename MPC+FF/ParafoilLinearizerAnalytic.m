@@ -115,7 +115,7 @@ classdef ParafoilLinearizerAnalytic
 
             % --- 5. 入力行列 B の構築 ---
             % 制御入力 u_vec = [delta_a; delta_s; Gamma]
-            B = zeros(12, 3);
+            %B = zeros(12, 3);
             
             % 非対称ブレーキ (delta_a) -> 横系モーメント
             L_da = Q0 * S * b * (p.C_l_delta_a / p.d);

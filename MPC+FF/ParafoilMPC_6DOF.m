@@ -22,6 +22,11 @@ classdef ParafoilMPC_6DOF < handle
         % ★追加: 線形化計算用オブジェクト
         Linearizer 
         DynamicsModel % 線形化に必要な物理モデル
+
+        % ★追加: 線形化モード設定
+        % 'Fixed'    : 参照軌道の初期値で1回だけ線形化 (計算高速・安定)
+        % 'Adaptive' : 毎ステップ現在の状態で線形化 (精度高い・計算重い)
+        LinearizationMode = 'Fixed';
     end
     
     methods
@@ -40,22 +45,70 @@ classdef ParafoilMPC_6DOF < handle
             
             % --- 線形モデル構築 (初期化時に固定) ---
             % ※本来は逐次線形化(LTV)が良いですが、ここではLTIで実装
-            [plant_d, ~] = obj.get_linear_model_discrete(ts);
-            obj.Ad = plant_d.A;
-            obj.Bd = plant_d.B;
+            %[plant_d, ~] = obj.get_linear_model_discrete(ts);
+            %obj.Ad = plant_d.A;
+            %obj.Bd = plant_d.B;
             
-            % --- 重み行列の設定 ---
-            % x = [u, v, w, p, q, r, phi, theta, psi, N, E, D]
+           % --- 重み行列の設定 (ブライソンの法則適用) ---
+            % Q_ii = 1 / (最大許容誤差)^2
+            % これにより、「許容誤差」に達したときのコストが等しく「1」になります。
+            
+            % 1. 最大許容誤差の定義 (Maximum Allowable Deviations)
+            % --------------------------------------------------------
+            % [速度 (Body Velocity)]  単位: m/s
+            err_u = 2.0;   % 対気速度のズレ: ±2 m/s くらいまでは許容
+            err_v = 1.0;   % 横滑り速度: 横風で ±1 m/s 程度はずれる
+            err_w = 1.0;   % 降下速度: ±1 m/s の変動
+            
+            % [角速度 (Angular Rates)] 単位: rad/s
+            % ※ 10 deg/s = 0.17 rad/s 程度の揺れは許容範囲
+            err_p = deg2rad(10); 
+            err_q = deg2rad(10);
+            err_r = deg2rad(10);
+            
+            % [姿勢角 (Euler Angles)] 単位: rad
+            % ※ ロール・ピッチは ±15度ずれると怖いが、制御上は許容範囲とする
+            err_phi   = deg2rad(15); % ロール
+            err_theta = deg2rad(15); % ピッチ
+            err_psi   = deg2rad(5);  % ヨー (★重要: 方位は ±5度以内に抑えたい)
+            
+            % [位置 (Position NED)] 単位: m
+            % ※ 経路から ±5m 以内なら「オンコース」とみなす
+            err_N = 5.0; 
+            err_E = 5.0; 
+            err_D = 10.0; % 高度は XY より多少甘くても良い
+            
+            % 2. 重みベクトルの計算 (1/x^2)
+            % --------------------------------------------------------
             w_vec = zeros(1, 12);
-            w_vec(1:3) = 1.0;     % 速度追従
-            w_vec(7)   = 10.0;    % phi (ロール安定)
-            w_vec(9)   = 50.0;    % psi (方位維持を重視)
-            w_vec(10:11) = 20.0;  % N, E (位置ずれ補正)
-            w_vec(12)  = 0.0;     % D (高度は成り行きでも良いが、着陸点合わせるなら重み付け)
             
+            w_vec(1) = 1 / err_u^2;
+            w_vec(2) = 1 / err_v^2;
+            w_vec(3) = 1 / err_w^2;
+            
+            w_vec(4) = 1 / err_p^2;
+            w_vec(5) = 1 / err_q^2;
+            w_vec(6) = 1 / err_r^2;
+            
+            w_vec(7) = 1 / err_phi^2;
+            w_vec(8) = 1 / err_theta^2;
+            w_vec(9) = 1 / err_psi^2;
+            
+            w_vec(10)= 1 / err_N^2;
+            w_vec(11)= 1 / err_E^2;
+            w_vec(12)= 1 / err_D^2;
+            
+            % 3. 追加の調整係数 (Priority Factor)
+            % ブライソンの法則はあくまで「正規化」なので、
+            % さらに「絶対に守りたい項目」には倍率を掛けます
             obj.Q = diag(w_vec);
             obj.P = obj.Q;           % 終端コスト
-            obj.R = diag([5.0, 5.0]); % 入力変化抑制
+            % --- 入力重み R もブライソンの法則で設定 ---
+            % 入力 u は 0.0 ~ 1.0 の範囲。最大変動幅をどう見るか。
+            % 例: 1ステップで 0.2 (20%) 以上の急操作はコストが高いとする
+            max_du = 0.2; 
+            r_val  = 1 / max_du^2;
+            obj.R = diag([r_val, r_val]);
 
             %★追加: 線形化のための準備
             % 物理パラメータ構造体から ParafoilDynamics インスタンスを生成
@@ -86,68 +139,25 @@ classdef ParafoilMPC_6DOF < handle
             fprintf('MPC: Reference trajectory loaded (%d steps).\n', height(obj.RefFullTable));
 
             % 2. ★ここで参照軌道の初期値を使ってモデルを再線形化
-            obj.update_linear_model_from_initial_ref();
+            %obj.update_linear_model_from_initial_ref();
+
+            % ★重要: モードに関わらず、最初は必ず「参照軌道の初期値」で線形モデルを作る
+            obj.update_linear_model(obj.RefFullTable(1, :));
 
         end
 
-        %% ★新規: 初期参照値から線形モデルを更新するメソッド
-        function update_linear_model_from_initial_ref(obj)
-            if isempty(obj.RefFullTable)
-                warning('参照軌道がないため線形化できません。');
-                return;
-            end
-            
-            % --- A. 参照軌道の1行目(初期値)を取得 ---
-            ref_init = obj.RefFullTable(1, :);
-            
-            % y_trim ベクトル (12x1) の構築
-            % 順序: [u, v, w, p, q, r, phi, theta, psi, N, E, D]
-            y_trim = zeros(12, 1);
-            y_trim(1) = ref_init.u;
-            y_trim(2) = ref_init.v;
-            y_trim(3) = ref_init.w;
-            y_trim(4) = ref_init.p;
-            y_trim(5) = ref_init.q;
-            y_trim(6) = ref_init.r;
-            y_trim(7) = ref_init.phi;
-            y_trim(8) = ref_init.theta;
-            y_trim(9) = ref_init.psi;
-            y_trim(10)= ref_init.N;
-            y_trim(11)= ref_init.E;
-            y_trim(12)= ref_init.D; % ※RefFullTableのDが高度反転値になっているか確認
-            
-            % --- B. 入力トリムの設定 ---
-            % 通常、参照軌道生成時の入力は左右0（滑空）か、トリム位置
-            u_trim = [0; 0]; 
-            
-            % --- C. 風情報の取得 ---
-            % 本来は外部からセットすべきですが、ここではゼロまたはDynamicsModel内の情報を使う
-            % ※必要なら set_wind メソッド等で事前にセットしておく
-            wind_trim = [0; 0; 0]; 
-            
-            fprintf('MPC: Updating Linear Model using Initial Reference State...\n');
-            fprintf('     V_trim=%.1f m/s, Theta=%.1f deg\n', y_trim(1), rad2deg(y_trim(8)));
-            
-            % --- D. 解析的線形化の実行 ---
-            [A_cont, B_cont, ~] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, wind_trim);
-            
-            % --- E. 離散化 (c2d) ---
-            sys_c = ss(A_cont, B_cont, eye(12), zeros(12,2));
-            sys_d = c2d(sys_c, obj.Ts);
-            
-            obj.Ad = sys_d.A;
-            obj.Bd = sys_d.B;
-            
-            fprintf('MPC: Linear Model Updated successfully.\n');
-        end
-        
+    
         %% Stepメソッド (QPソルバー実行)
         function [u_cmd, info] = step(obj, x_curr, current_time)
             
             if isempty(obj.RefFullTable)
                 error('Reference trajectory not loaded. Call load_reference() first.');
             end
-            
+            % --- 1. 線形モデルの更新 (Adaptiveモードの場合) ---
+            if strcmpi(obj.LinearizationMode, 'Adaptive')
+                % 現在の状態に基づいてモデルを更新 (u_prevを使用)
+                obj.update_linear_model_from_state(x_curr, obj.LastU);
+            end
             % 1. ホライゾン分の参照軌道を取得
             xref_horizon = obj.get_horizon_ref(current_time, x_curr(9));
             xref_vec = xref_horizon(:); % ベクトル化
@@ -159,11 +169,11 @@ classdef ParafoilMPC_6DOF < handle
             lb = zeros(2 * obj.N, 1);
             ub = ones(2 * obj.N, 1);
             
-            % 4. ソルバー実行
-            options = optimoptions('quadprog', 'Display', 'off');
+            % --- 5. QPソルバー実行 ---
+            options = optimoptions('quadprog', 'Display', 'off', 'Algorithm', 'interior-point-convex');
             
             % 前回値を初期値として使うと少し速い場合がある(quadprogのアルゴリズムによる)
-            [U_seq, ~, exitflag] = quadprog(H, f, [], [], [], [], lb, ub, [], options);
+           [U_seq, ~, exitflag] = quadprog(H, f, [], [], [], [], lb, ub, u0_qp, options);
             
             if exitflag < 0
                 warning('QP Solver failed (Flag: %d). Using previous input.', exitflag);
@@ -174,9 +184,54 @@ classdef ParafoilMPC_6DOF < handle
             end
             
             info.ExitFlag = exitflag;
-            info.PredictedPath = []; % 必要ならここに予測軌道を格納
+            info.RefState = xref_horizon(:, 1); % 直近の目標値
         end
         
+        %% 内部: 線形モデル更新 (テーブル行から)
+        function update_linear_model(obj, ref_row)
+            % ref_row: tableの1行 (Time, u, v, ..., D)
+            y_trim = zeros(12, 1);
+            y_trim(1) = ref_row.u;
+            y_trim(2) = ref_row.v;
+            y_trim(3) = ref_row.w;
+            y_trim(4) = ref_row.p;
+            y_trim(5) = ref_row.q;
+            y_trim(6) = ref_row.r;
+            y_trim(7) = ref_row.phi;
+            y_trim(8) = ref_row.theta; 
+            y_trim(9) = ref_row.psi;
+            y_trim(10)= ref_row.N;
+            y_trim(11)= ref_row.E;
+            y_trim(12)= ref_row.D;
+            
+            u_trim = [0; 0]; 
+            wind = [0;0;0]; % 必要に応じてMissionから取得した風を入れる
+            
+            % 解析的線形化
+            [A_c, B_c] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, wind);
+            
+            % 離散化
+            sys_d = c2d(ss(A_c, B_c, eye(12), zeros(12,2)), obj.Ts);
+            obj.Ad = sys_d.A;
+            obj.Bd = sys_d.B;
+            
+            if strcmpi(obj.LinearizationMode, 'Fixed')
+                fprintf('MPC: Linear Model Fixed at V=%.1fm/s, Theta=%.1fdeg\n', y_trim(1), rad2deg(y_trim(8)));
+            end
+        end
+        
+        %% 内部: 線形モデル更新 (状態ベクトルから) - Adaptive用
+        function update_linear_model_from_state(obj, x_vec, u_prev)
+            y_trim = x_vec;
+            u_trim = u_prev;
+            wind = [0;0;0];
+            
+            [A_c, B_c] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, wind);
+            sys_d = c2d(ss(A_c, B_c, eye(12), zeros(12,2)), obj.Ts);
+            obj.Ad = sys_d.A;
+            obj.Bd = sys_d.B;
+        end
+
         %% 内部: QP行列構築
         function [H, f] = construct_qp_matrices(obj, x0, xref_vec)
             n = 12; m = 2; Np = obj.N;

@@ -53,23 +53,27 @@ params.prop = prop;
 % (A) 6-DOF Dynamics Model
 plant = ParafoilDynamics(params); 
 
-% 初期条件 (y0: 12次元ベクトル)
-start_pos = ref_table.Position(1, :);   % [N, E, Alt] (Altは上向き正)
-start_att = ref_table.Euler_RPY(1, :);  % [phi, theta, psi]
-start_vel = ref_table.V_Air(1, :);      % [u, v, w] (Body frame)
+% (B) 初期条件の設定 (Missionから高精度な初期値を取得)
+%     export_6dof_state() を使って、位置・姿勢・速度・角速度をすべて取得します
+initState = mission.export_6dof_state(); 
+% 最初の行 (t=0) を取得
+initRow = initState(1, :);
 
-% ★修正2: 高度(Alt) を NED座標の Down に変換するために「マイナス」をつける
-D_init = -start_pos(3); 
-
+% 状態ベクトル y0 (12x1) の構築
+% y = [u, v, w, p, q, r, phi, theta, psi, N, E, D]
 y0 = zeros(12, 1);
-y0(1) = start_vel(1);
-y0(2) = start_vel(2);
-y0(3) = start_vel(3);
-y0(4:6) = zeros(3, 1); % Initialize angular velocities to zero
-y0(7:9) = start_att'; % Set initial attitude
-y0(10) = start_pos(1); % Set initial position
-y0(11) = start_pos(2); % Set initial position
-y0(12)= D_init;
+y0(1) = initRow.u;
+y0(2) = initRow.v;
+y0(3) = initRow.w;
+y0(4) = initRow.p;   % ★重要: 旋回開始ならp,q,rはゼロではない
+y0(5) = initRow.q;
+y0(6) = initRow.r;
+y0(7) = initRow.phi;
+y0(8) = initRow.theta;
+y0(9) = initRow.psi;
+y0(10)= initRow.N;
+y0(11)= initRow.E;
+y0(12)= initRow.D;   % Mission側ですでに「高度の反転(Down)」になっているのでそのまま代入
 
 
 %% --- 3. MPC Scheduler の構築 (★ここが修正の核心) ---
@@ -83,11 +87,15 @@ mpc_ctrl = ParafoilMPC_6DOF(Ts_mpc, Horizon, params);
 
 % ★修正4: 参照軌道を事前にセットする (これが抜けていたためエラーになった)
 % 位置データは [North, East, Down] に変換して渡す
-ref_time = ref_table.Time;
-ref_pos_ned = [ref_table.Position(:,1), ref_table.Position(:,2), -ref_table.Position(:,3)];
-alpha_trim = 0.1; % トリム迎え角 [rad] (適当な初期値)
+%ref_time = ref_table.Time;
+%ref_pos_ned = [ref_table.Position(:,1), ref_table.Position(:,2), -ref_table.Position(:,3)];
+%alpha_trim = 0.1; % トリム迎え角 [rad] (適当な初期値)
 
-mpc_ctrl.set_reference_trajectory(ref_time, ref_pos_ned, alpha_trim);
+%mpc_ctrl.set_reference_trajectory(ref_time, ref_pos_ned, alpha_trim);
+
+% ★修正: Missionオブジェクトを丸ごと渡す
+% これにより、内部で「参照軌道データのロード」と「初期線形化(A, B行列計算)」が自動実行されます
+mpc_ctrl.load_reference(mission);
 
 % スケジューラの作成
 wind_3d = [wind_vector_2d; 0];
