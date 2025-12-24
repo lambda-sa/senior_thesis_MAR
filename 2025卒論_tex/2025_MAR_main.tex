@@ -10,7 +10,7 @@
 \usepackage{amssymb, amsmath}
 \usepackage{longtable}
 \usepackage{subcaption}
-\usepackage{hyperref}
+%\usepackage{hyperref}
 \usepackage{bm}
 % Document margins
 \usepackage[a4paper, left=25mm, right=10mm, top=25mm, bottom=15mm]{geometry}
@@ -486,6 +486,139 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 
 以上を全システム中心で合計することで，式(\ref{eq:dynamics_trans})の線形運動量と(\ref{eq:dynamics_rot})の角運動量が構成される．
 
+
+% =========================================
+% 第4章 運動方程式の線形化 (Linearization)
+% =========================================
+\section{運動方程式の線形化}
+
+本研究では，6自由度非線形運動方程式を任意の参照状態 $\bm{x}$ および入力 $\bm{u}$ の周りで線形化し，以下の状態空間モデルを得る．
+\begin{equation}
+    \dot{\delta \bm{x}} = \bm{A} \delta \bm{x} + \bm{B} \delta \bm{u}
+\end{equation}
+ここで，状態ベクトル $\bm{x}$ および入力ベクトル $\bm{u}$ は以下のように定義される．
+\begin{align}
+    \bm{x} &= [u, v, w, p, q, r, \phi, \theta, \psi, x, y, z]^T \\
+    \bm{u} &= [\delta_R, \delta_L]^T
+\end{align}
+
+\subsection{システム行列 $\bm{A}$ の導出}
+
+風速を0，$I_{xy}=I_{yz}=0$ と仮定し，全速度成分による動圧変化およびジャイロ効果を考慮したヤコビ行列 $\bm{A} \in \mathbb{R}^{12 \times 12}$ は，以下のブロック行列として記述される．
+
+\begin{equation}
+    \bm{A} = \frac{\partial \bm{f}}{\partial \bm{x}} = 
+    \begin{bmatrix}
+        \bm{A}_{vv} & \bm{A}_{v\omega} & \bm{A}_{v\Theta} & \bm{0}_{3 \times 3} \\
+        \bm{A}_{\omega v} & \bm{A}_{\omega \omega} & \bm{0}_{3 \times 3} & \bm{0}_{3 \times 3} \\
+        \bm{0}_{3 \times 3} & \bm{A}_{\Theta \omega} & \bm{A}_{\Theta \Theta} & \bm{0}_{3 \times 3} \\
+        \bm{A}_{pv} & \bm{0}_{3 \times 3} & \bm{A}_{p\Theta} & \bm{0}_{3 \times 3}
+    \end{bmatrix}
+\end{equation}
+
+以下に各ブロック要素の詳細を示す．なお，表記の簡略化のため，質量を $m$，慣性行列を $\bm{I}$，空力および外力を $\bm{F}$，モーメントを $\bm{M}$ とする．
+
+\subsubsection{並進運動に関する項 ($\dot{u}, \dot{v}, \dot{w}$)}
+
+並進速度および角速度に対する感度は，空力微分とコリオリ項から構成される．
+\begin{equation}
+    \bm{A}_{vv} = \frac{1}{m} \frac{\partial \bm{F}}{\partial \bm{v}} - \bm{\Omega}_\times, \quad
+    \bm{A}_{v\omega} = \frac{1}{m} \frac{\partial \bm{F}}{\partial \bm{\omega}} + \bm{V}_\times
+\end{equation}
+ここで，$\bm{\Omega}_\times, \bm{V}_\times$ はそれぞれ角速度ベクトル，速度ベクトルの歪対称行列である．
+\begin{equation}
+    \bm{A}_{vv} = \frac{1}{m}
+    \begin{bmatrix}
+        X_u & X_v & X_w \\
+        Y_u & Y_v & Y_w \\
+        Z_u & Z_v & Z_w
+    \end{bmatrix}
+    -
+    \begin{bmatrix}
+        0 & -r & q \\
+        r & 0 & -p \\
+        -q & p & 0
+    \end{bmatrix}
+\end{equation}
+重力項に由来する姿勢角感度 $\bm{A}_{v\Theta}$ は以下の通りである．
+\begin{equation}
+    \bm{A}_{v\Theta} = g
+    \begin{bmatrix}
+        0 & -\cos\theta & 0 \\
+        \cos\theta\cos\phi & -\sin\theta\sin\phi & 0 \\
+        -\cos\theta\sin\phi & -\sin\theta\cos\phi & 0
+    \end{bmatrix}
+\end{equation}
+
+\subsubsection{回転運動に関する項 ($\dot{p}, \dot{q}, \dot{r}$)}
+
+慣性行列の逆行列を $\bm{I}^{-1}$ とし，ジャイロモーメント項を $\bm{T}_{gyro} = \bm{\omega} \times (\bm{I}\bm{\omega})$ とすると，各項は以下となる．
+\begin{equation}
+    \bm{A}_{\omega v} = \bm{I}^{-1} \frac{\partial \bm{M}}{\partial \bm{v}}, \quad
+    \bm{A}_{\omega \omega} = \bm{I}^{-1} \left( \frac{\partial \bm{M}}{\partial \bm{\omega}} - \frac{\partial \bm{T}_{gyro}}{\partial \bm{\omega}} \right)
+\end{equation}
+ここで，ジャイロ項の偏微分行列 $\bm{G} = \partial \bm{T}_{gyro} / \partial \bm{\omega}$ は非定常状態において以下の成分を持つ．
+\begin{equation}
+    \bm{G} = 
+    \begin{bmatrix}
+        0 & -I_{yy}q + I_{zz}r + I_{xz}p & (I_{yy}-I_{zz})q \\
+        (I_{xx}-I_{zz})r - 2I_{xz}p & 0 & (I_{xx}-I_{zz})p + 2I_{xz}r \\
+        (I_{yy}-I_{xx})q & (I_{xx}-I_{yy})p - I_{xz}r & 0
+    \end{bmatrix}
+\end{equation}
+
+\subsubsection{キネマティクスに関する項}
+
+オイラー角速度の幾何学的関係より，$\bm{A}_{\Theta \omega}$ は座標変換行列そのものとなる．
+\begin{equation}
+    \bm{A}_{\Theta \omega} = 
+    \begin{bmatrix}
+        1 & \sin\phi\tan\theta & \cos\phi\tan\theta \\
+        0 & \cos\phi & -\sin\phi \\
+        0 & \sin\phi\sec\theta & \cos\phi\sec\theta
+    \end{bmatrix}
+\end{equation}
+また，$\bm{A}_{\Theta \Theta}$ は角速度 $\bm{\omega}$ が非ゼロの場合に現れる連成項である．
+\begin{equation}
+    \bm{A}_{\Theta \Theta} = 
+    \begin{bmatrix}
+        (q c_\phi - r s_\phi) t_\theta & (q s_\phi + r c_\phi) \sec^2\theta & 0 \\
+        -(q s_\phi + r c_\phi) & 0 & 0 \\
+        (q c_\phi - r s_\phi) \sec\theta & (q s_\phi + r c_\phi) \sec\theta t_\theta & 0
+    \end{bmatrix}
+\end{equation}
+ただし，$s_\phi=\sin\phi, c_\phi=\cos\phi, t_\theta=\tan\theta$ と略記した．
+
+慣性座標系位置の微分 $\bm{A}_{pv}$ は，機体座標系から慣性座標系への変換行列 $\bm{T}_{IB}(\phi, \theta, \psi)^T$ で与えられる．
+
+\subsection{入力行列 $\bm{B}$ の導出}
+
+操舵入力の特異性を回避するため，平滑化パラメータ $k$ を用いたSoftmin関数により，左右ブレーキ操作量 $(\delta_R, \delta_L)$ を非対称操作量 $\delta_a$ および対称操作量 $\delta_s$ へ変換する．
+\begin{equation}
+    \delta_a = \delta_R - \delta_L, \quad \delta_s = -\frac{1}{k} \ln \left( e^{-k\delta_R} + e^{-k\delta_L} \right)
+\end{equation}
+これに伴い，入力行列 $\bm{B} \in \mathbb{R}^{12 \times 2}$ は，物理的な制御微係数行列とSoftmin変換のヤコビ行列 $\bm{T}_{soft}$ の積として導出される．
+
+\begin{equation}
+    \bm{B} = 
+    \begin{bmatrix}
+        \frac{1}{m} \bm{C}_{F\delta} \\
+        \bm{I}^{-1} \bm{C}_{M\delta} \\
+        \bm{0}_{6 \times 2}
+    \end{bmatrix}
+    \bm{T}_{soft}
+\end{equation}
+ここで，$\bm{C}_{F\delta}, \bm{C}_{M\delta}$ は空力係数の操舵微分（次元付き）を含み，$\bm{T}_{soft}$ は現在の操作量に依存する．
+\begin{equation}
+    \bm{T}_{soft} = 
+    \begin{bmatrix}
+        1 & -1 \\
+        \sigma_R & \sigma_L
+    \end{bmatrix}, \quad
+    \sigma_R = \frac{e^{-k\delta_R}}{e^{-k\delta_R} + e^{-k\delta_L}}
+\end{equation}
+これにより，定常滑空状態のみならず，任意の旋回・加減速状態における線形化モデルが得られる．
+
 % =========================================
 % 第4章 誘導方法 (Guidance Method)
 % =========================================
@@ -615,6 +748,136 @@ MPCは，各時刻 $k$ において，有限区間（予測ホライゾン $N$�
 本システムでは，物理シミュレーションの計算ステップ $\Delta t$ と制御周期 $T_s$ が異なるマルチレート環境を想定している（$T_s > \Delta t$）．
 Receding Horizon 戦略に基づき，算出された最適入力列 $\boldsymbol{U}^*$ の第1要素 $\boldsymbol{u}^*_0$ のみを制御入力として採用し，次の制御周期までその値を保持する（0次ホールド）．
 これにより，離散化モデルの仮定とシミュレーション実装の整合性が保たれる．
+
+
+\section{線形化運動方程式の完全展開}
+
+本付録では，状態ベクトル $\bm{x} = [u, v, w, p, q, r, \phi, \theta, \psi, x, y, z]^T$ および入力ベクトル $\bm{u} = [\delta_R, \delta_L]^T$ に対するヤコビ行列 $\bm{A}, \bm{B}$ の各要素を，省略なしで記述する．
+
+\subsection{共通定義}
+以下の補助変数を定義する．
+\begin{align}
+    V &= \sqrt{u^2 + v^2 + w^2} & (\text{全速度}) \\
+    Q &= \frac{1}{2}\rho V^2 & (\text{動圧}) \\
+    \alpha &= \tan^{-1}\left(\frac{w}{u}\right), \quad \beta = \sin^{-1}\left(\frac{v}{V}\right) & (\text{迎角・横滑り角})
+\end{align}
+これらの中間変数の状態微分は以下の通りである．
+\begin{align}
+    \frac{\partial Q}{\partial u} &= \rho u, \quad \frac{\partial Q}{\partial v} = \rho v, \quad \frac{\partial Q}{\partial w} = \rho w \\
+    \frac{\partial \alpha}{\partial u} &= \frac{-w}{u^2+w^2}, \quad \frac{\partial \alpha}{\partial w} = \frac{u}{u^2+w^2} \\
+    \frac{\partial \beta}{\partial v} &= \frac{1}{\sqrt{V^2-v^2}} \left( 1 - \frac{v^2}{V^2} \right) \approx \frac{1}{V} \quad (\text{微小角近似})
+\end{align}
+
+\subsection{システム行列 $\bm{A}$}
+
+システム行列 $\bm{A} = [a_{ij}] \in \mathbb{R}^{12 \times 12}$ の非ゼロ要素を以下に示す．なお，$m$は質量，$S$は基準面積，$b$は全幅，$c$は翼弦長である．
+また，$\bm{I}^{-1}$ の要素を $\Gamma_{xx}, \Gamma_{xz}, \dots$ と表記する．
+
+\subsubsection{第1行：$u$（機体軸X速度）の微分}
+\begin{align}
+    a_{1,1} &= \frac{S}{m} \left[ \rho u C_X + Q \frac{\partial C_X}{\partial \alpha} \left( \frac{-w}{u^2+w^2} \right) \right] \\
+    a_{1,2} &= \frac{S}{m} \left[ \rho v C_X + Q \frac{\partial C_X}{\partial \beta} \frac{1}{V} \right] + r \\
+    a_{1,3} &= \frac{S}{m} \left[ \rho w C_X + Q \frac{\partial C_X}{\partial \alpha} \left( \frac{u}{u^2+w^2} \right) \right] - q \\
+    a_{1,5} &= -w, \quad a_{1,6} = v \\
+    a_{1,8} &= -g \cos\theta
+\end{align}
+ここで，$C_X$ は機体軸方向の空気力係数（$-C_D \cos\Gamma + C_L \sin\Gamma$ 等の合力）である．
+
+\subsubsection{第2行：$v$（機体軸Y速度）の微分}
+\begin{align}
+    a_{2,1} &= \frac{S}{m} \left[ \rho u C_Y + Q \frac{\partial C_Y}{\partial \alpha} \left( \frac{-w}{u^2+w^2} \right) \right] - r \\
+    a_{2,2} &= \frac{S}{m} \left[ \rho v C_Y + Q \frac{\partial C_Y}{\partial \beta} \frac{1}{V} \right] \\
+    a_{2,3} &= \frac{S}{m} \left[ \rho w C_Y + Q \frac{\partial C_Y}{\partial \alpha} \left( \frac{u}{u^2+w^2} \right) \right] + p \\
+    a_{2,4} &= w, \quad a_{2,6} = -u \\
+    a_{2,7} &= g \cos\theta \cos\phi, \quad a_{2,8} = -g \sin\theta \sin\phi
+\end{align}
+
+\subsubsection{第3行：$w$（機体軸Z速度）の微分}
+\begin{align}
+    a_{3,1} &= \frac{S}{m} \left[ \rho u C_Z + Q \frac{\partial C_Z}{\partial \alpha} \left( \frac{-w}{u^2+w^2} \right) \right] + q \\
+    a_{3,2} &= \frac{S}{m} \left[ \rho v C_Z + Q \frac{\partial C_Z}{\partial \beta} \frac{1}{V} \right] - p \\
+    a_{3,3} &= \frac{S}{m} \left[ \rho w C_Z + Q \frac{\partial C_Z}{\partial \alpha} \left( \frac{u}{u^2+w^2} \right) \right] \\
+    a_{3,4} &= -v, \quad a_{3,5} = u \\
+    a_{3,7} &= -g \cos\theta \sin\phi, \quad a_{3,8} = -g \sin\theta \cos\phi
+\end{align}
+ここで，$C_Z$ は機体軸Z方向係数（$-C_L \cos\Gamma - C_D \sin\Gamma$ 等）である．
+
+\subsubsection{第4～6行：$\bm{\omega}$（角速度）の微分}
+慣性行列の逆行列要素との積となるため，中間変数としてモーメント微分 $m_{i,j}$ とジャイロ項微分 $g_{i,j}$ を定義する．
+空力モーメントの偏微分項：
+\begin{align}
+    m_{L,u} &= S b \left[ \rho u C_l + Q \frac{\partial C_l}{\partial \alpha} \frac{-w}{u^2+w^2} \right], & m_{L,p} &= \frac{\rho u S b^2}{2} C_{lp} \\
+    m_{M,u} &= S c \left[ \rho u C_m + Q \frac{\partial C_m}{\partial \alpha} \frac{-w}{u^2+w^2} \right], & m_{M,q} &= \frac{\rho u S c^2}{2} C_{mq} \\
+    m_{N,v} &= S b \left[ \rho v C_n + Q \frac{\partial C_n}{\partial \beta} \frac{1}{V} \right], & m_{N,r} &= \frac{\rho u S b^2}{2} C_{nr}
+\end{align}
+（他成分も同様に展開される）
+
+ジャイロ項の偏微分項（$I_{xy}=I_{yz}=0$）：
+\begin{align}
+    g_{L,q} &= -I_{yy}q + I_{zz}r + I_{xz}p, & g_{L,r} &= (I_{yy}-I_{zz})q \\
+    g_{M,p} &= (I_{xx}-I_{zz})r - 2I_{xz}p, & g_{M,r} &= (I_{xx}-I_{zz})p + 2I_{xz}r \\
+    g_{N,p} &= (I_{yy}-I_{xx})q, & g_{N,q} &= (I_{xx}-I_{yy})p - I_{xz}r
+\end{align}
+
+これらを用いて，行列要素 $a_{4 \sim 6, j}$ は以下のように記述される．
+\begin{align}
+    a_{4,1} &= \Gamma_{xx} m_{L,u} + \Gamma_{xz} m_{N,u} \\
+    a_{4,4} &= \Gamma_{xx} (m_{L,p}) + \Gamma_{xz} (m_{N,p} - g_{N,p}) \\
+    a_{4,5} &= \Gamma_{xx} (m_{L,q} - g_{L,q}) + \Gamma_{xz} (m_{N,q} - g_{N,q}) \\
+    a_{5,5} &= \Gamma_{yy} (m_{M,q}) \\
+    a_{6,6} &= \Gamma_{xz} (m_{L,r} - g_{L,r}) + \Gamma_{zz} (m_{N,r})
+\end{align}
+（紙面の都合上，主要項のみ抜粋したが，全要素は $\bm{I}^{-1}(\partial \bm{M}/\partial \bm{x} - \bm{G})$ で計算される）
+
+\subsubsection{第7～9行：$\bm{\Theta}$（姿勢角）の微分}
+\begin{align}
+    a_{7,4} &= 1, \quad a_{7,5} = \sin\phi\tan\theta, \quad a_{7,6} = \cos\phi\tan\theta \\
+    a_{7,7} &= (q\cos\phi - r\sin\phi)\tan\theta \\
+    a_{7,8} &= (q\sin\phi + r\cos\phi)\sec^2\theta \\
+    a_{8,4} &= 0, \quad a_{8,5} = \cos\phi, \quad a_{8,6} = -\sin\phi \\
+    a_{8,7} &= -(q\sin\phi + r\cos\phi) \\
+    a_{9,5} &= \sin\phi\sec\theta, \quad a_{9,6} = \cos\phi\sec\theta \\
+    a_{9,7} &= (q\cos\phi - r\sin\phi)\sec\theta \\
+    a_{9,8} &= (q\sin\phi + r\cos\phi)\sec\theta\tan\theta
+\end{align}
+
+\subsubsection{第10～12行：$\bm{P}$（位置）の微分}
+\begin{align}
+    a_{10,1} &= \cos\theta\cos\psi \\
+    a_{10,2} &= \sin\phi\sin\theta\cos\psi - \cos\phi\sin\psi \\
+    a_{10,3} &= \cos\phi\sin\theta\cos\psi + \sin\phi\sin\psi \\
+    a_{10,8} &= -u\sin\theta\cos\psi + v\sin\phi\cos\theta\cos\psi + w\cos\phi\cos\theta\cos\psi \\
+    a_{10,9} &= -u\cos\theta\sin\psi - v(\sin\phi\sin\theta\sin\psi + \cos\phi\cos\psi) + \dots
+\end{align}
+
+\subsection{入力行列 $\bm{B}$}
+
+Softmin関数 $\delta_s = -k^{-1}\ln(e^{-k\delta_R} + e^{-k\delta_L})$ の偏微分係数を以下とする．
+\begin{equation}
+    \sigma_R = \frac{e^{-k\delta_R}}{e^{-k\delta_R} + e^{-k\delta_L}}, \quad \sigma_L = \frac{e^{-k\delta_L}}{e^{-k\delta_R} + e^{-k\delta_L}}
+\end{equation}
+
+行列 $\bm{B} = [b_{ij}] \in \mathbb{R}^{12 \times 2}$ の各要素は以下の通りである．
+ここで，$C_{X\delta_a}$ 等は各空力係数の操舵微分係数である．
+
+\subsubsection{第1～3行：並進力制御}
+\begin{align}
+    b_{1,1} &= \frac{Q S}{m} \left( C_{X\delta_a} + C_{X\delta_s}\sigma_R \right), & b_{1,2} &= \frac{Q S}{m} \left( -C_{X\delta_a} + C_{X\delta_s}\sigma_L \right) \\
+    b_{2,1} &= \frac{Q S}{m} \left( C_{Y\delta_a} + C_{Y\delta_s}\sigma_R \right), & b_{2,2} &= \frac{Q S}{m} \left( -C_{Y\delta_a} + C_{Y\delta_s}\sigma_L \right) \\
+    b_{3,1} &= \frac{Q S}{m} \left( C_{Z\delta_a} + C_{Z\delta_s}\sigma_R \right), & b_{3,2} &= \frac{Q S}{m} \left( -C_{Z\delta_a} + C_{Z\delta_s}\sigma_L \right)
+\end{align}
+
+\subsubsection{第4～6行：モーメント制御}
+慣性カップリングを含むため，係数行列との積となる．
+\begin{align}
+    b_{4,1} &= Q S b \left[ \Gamma_{xx}(C_{l\delta_a} + C_{l\delta_s}\sigma_R) + \Gamma_{xz}(C_{n\delta_a} + C_{n\delta_s}\sigma_R) \right] \\
+    b_{5,1} &= Q S c \left[ \Gamma_{yy}(C_{m\delta_a} + C_{m\delta_s}\sigma_R) \right] \\
+    b_{6,1} &= Q S b \left[ \Gamma_{xz}(C_{l\delta_a} + C_{l\delta_s}\sigma_R) + \Gamma_{zz}(C_{n\delta_a} + C_{n\delta_s}\sigma_R) \right]
+\end{align}
+第2列（左ブレーキ $\delta_L$ 入力）も同様に，$\delta_a$ の符号を反転し，$\sigma_R$ を $\sigma_L$ に置き換えることで得られる．
+
+\subsubsection{第7～12行}
+直接的な制御入力を持たないため，全て $0$ である．
 
 \begin{thebibliography}{1}
 %\bibitem{ref1} 李家 賢一，航空機設計法 実践編
