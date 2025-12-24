@@ -4,6 +4,11 @@ classdef ParafoilDynamics
         inertia_tensor
         params
         atmo_model
+
+         % --- 追加: 線形化用スイッチ ---
+        use_soft_min = false; % デフォルトは false (厳密な min を使用)
+        soft_min_k = 50;      % Linearizerから上書きされる値
+
     end
     
     methods
@@ -12,6 +17,8 @@ classdef ParafoilDynamics
             obj.inertia_tensor = params.I_total_body;
             obj.params = params;
             obj.atmo_model = AtmoTempPressRho();
+
+           
         end
         
         function dy  = get_derivatives(obj, t, y, control_inputs)
@@ -27,8 +34,16 @@ classdef ParafoilDynamics
             GAMMA   = control_inputs.GAMMA;   % ガンマ角
             wind_I  = control_inputs.wind_I; % 風速を構造体から取得
 
-            delta_s = min(delta_R, delta_L); % 対称ブレーキ
-            delta_a = delta_R - delta_L;     % 非対称ブレーキ
+            % --- 修正: モードによる関数の切り替え ---
+            if obj.use_soft_min
+                % 線形化用: SoftMinを使用 (滑らか)
+                delta_s = obj.calculate_soft_min(delta_R, delta_L, obj.soft_min_k);
+            else
+                % シミュレーション用: 厳密な min を使用 (カドあり)
+                delta_s = min(delta_R, delta_L);
+            end
+            
+            delta_a = delta_R - delta_L;
             
             %rho = obj.params.rho_sea_level;
             %rho_calc = AtmoTempPressRho();
@@ -241,5 +256,12 @@ classdef ParafoilDynamics
         function M = calculate_moment_from_force(~, r, F)
             M = cross(r, F);
         end
+
+        % SoftMin 計算メソッド
+        function val = calculate_soft_min(~, x, y, k)
+            % Log-Sum-Exp Trick
+            val = - (1/k) * log(exp(-k*x) + exp(-k*y));
+        end
+        
     end
 end
