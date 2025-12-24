@@ -2,7 +2,7 @@
 clearvars; close all; clc;
 
 % 1. Excelからパラメータを読み込む
-excelFileName = 'parafoil_parameters_ref.xlsx'; % ファイル名は適切に変更してください
+excelFileName = 'parafoil_parameters_SRC.xlsx'; % ファイル名は適切に変更してください
 [params, sim_settings] = load_params_from_excel(excelFileName);
 
 % 2. 6自由度モデル用に params を拡張・整形する

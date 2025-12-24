@@ -40,7 +40,17 @@ classdef ParafoilLinearizerNumeric
             obj.model.use_soft_min = original_use_soft;
             obj.model.soft_min_k = original_k;
         end
+
+        function input_struct = vector_to_struct(~, u_vec, extra_params)
+            input_struct.delta_L = u_vec(1);
+            input_struct.delta_R = u_vec(2);
+            input_struct.GAMMA = extra_params.GAMMA;
+            input_struct.wind_I = extra_params.wind_I;
+        end
+        
     end
+
+    
     
     methods (Access = private)
         function [A, B] = calculate_jacobian(obj, t, y_trim, u_trim_vec, extra_params)
@@ -80,11 +90,6 @@ classdef ParafoilLinearizerNumeric
             end
         end
         
-        function input_struct = vector_to_struct(~, u_vec, extra_params)
-            input_struct.delta_L = u_vec(1);
-            input_struct.delta_R = u_vec(2);
-            input_struct.GAMMA = extra_params.GAMMA;
-            input_struct.wind_I = extra_params.wind_I;
-        end
+        
     end
 end
