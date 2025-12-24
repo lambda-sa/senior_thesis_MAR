@@ -10,7 +10,7 @@
 \usepackage{amssymb, amsmath}
 \usepackage{longtable}
 \usepackage{subcaption}
-\usepackage{hyperref}
+%\usepackage{hyperref}
 \usepackage{bm}
 % Document margins
 \usepackage[a4paper, left=25mm, right=10mm, top=25mm, bottom=15mm]{geometry}
@@ -92,19 +92,6 @@
 \section{序論}
 \subsection{研究背景}
 %近年，宇宙開発の分野において，安全かつ効率的な宇宙飛行士の地球帰還手段の確立が求められている．特に，緊急時における迅速な帰還能力は，宇宙ミッションの成功と宇宙飛行士の安全確保に不可欠である．このような背景から，パラフォイルを用いた宇宙飛行士の地球帰還システムが注目されている．パラフォイルは，従来のパラシュートに比べて高い制御性と滑空性能を有しており，精密な着陸地点への誘導が可能である．そのため，パラフォイルを活用した帰還システムは，宇宙飛行士の安全性向上とミッション成功率の向上に寄与すると期待されている．本研究では，パラフォイルを用いた宇宙飛行士の地球帰還システムの設計と最適化を目的とし，その性能評価と実用化に向けた課題解決を目指す．
-\subsection{パラフォイルの仕組み}
-この節では，パラフォイルの基本的な仕組みについて説明する．パラフォイルは，展開可能な柔軟構造を有し，端部の形状を変形させることで姿勢の変更及び軌道制御が可能な落下傘を指す(図(\ref{fig:para_real}))．
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.6\linewidth]{画像/パラフォイル_実機正面図.jpeg}
-  \caption{The X-38 prototype of the Crew Return Vehicle is suspended under its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001.\cite{ref_NASA}}
-  \label{fig:para_real}
-\end{figure}
-パラフォイルはキャノピー，ペイロード，そしてテザーから構成されている．パラフォイルのキャノピーは，翼型断面を有し，揚力を発生させることで滑空飛行を実現する．ペイロードは，パラフォイルに吊り下げられた物体であり，テザーはキャノピーとペイロードを接続する．
-パラフォイルは前進時にキャノピーが空気を取り込み，空気流のせきとめ圧（ラム圧）でセルを膨らませて翼形状を保持する.パラフォイルは減速や降下に用いられるパラシュートと比べてアスペクト比が大きく，端面が翼型形状であるため滑空飛行が可能となる．\\
-パラフォイルの制御は，主にテザーの端部を引くことで行われ、テザーの片端を引く非対称制御とテザーの両端を引く対称制御の2通りの制御方法を使い分ける．非対称制御では，例としてテザーの右側を引くとキャノピーの右後部が下がることでバンク角が発生し、向心力が働くことで左旋回が可能となる．対称制御では，両端のテザーを引くことでキャノピーの後縁が下がり揚抗比が変化することで前進速度を制御できる．
-
-%テザーの端部を引っ張ると，キャノピーの形状が変化し，揚力の分布が変わることで姿勢や進行方向を制御できる．例えば，右側のテザーを引っ張ると，右側の揚力が増加し，左側に旋回することが可能となる．
 
 
 \subsection{先行研究}
@@ -130,7 +117,195 @@ Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画
 このシステムは実証されておらず，(\cite{ref_mar_atlas})
 \subsection{研究目的}
 
-\section{座標系とモデルの定義}
+
+\subsection{パラフォイルの仕組み}
+この節では，パラフォイルの基本的な仕組みについて説明する．パラフォイルは，展開可能な柔軟構造を有し，端部の形状を変形させることで姿勢の変更及び軌道制御が可能な落下傘を指す(図(\ref{fig:para_real}))．
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/パラフォイル_実機正面図.jpeg}
+  \caption{The X-38 prototype of the Crew Return Vehicle is suspended under its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001.\cite{ref_NASA}}
+  \label{fig:para_real}
+\end{figure}
+パラフォイルはキャノピー，ペイロード，そしてテザーから構成されている．パラフォイルのキャノピーは，翼型断面を有し，揚力を発生させることで滑空飛行を実現する．ペイロードは，パラフォイルに吊り下げられた物体であり，テザーはキャノピーとペイロードを接続する．
+パラフォイルは前進時にキャノピーが空気を取り込み，空気流のせきとめ圧（ラム圧）でセルを膨らませて翼形状を保持する.パラフォイルは減速や降下に用いられるパラシュートと比べてアスペクト比が大きく，端面が翼型形状であるため滑空飛行が可能となる．\\
+パラフォイルの制御は，主にテザーの端部を引くことで行われ、テザーの片端を引く非対称制御とテザーの両端を引く対称制御の2通りの制御方法を使い分ける．非対称制御では，例としてテザーの右側を引くとキャノピーの右後部が下がることでバンク角が発生し、向心力が働くことで左旋回が可能となる．対称制御では，両端のテザーを引くことでキャノピーの後縁が下がり揚抗比が変化することで前進速度を制御できる．
+% =======================================================
+% ▼▼▼ 以降：誘導理論パート（3つの大セクションに再編） ▼▼▼
+% =======================================================
+
+% =========================================
+% 第2章 軌道計画 (Trajectory Planning)
+% =========================================
+\section{軌道計画}
+本章では，パラフォイルが目標地点へ到達するための軌道生成アルゴリズムについて述べる．エネルギー管理の観点から独立変数を高度に変換し，幾何学的な最短経路問題（Dubins Path）を用いて基準軌道を生成する手法を採用する．
+
+\subsection{独立変数の変換と簡易運動方程式}
+パラフォイルの状態ベクトルを $\mathbf{x} = [x, y, \psi, h]^T$ とし，対気速度 $V$，飛行経路角 $\gamma$（降下角），旋回半径 $R$ を用いると，時間 $t$ に関する簡易運動方程式は以下のように記述される．
+\begin{equation}
+    \dot{x} = V \cos \gamma \cos \psi, \quad \dot{y} = V \cos \gamma \sin \psi, \quad \dot{\psi} = \frac{V \cos \gamma}{R}, \quad \dot{h} = V \sin \gamma
+\end{equation}
+ここで，目標高度への到達を確実にするため，独立変数を時間 $t$ から消費高度 $\tau$ に変換する考察を行う．$\tau$ は飛行開始時の高度 $h_0$ からの低下分として $\tau = h_0 - h$ と定義される．
+$d\tau = -\dot{h} dt = -V \sin \gamma dt$ より，高度微分形式の運動方程式が得られる．
+\begin{equation}
+    x' = \frac{dx}{d\tau} = -\frac{\cos \psi}{\tan \gamma}, \quad y' = \frac{dy}{d\tau} = -\frac{\sin \psi}{\tan \gamma}, \quad \psi' = -\frac{1}{R \tan \gamma}
+\end{equation}
+本システムの実装においては，この関係性を基礎とし，必要な水平距離を稼ぐために必要な高度（コスト）を計算している．
+
+\subsection{Dubins経路の解析的解法}
+水平面の経路計画には，Dubins曲線を採用する．本システムでは，始点 $\bm{S}=(x_s, y_s, \psi_s)$ から終点 $\bm{E}=(x_e, y_e, \psi_e)$ への最短経路を，数値探索ではなく幾何学的な解析解として求めている．
+
+\subsubsection{座標変換と正規化}
+計算を簡略化するため，問題を最小旋回半径 $R$ で正規化し，始点が原点 $(0,0)$ かつ方位 $0$ となるような局所座標系へ変換する．
+
+まず，始点から終点への相対ベクトルを計算し，始点方位 $\psi_s$ だけ回転させる．
+\begin{align}
+    \Delta x &= x_e - x_s \\
+    \Delta y &= y_e - y_s \\
+    x' &= \Delta x \cos \psi_s + \Delta y \sin \psi_s \\
+    y' &= -\Delta x \sin \psi_s + \Delta y \cos \psi_s
+\end{align}
+始点と終点のユークリッド距離 $D = \sqrt{x'^2 + y'^2}$ を旋回半径 $R$ で除し，正規化距離 $d$ を得る．
+\begin{equation}
+    d = \frac{D}{R}
+\end{equation}
+
+次に，始点・終点をつなぐ直線の方位 $\theta = \text{atan2}(y', x')$ を基準として，始点および終点の相対方位 $\alpha, \beta$ を定義する（Shkel \& Lumelsky の記法に準拠）．
+\begin{align}
+    \alpha &= \mod(-\theta, 2\pi) \\
+    \beta  &= \mod((\psi_e - \psi_s) - \theta, 2\pi)
+\end{align}
+
+\subsubsection{各モードの経路長計算}
+正規化された空間において，経路は「第1旋回区間（長さ $t$）」「直線区間（長さ $p$）」「第2旋回区間（長さ $q$）」の3要素で構成される．これらはすべて無次元化された長さ（角度）である．
+主要な4つのCSC（Curve-Straight-Curve）モードにおける構成要素は以下の通り計算される．なお，計算結果が実数解を持たない（ルートの中が負になる）場合，そのモードは幾何学的に成立しない．
+
+\subsubsection{LSL (Left-Straight-Left)}
+外共通接線を用いる経路である．
+\begin{equation}
+    p = \sqrt{2 + d^2 - 2\cos(\alpha - \beta)}
+\end{equation}
+\begin{equation}
+    t = \mod\left(\text{atan2}\left(\cos\beta - \cos\alpha, d + \sin\alpha - \sin\beta\right) - \alpha, 2\pi\right)
+\end{equation}
+\begin{equation}
+    q = \mod\left(\beta - \text{atan2}\left(\cos\beta - \cos\alpha, d + \sin\alpha - \sin\beta\right), 2\pi\right)
+\end{equation}
+
+\subsubsection{RSR (Right-Straight-Right)}
+LSLと同様に外共通接線を用いるが，旋回方向が逆となる．
+\begin{equation}
+    p = \sqrt{2 + d^2 - 2\cos(\alpha - \beta)}
+\end{equation}
+\begin{equation}
+    t = \mod\left(\alpha - \text{atan2}\left(\cos\alpha - \cos\beta, d - \sin\alpha + \sin\beta\right), 2\pi\right)
+\end{equation}
+\begin{equation}
+    q = \mod\left(-\beta + \text{atan2}\left(\cos\alpha - \cos\beta, d - \sin\alpha + \sin\beta\right), 2\pi\right)
+\end{equation}
+
+\subsubsection{LSR (Left-Straight-Right)}
+内共通接線を用いる経路である．
+\begin{equation}
+    p = \sqrt{-2 + d^2 + 2\cos(\alpha - \beta)}
+\end{equation}
+\begin{equation}
+    t = \mod\left(-\alpha + \text{atan2}\left(-\cos\alpha + \cos\beta, d + \sin\alpha + \sin\beta\right), 2\pi\right)
+\end{equation}
+\begin{equation}
+    q = \mod\left(-\beta + \text{atan2}\left(-\cos\alpha + \cos\beta, d + \sin\alpha + \sin\beta\right), 2\pi\right)
+\end{equation}
+
+\subsubsection{RSL (Right-Straight-Left)}
+LSRの対称形である．
+\begin{equation}
+    p = \sqrt{-2 + d^2 + 2\cos(\alpha - \beta)}
+\end{equation}
+\begin{equation}
+    t = \mod\left(\alpha - \text{atan2}\left(\cos\alpha - \cos\beta, d - \sin\alpha - \sin\beta\right), 2\pi\right)
+\end{equation}
+\begin{equation}
+    q = \mod\left(\beta - \text{atan2}\left(\cos\alpha - \cos\beta, d - \sin\alpha - \sin\beta\right), 2\pi\right)
+\end{equation}
+
+\subsubsection{最適経路の選択}
+上記の各モードについて総コスト $L_{total} = |t| + |p| + |q|$ を計算し，最小となるモードを選択する．
+最終的な物理空間での経路長は $L_{phy} = L_{total} \times R$ となる．
+
+\subsection{経路コストと物理的制約}
+求めた幾何学的経路長を，高度消費コストに換算する．
+幾何学的長さ（旋回角 $t, q$，直線長 $p$）から，消費高度としての総コスト $\tau_{path}$ は次式で求められる．
+\begin{equation}
+    \tau_{path} = |R \tan \gamma (t + q) + (p \cdot R) \tan \gamma_G|
+\end{equation}
+ここで，$\gamma_G$ は対地滑空角である．
+また，シミュレーション実装上の重要な物理的制約として，旋回半径 $R$ は固定値ではなく，真対気速度 $V_{\text{TAS}}$ に依存する変数として扱う．
+\begin{equation}
+    R(h) = \frac{V_{\text{TAS}}(h)^2}{g \tan \phi_{\max}}
+\end{equation}
+ここで $\phi_{\max}$ は最大バンク角である．
+高高度では空気密度低下により $V_{\text{TAS}}$ が増大するため，旋回半径 $R$ も増大する．本システムでは初期高度における $R$ を基準値として採用し，物理的に破綻のない経路を生成している．
+
+\subsection{高度マージンと待機旋回戦略}
+\subsubsection{高度マージン $\eta$}
+利用可能な総高度を $\tau_f$（現在高度），最短Dubins経路のコストを $\tau_{min}$ とすると，高度マージン $\eta$ は以下のように定義される．
+\begin{equation}
+    \eta = \frac{\tau_f - \tau_{min}}{\tau_{360}}, \quad \text{where } \tau_{360} = |2\pi R \tan \gamma|
+\end{equation}
+$\eta$ は「あと何周旋回できる余裕があるか」を意味する指標である．
+
+\subsubsection{Loiter（待機旋回）による調整}
+本システムでは，パラフォイルの操作性（半径 $R$ を連続的に変化させることの難しさ）を考慮し，修正ダビンズ経路（半径拡大）の代わりに，**整数回の待機旋回（Loiter）**を採用している．
+\begin{equation}
+    N_{orbit} = \lfloor \eta \rfloor
+\end{equation}
+$N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大半を消費する．
+なお，$\eta$ の小数部分（端数）に相当する高度誤差や，風によるドリフト誤差については，次節の反復補正によって吸収する．
+
+\subsection{反復法による風外乱補正 (Iterative Wind Correction)}
+風がある場合，対地座標系における位置 $\bm{P}_g$ は，対気座標系における位置 $\bm{P}_a$ と風速ベクトル $\bm{W}$ を用いて記述される．
+\begin{equation}
+    \bm{P}_g(t) = \bm{P}_a(t) + \int_{0}^{t} \bm{W} \, d\tau
+\end{equation}
+目標地点 $(0,0)$ に着地するためには，対気座標系での目標点 $\bm{T}_{air}$ を風上側へオフセットさせる必要があるが，必要なオフセット量は飛行時間 $T$ に依存し，飛行時間は経路に依存するという循環関係にある．
+
+本実装では，以下の反復アルゴリズム（Shooting Method）によりこれを解決している．
+
+\subsubsection{Iterative Wind Correction Algorithm}
+\begin{enumerate}
+    \item 初期推定として，対気目標点を地上目標点と同一に設定する．
+    \[ \bm{T}_{\text{air}}^{(0)} \leftarrow \bm{T}_{\text{target}} \]
+    \item 以下の手順を最大回数 $N_{\max}$ まで繰り返す．
+    \begin{enumerate}
+        \item 現在の対気目標点 $\bm{T}_{\text{air}}^{(k-1)}$ へ向けた経路（Loiter + Dubins）を計画する．
+        \item 経路に基づき，高度ごとの $V_{\text{TAS}}(h)$ を考慮した正確な飛行時間 $t_{\text{actual}}$ を計算する．
+        \item 時間 $t_{\text{actual}}$ に基づく総ドリフト量 $\bm{D}$ を算出する．
+        \[ \bm{D} = \bm{W} \cdot t_{\text{actual}} \]
+        \item 理想的な対気目標点 $\bm{T}_{\text{ideal}}$ を算出する．
+        \[ \bm{T}_{\text{ideal}} = \bm{T}_{\text{target}} - \bm{D} \]
+        \item 誤差 $\epsilon$ を評価する．
+        \[ \epsilon = \| \bm{T}_{\text{ideal}} - \bm{T}_{\text{air}}^{(k-1)} \| \]
+        \item もし $\epsilon$ が閾値未満であれば，収束とみなしてループを終了する．
+        \item 対気目標点を更新する．
+        \[ \bm{T}_{\text{air}}^{(k)} \leftarrow \bm{T}_{\text{ideal}} \]
+    \end{enumerate}
+\end{enumerate}
+
+この手法により，旋回中の沈下速度変化（バンク角による $L/D$ 低下）や，高度による風速・密度の変化を含めた，物理的に整合性の取れた解を得ることができる．
+
+\subsection{風上着陸 (Wind-Up Landing)}
+最終進入（Final Leg）において対地速度を最小化するため，着陸方位 $\psi_f$ は風向と正対するように自動設定される．
+\begin{equation}
+    \psi_f = \text{atan2}(-W_y, -W_x)
+\end{equation}
+この $\psi_f$ をDubins経路の終端条件として与えることで，どのような風況であっても安全な着陸経路が生成される．
+
+% =========================================
+% 第3章 6自由度モデルの説明 (6-DOF Model)
+% =========================================
+\section{6自由度モデルの説明}
+本章では，パラフォイルシステムの詳細なダイナミクスを表現するための6自由度数理モデルについて述べる．
+
+\subsection{座標系とモデルの定義}
 本モデルでは，ペイロードは剛体として扱うが，キャノピーは入射角 $\Gamma$（キャノピーとペイロードの相対角）を通して，システムに対してキャノピー上の回転中心を中心に回転できるものとする．
 本モデルは以下の4つの座標系を持つ．
 
@@ -144,9 +319,9 @@ Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画
 また，運動を表現するにあたりペイロードの質量中心に点 $S$ を定義する．
 このシステムでは，全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される．
 
-\section{パラフォイルの運動方程式}
+\subsection{パラフォイルの運動方程式}
 
-\subsection{キネマティクス（運動学）}
+\subsubsection{キネマティクス（運動学）}
 6自由度のパラフォイルモデル運動方程式は，全システムの質量中心における3つの慣性位置成分 $[x, y, z]^T$ および3つのオイラー角 $[\phi, \theta, \psi]^T$ により，式(\ref{eq:kinematics_trans})，(\ref{eq:kinematics_rot})で表される．
 
 \begin{equation}
@@ -173,7 +348,7 @@ c_\phi s_\theta c_\psi + s_\phi s_\psi & c_\phi s_\theta s_\psi - s_\phi c_\psi 
 \end{bmatrix} \label{eq:matrix_tib}
 \end{equation}
 
-\subsection{ダイナミクス（動力学）}
+\subsubsection{ダイナミクス（動力学）}
 非線形運動方程式は，全システム質量中心において力とモーメントを合計し，線形運動量と角運動量を定義することにより得られる．
 
 \noindent \textbf{・線形運動量}
@@ -195,9 +370,9 @@ r & 0 & -p \\
 \end{bmatrix} \label{eq:skew_omega}
 \end{equation}
 
-また，$ [\bm{I}_T] $ は全システムの慣性モーメントであり，キャノピー・ペイロードの慣性モーメントを平行軸の定理（$I = I_{cg} + md^2$）を用いて表される（益川, 2016）．
+また，$ [\bm{I}_T] $ は全システムの慣性モーメントであり，キャノピー・ペイロードの慣性モーメントを平行軸の定理（$I = I_{cg} + md^2$）を用いて表される．
 
-キャノピーやペイロードで生じた力を全システム質量中心で表すために，距離ベクトル $\vec{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される．$\bm{S}_{a \cdot b}^A$ はクロス積行列であり，座標系 $A$ において点 $a$ から点 $b$ までの距離を表す．
+キャノピーやペイロードで生じた力を全システム質量中心で表すために，距離ベクトル $\bm{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される．$\bm{S}_{a \cdot b}^A$ はクロス積行列であり，座標系 $A$ において点 $a$ から点 $b$ までの距離を表す．
 
 \begin{equation}
 \bm{S}_{a \cdot b}^A \times \bm{F} = \begin{bmatrix}
@@ -208,14 +383,14 @@ r_z & 0 & -r_x \\
 \begin{bmatrix} F_X \\ F_Y \\ F_Z \end{bmatrix} \label{eq:moment_cross}
 \end{equation}
 
-\section{力の定義}
+\subsection{力の定義}
 式(\ref{eq:dynamics_trans})の線形運動量は，重力項 $\bm{F}_W$，キャノピーとペイロードに生じる空力項（キャノピー $\bm{F}_A$，ペイロード $\bm{F}_S$）によって定義される．重力項は式(\ref{eq:force_gravity})で表され，全システム質量中心に生じる．
 
 \begin{equation}
 \bm{F}_W = [\bm{T}_{IB}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \label{eq:force_gravity}
 \end{equation}
 
-\subsection{キャノピーの空力}
+\subsubsection{キャノピーの空力}
 キャノピーの空力項を定義する前に，キャノピー座標系における空力速度 $[u_c, v_c, w_c]^T$ 及び角速度 $[p_c, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する．
 
 \begin{equation}
@@ -269,7 +444,7 @@ C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a + C_{L\delta_s}\delta_s
 \end{bmatrix} \label{eq:matrix_tac}
 \end{equation}
 
-\subsection{ペイロードの空力}
+\subsubsection{ペイロードの空力}
 ペイロードに作用する空力項は形状抗力によって定義され，キャノピーと同様にペイロードにおいても大気風の要素を考慮した空力速度 $[u_S, v_S, w_S]^T$ を用いる．ペイロードの合成空力速度は $V_S = \sqrt{u_S^2 + v_S^2 + w_S^2}$ である．
 
 \begin{equation}
@@ -279,13 +454,12 @@ C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a + C_{L\delta_s}\delta_s
 \begin{equation}
 \begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix} \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + \bm{S}_{\omega B} \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix}_S \right) - [\bm{T}_{IB}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:payload_vel}
 \end{equation}
-※式(\ref{eq:payload_vel})内の $\Delta x_p$ 等の添字は，文脈よりペイロード位置に関する変数と推測される．
 
-\section{モーメントの定義}
+\subsection{モーメントの定義}
 式(\ref{eq:dynamics_rot})の角運動量は，質量中心に生じるモーメント $\bm{M}_A$，キャノピーとペイロードに生じる空力モーメント（キャノピー $\bm{S}_{CP \cdot B} \times \bm{F}_A$，ペイロード $\bm{S}_{CS \cdot B} \times \bm{F}_S$）によって定義される．質量中心に生じるモーメント $\bm{M}_A$ は式(\ref{eq:moment_aero})で表される．
 
 \begin{equation}
-\bm{M}_A = \frac{1}{2} \rho V_C^2 S_p [\bm{T}_{BC}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
+\bm{M}_A = \frac{1}{2} \rho V_C^2 S_C [\bm{T}_{BC}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
 \end{equation}
 
 \begin{equation}
@@ -299,6 +473,7 @@ C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_C} \label{eq:coeff_pit
 \begin{equation}
 C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_yaw}
 \end{equation}
+ここで $d$ はブレーキラインの作用点間距離，$b$ はスパンである．
 
 また，操舵量に関して非対称ブレーキ $\delta_a$ および対称ブレーキ $\delta_s$ は左右の操舵量 $\delta_R, \delta_L$ を用いて以下で表される．
 
@@ -310,6 +485,399 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 \end{equation}
 
 以上を全システム中心で合計することで，式(\ref{eq:dynamics_trans})の線形運動量と(\ref{eq:dynamics_rot})の角運動量が構成される．
+
+
+% =========================================
+% 第4章 運動方程式の線形化 (Linearization)
+% =========================================
+\section{運動方程式の線形化}
+
+本研究では，6自由度非線形運動方程式を任意の参照状態 $\bm{x}$ および入力 $\bm{u}$ の周りで線形化し，以下の状態空間モデルを得る．
+\begin{equation}
+    \dot{\delta \bm{x}} = \bm{A} \delta \bm{x} + \bm{B} \delta \bm{u}
+\end{equation}
+ここで，状態ベクトル $\bm{x}$ および入力ベクトル $\bm{u}$ は以下のように定義される．
+\begin{align}
+    \bm{x} &= [u, v, w, p, q, r, \phi, \theta, \psi, x, y, z]^T \\
+    \bm{u} &= [\delta_R, \delta_L]^T
+\end{align}
+
+\subsection{システム行列 $\bm{A}$ の導出}
+
+風速を0，$I_{xy}=I_{yz}=0$ と仮定し，全速度成分による動圧変化およびジャイロ効果を考慮したヤコビ行列 $\bm{A} \in \mathbb{R}^{12 \times 12}$ は，以下のブロック行列として記述される．
+
+\begin{equation}
+    \bm{A} = \frac{\partial \bm{f}}{\partial \bm{x}} = 
+    \begin{bmatrix}
+        \bm{A}_{vv} & \bm{A}_{v\omega} & \bm{A}_{v\Theta} & \bm{0}_{3 \times 3} \\
+        \bm{A}_{\omega v} & \bm{A}_{\omega \omega} & \bm{0}_{3 \times 3} & \bm{0}_{3 \times 3} \\
+        \bm{0}_{3 \times 3} & \bm{A}_{\Theta \omega} & \bm{A}_{\Theta \Theta} & \bm{0}_{3 \times 3} \\
+        \bm{A}_{pv} & \bm{0}_{3 \times 3} & \bm{A}_{p\Theta} & \bm{0}_{3 \times 3}
+    \end{bmatrix}
+\end{equation}
+
+以下に各ブロック要素の詳細を示す．なお，表記の簡略化のため，質量を $m$，慣性行列を $\bm{I}$，空力および外力を $\bm{F}$，モーメントを $\bm{M}$ とする．
+
+\subsubsection{並進運動に関する項 ($\dot{u}, \dot{v}, \dot{w}$)}
+
+並進速度および角速度に対する感度は，空力微分とコリオリ項から構成される．
+\begin{equation}
+    \bm{A}_{vv} = \frac{1}{m} \frac{\partial \bm{F}}{\partial \bm{v}} - \bm{\Omega}_\times, \quad
+    \bm{A}_{v\omega} = \frac{1}{m} \frac{\partial \bm{F}}{\partial \bm{\omega}} + \bm{V}_\times
+\end{equation}
+ここで，$\bm{\Omega}_\times, \bm{V}_\times$ はそれぞれ角速度ベクトル，速度ベクトルの歪対称行列である．
+\begin{equation}
+    \bm{A}_{vv} = \frac{1}{m}
+    \begin{bmatrix}
+        X_u & X_v & X_w \\
+        Y_u & Y_v & Y_w \\
+        Z_u & Z_v & Z_w
+    \end{bmatrix}
+    -
+    \begin{bmatrix}
+        0 & -r & q \\
+        r & 0 & -p \\
+        -q & p & 0
+    \end{bmatrix}
+\end{equation}
+重力項に由来する姿勢角感度 $\bm{A}_{v\Theta}$ は以下の通りである．
+\begin{equation}
+    \bm{A}_{v\Theta} = g
+    \begin{bmatrix}
+        0 & -\cos\theta & 0 \\
+        \cos\theta\cos\phi & -\sin\theta\sin\phi & 0 \\
+        -\cos\theta\sin\phi & -\sin\theta\cos\phi & 0
+    \end{bmatrix}
+\end{equation}
+
+\subsubsection{回転運動に関する項 ($\dot{p}, \dot{q}, \dot{r}$)}
+
+慣性行列の逆行列を $\bm{I}^{-1}$ とし，ジャイロモーメント項を $\bm{T}_{gyro} = \bm{\omega} \times (\bm{I}\bm{\omega})$ とすると，各項は以下となる．
+\begin{equation}
+    \bm{A}_{\omega v} = \bm{I}^{-1} \frac{\partial \bm{M}}{\partial \bm{v}}, \quad
+    \bm{A}_{\omega \omega} = \bm{I}^{-1} \left( \frac{\partial \bm{M}}{\partial \bm{\omega}} - \frac{\partial \bm{T}_{gyro}}{\partial \bm{\omega}} \right)
+\end{equation}
+ここで，ジャイロ項の偏微分行列 $\bm{G} = \partial \bm{T}_{gyro} / \partial \bm{\omega}$ は非定常状態において以下の成分を持つ．
+\begin{equation}
+    \bm{G} = 
+    \begin{bmatrix}
+        0 & -I_{yy}q + I_{zz}r + I_{xz}p & (I_{yy}-I_{zz})q \\
+        (I_{xx}-I_{zz})r - 2I_{xz}p & 0 & (I_{xx}-I_{zz})p + 2I_{xz}r \\
+        (I_{yy}-I_{xx})q & (I_{xx}-I_{yy})p - I_{xz}r & 0
+    \end{bmatrix}
+\end{equation}
+
+\subsubsection{キネマティクスに関する項}
+
+オイラー角速度の幾何学的関係より，$\bm{A}_{\Theta \omega}$ は座標変換行列そのものとなる．
+\begin{equation}
+    \bm{A}_{\Theta \omega} = 
+    \begin{bmatrix}
+        1 & \sin\phi\tan\theta & \cos\phi\tan\theta \\
+        0 & \cos\phi & -\sin\phi \\
+        0 & \sin\phi\sec\theta & \cos\phi\sec\theta
+    \end{bmatrix}
+\end{equation}
+また，$\bm{A}_{\Theta \Theta}$ は角速度 $\bm{\omega}$ が非ゼロの場合に現れる連成項である．
+\begin{equation}
+    \bm{A}_{\Theta \Theta} = 
+    \begin{bmatrix}
+        (q c_\phi - r s_\phi) t_\theta & (q s_\phi + r c_\phi) \sec^2\theta & 0 \\
+        -(q s_\phi + r c_\phi) & 0 & 0 \\
+        (q c_\phi - r s_\phi) \sec\theta & (q s_\phi + r c_\phi) \sec\theta t_\theta & 0
+    \end{bmatrix}
+\end{equation}
+ただし，$s_\phi=\sin\phi, c_\phi=\cos\phi, t_\theta=\tan\theta$ と略記した．
+
+慣性座標系位置の微分 $\bm{A}_{pv}$ は，機体座標系から慣性座標系への変換行列 $\bm{T}_{IB}(\phi, \theta, \psi)^T$ で与えられる．
+
+\subsection{入力行列 $\bm{B}$ の導出}
+
+操舵入力の特異性を回避するため，平滑化パラメータ $k$ を用いたSoftmin関数により，左右ブレーキ操作量 $(\delta_R, \delta_L)$ を非対称操作量 $\delta_a$ および対称操作量 $\delta_s$ へ変換する．
+\begin{equation}
+    \delta_a = \delta_R - \delta_L, \quad \delta_s = -\frac{1}{k} \ln \left( e^{-k\delta_R} + e^{-k\delta_L} \right)
+\end{equation}
+これに伴い，入力行列 $\bm{B} \in \mathbb{R}^{12 \times 2}$ は，物理的な制御微係数行列とSoftmin変換のヤコビ行列 $\bm{T}_{soft}$ の積として導出される．
+
+\begin{equation}
+    \bm{B} = 
+    \begin{bmatrix}
+        \frac{1}{m} \bm{C}_{F\delta} \\
+        \bm{I}^{-1} \bm{C}_{M\delta} \\
+        \bm{0}_{6 \times 2}
+    \end{bmatrix}
+    \bm{T}_{soft}
+\end{equation}
+ここで，$\bm{C}_{F\delta}, \bm{C}_{M\delta}$ は空力係数の操舵微分（次元付き）を含み，$\bm{T}_{soft}$ は現在の操作量に依存する．
+\begin{equation}
+    \bm{T}_{soft} = 
+    \begin{bmatrix}
+        1 & -1 \\
+        \sigma_R & \sigma_L
+    \end{bmatrix}, \quad
+    \sigma_R = \frac{e^{-k\delta_R}}{e^{-k\delta_R} + e^{-k\delta_L}}
+\end{equation}
+これにより，定常滑空状態のみならず，任意の旋回・加減速状態における線形化モデルが得られる．
+
+% =========================================
+% 第4章 誘導方法 (Guidance Method)
+% =========================================
+\section{誘導方法}
+\subsection{制御系設計の概要}
+本研究では，パラフォイルの誘導制御において，定常旋回理論に基づくフィードフォワード（FF）則と，モデル予測制御（MPC）によるフィードバック則を組み合わせた2自由度制御系を提案する．
+パラフォイルのような非線形性が強いシステムにおいて，MPCの計算負荷を低減しつつ目標軌道への追従性を高めるため，FF則により公称入力を与え，MPCによりモデル化誤差や外乱を補償する構成とする．
+また，GPSによる対地速度のみが観測可能であるという制約を考慮し，運動学的関係に基づく簡易的な外乱（風）推定器を導入する．
+
+\subsection{制御対象のモデリングと線形化}
+
+\subsubsection{非線形モデルの線形化}
+パラフォイルの6自由度運動方程式は，一般に以下の非線形常微分方程式系で表される．
+\begin{equation}
+    \dot{\boldsymbol{x}}(t) = \boldsymbol{f}(\boldsymbol{x}(t), \boldsymbol{u}(t))
+\end{equation}
+ここで，$\boldsymbol{x} \in \mathbb{R}^{12}$ は状態ベクトル，$\boldsymbol{u} \in \mathbb{R}^2$ は制御入力ベクトルである．
+モデル予測制御（MPC）の内部モデルとして用いるため，定常飛行状態（平衡点：$\boldsymbol{x}_{eq}, \boldsymbol{u}_{eq}$）周りでの線形化を行う．
+状態および入力の摂動を $\delta \boldsymbol{x} = \boldsymbol{x} - \boldsymbol{x}_{eq}$，$\delta \boldsymbol{u} = \boldsymbol{u} - \boldsymbol{u}_{eq}$ と定義し，関数 $\boldsymbol{f}$ をテイラー展開して1次の項まで近似すると，以下の線形状態方程式が得られる．
+\begin{equation}
+    \delta \dot{\boldsymbol{x}}(t) \approx \left. \frac{\partial \boldsymbol{f}}{\partial \boldsymbol{x}} \right|_{eq} \delta \boldsymbol{x}(t) + \left. \frac{\partial \boldsymbol{f}}{\partial \boldsymbol{u}} \right|_{eq} \delta \boldsymbol{u}(t) = \boldsymbol{A}_c \delta \boldsymbol{x}(t) + \boldsymbol{B}_c \delta \boldsymbol{u}(t)
+\end{equation}
+ここで，$\boldsymbol{A}_c, \boldsymbol{B}_c$ は平衡点におけるヤコビ行列である．
+
+\subsubsection{拡張状態モデルの定義}
+本研究では，誘導目標に対する追従誤差を最小化するため，制御用状態ベクトル $\boldsymbol{x}_c$ を以下のように定義して使用する．ここでは，姿勢角に加え，目標経路からの横偏差（Cross-Track Error）$y_e$ を状態に含めることで，経路追従機能を持たせている．
+\begin{equation}
+    \boldsymbol{x}_c = \left[ p, \ r, \ \phi, \ \psi, \ y_e \right]^T
+\end{equation}
+これに対し，以下の拡張された線形状態空間モデルを構築する．
+\begin{equation}
+    \dot{\boldsymbol{x}}_c = \boldsymbol{A} \boldsymbol{x}_c + \boldsymbol{B} \boldsymbol{u} + \boldsymbol{B}_d \hat{\boldsymbol{d}}
+\end{equation}
+ここで，$\hat{\boldsymbol{d}}$ は後述する推定外乱である．また，横偏差のダイナミクス $\dot{y}_e \approx V \psi$ （微小角近似）を考慮し，システム行列 $\boldsymbol{A}$ は以下の構造を持つ．
+\begin{equation}
+    \boldsymbol{A} = 
+    \begin{bmatrix}
+    L_p & L_r & 0 & 0 & 0 \\
+    N_p & N_r & 0 & 0 & 0 \\
+    1 & 0 & 0 & 0 & 0 \\
+    0 & 1 & 0 & 0 & 0 \\
+    0 & 0 & 0 & V & 0 
+    \end{bmatrix}
+\end{equation}
+
+\subsection{フィードフォワード誘導則の導出}
+モデルの非線形性を補償するため，定常的な釣り合い舵角をフィードフォワード入力として与える．
+
+\subsubsection{定常旋回の釣り合い条件}
+定常旋回中において，機体座標系のヨーレート $r$ とバンク角 $\phi$ の間には，遠心力と揚力の水平成分の釣り合いから以下の運動学的関係が成り立つ．
+\begin{equation}
+    r = \frac{g}{V} \sin \phi \cos \theta
+    \label{eq:turn_rate}
+\end{equation}
+ここで，$g$ は重力加速度，$V$ は対気速度，$\theta$ はピッチ角である．
+一方，定常旋回中は角加速度が発生しないため，ヨー軸周りの空力モーメント係数 $C_n$ の総和はゼロとなる．
+\begin{equation}
+    C_n = C_{n_{\delta_a}} \delta_a + C_{n_r} \frac{b r}{2V} = 0
+    \label{eq:moment_balance}
+\end{equation}
+
+\subsubsection{逆ダイナミクスに基づく操作量決定}
+式(\ref{eq:turn_rate})を式(\ref{eq:moment_balance})に代入し，操作量 $\delta_a$ について整理すると，目標バンク角 $\phi_{ref}$ を実現するために必要なフィードフォワード入力 $u_{FF}$ が得られる．
+\begin{equation}
+    u_{FF}(t) = \left( - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}} \right) \left( \frac{g}{V(t)^2} \cos \theta(t) \right) \sin \phi_{ref}(t)
+    \label{eq:ff_law}
+\end{equation}
+この $u_{FF}$ をMPCのコスト関数における目標入力値として使用する．
+
+\subsection{外乱推定モデル}
+本システムではGPSによる対地速度 $\boldsymbol{v}_g$ のみが観測可能であるため，以下の運動学的関係を用いて風外乱 $\boldsymbol{w}$ を推定する．
+\begin{equation}
+    \boldsymbol{v}_g = \boldsymbol{v}_a + \boldsymbol{w}
+\end{equation}
+ここで，対気速度ベクトル $\boldsymbol{v}_a$ については，「機体は設計上のトリム速度 $V_{trim}$ で現在の機首方位 $\psi$ に向かって飛行している」というノミナルモデルを仮定する．
+推定される外乱ベクトル $\hat{\boldsymbol{w}}$ は以下の通りである．
+\begin{equation}
+    \hat{\boldsymbol{w}} = \boldsymbol{v}_{GPS} - \boldsymbol{R}(\phi, \theta, \psi) \begin{bmatrix} V_{trim} \\ 0 \\ 0 \end{bmatrix}
+\end{equation}
+この推定値にはセンサノイズが含まれるため，ローパスフィルタ（LPF）を介して平滑化した値 $\hat{\boldsymbol{d}}$ をMPCの予測モデルに入力する．
+
+\subsection{モデル予測制御 (MPC) の定式化}
+フィードバック制御器として，入力制約および状態制約を明示的に扱える線形MPCを採用する．
+
+\subsubsection{モデルの離散化}
+デジタル制御系での実装のため，制御周期 $T_s$ を用いてモデルを離散化する．入力がサンプリング区間内で一定値をとる0次ホールド（Zero-Order Hold）を仮定すると，離散時間状態方程式は次式となる．
+\begin{equation}
+    \boldsymbol{x}_{k+1} = \boldsymbol{A}_d \boldsymbol{x}_k + \boldsymbol{B}_d \boldsymbol{u}_k + \boldsymbol{E}_d \hat{\boldsymbol{d}}_k
+\end{equation}
+ここで，$\boldsymbol{A}_d = e^{\boldsymbol{A} T_s}$，$\boldsymbol{B}_d = \int_0^{T_s} e^{\boldsymbol{A} \tau} d\tau \boldsymbol{B}$ である．
+
+\subsubsection{最適制御問題の定式化}
+MPCは，各時刻 $k$ において，有限区間（予測ホライゾン $N$）の最適制御問題を解く．
+
+\subsubsection{予測モデルの構築}
+現在の状態 $\boldsymbol{x}_k$ を起点として，未来の状態列 $\boldsymbol{X}$ を入力列 $\boldsymbol{U}$ の関数として記述する．漸化式を繰り返し適用することで，以下のバッチ形式の予測式が得られる．
+\begin{equation}
+    \boldsymbol{X} = \boldsymbol{F} \boldsymbol{x}_k + \boldsymbol{G} \boldsymbol{U} + \boldsymbol{H} \hat{\boldsymbol{D}}
+\end{equation}
+ここで，$\boldsymbol{X} = [\boldsymbol{x}_{k+1}^T, \dots, \boldsymbol{x}_{k+N}^T]^T$，$\boldsymbol{U} = [\boldsymbol{u}_{k}^T, \dots, \boldsymbol{u}_{k+N-1}^T]^T$ である．
+予測ホライゾン内において，推定外乱 $\hat{\boldsymbol{d}}$ は一定であると仮定する（Step Disturbance Assumption）．
+
+\subsubsection{評価関数の設計}
+評価関数 $J$ を以下のように定義する．
+\begin{align}
+    J &= \sum_{k=1}^{N} \| \boldsymbol{y}(k) - \boldsymbol{r}(k) \|_{\boldsymbol{Q}}^2 \nonumber \\
+      &+ \sum_{k=0}^{N-1} \left( \| \boldsymbol{u}(k) - \boldsymbol{u}_{FF}(k) \|_{\boldsymbol{R}}^2 + \| \Delta \boldsymbol{u}(k) \|_{\boldsymbol{R}_{\Delta}}^2 \right)
+\end{align}
+ここで重要となるのが第2項の重み $\boldsymbol{R}$ である．入力をゼロに近づけるのではなく，式(\ref{eq:ff_law})で求めた $u_{FF}$ に近づけるようペナルティを課すことで，FF則とMPCの協調動作を実現している．
+重み行列 $\boldsymbol{Q}, \boldsymbol{R}$ の設定には，ブライソンの法則（Bryson's Rule）を適用する．各変数の最大許容誤差 $x_{i,max}$ を用いて以下のように正規化を行う．
+\begin{equation}
+    Q_{ii} = \frac{1}{x_{i,max}^2}, \quad R_{jj} = \rho \cdot \frac{1}{u_{j,max}^2}
+\end{equation}
+
+\subsubsection{二次計画問題 (QP) への帰着}
+予測式を評価関数に代入し整理すると，決定変数 $\boldsymbol{U}$ に関する二次形式に変形される．
+\begin{equation}
+    J(\boldsymbol{U}) = \frac{1}{2} \boldsymbol{U}^T \boldsymbol{\Phi} \boldsymbol{U} + \boldsymbol{f}^T \boldsymbol{U} + \text{const.}
+\end{equation}
+さらに，入力の物理的限界（飽和および変化率制限）は，以下の線形不等式制約として記述される．
+\begin{equation}
+    \boldsymbol{M} \boldsymbol{U} \le \boldsymbol{\gamma}
+\end{equation}
+以上により，本制御問題は制約付き二次計画問題（QP）に定式化され，凸最適化アルゴリズムにより大域的最適解 $\boldsymbol{U}^*$ が一意に求まる．
+
+\subsection{実装と整合性}
+本システムでは，物理シミュレーションの計算ステップ $\Delta t$ と制御周期 $T_s$ が異なるマルチレート環境を想定している（$T_s > \Delta t$）．
+Receding Horizon 戦略に基づき，算出された最適入力列 $\boldsymbol{U}^*$ の第1要素 $\boldsymbol{u}^*_0$ のみを制御入力として採用し，次の制御周期までその値を保持する（0次ホールド）．
+これにより，離散化モデルの仮定とシミュレーション実装の整合性が保たれる．
+
+
+\section{線形化運動方程式の完全展開}
+
+本付録では，状態ベクトル $\bm{x} = [u, v, w, p, q, r, \phi, \theta, \psi, x, y, z]^T$ および入力ベクトル $\bm{u} = [\delta_R, \delta_L]^T$ に対するヤコビ行列 $\bm{A}, \bm{B}$ の各要素を，省略なしで記述する．
+
+\subsection{共通定義}
+以下の補助変数を定義する．
+\begin{align}
+    V &= \sqrt{u^2 + v^2 + w^2} & (\text{全速度}) \\
+    Q &= \frac{1}{2}\rho V^2 & (\text{動圧}) \\
+    \alpha &= \tan^{-1}\left(\frac{w}{u}\right), \quad \beta = \sin^{-1}\left(\frac{v}{V}\right) & (\text{迎角・横滑り角})
+\end{align}
+これらの中間変数の状態微分は以下の通りである．
+\begin{align}
+    \frac{\partial Q}{\partial u} &= \rho u, \quad \frac{\partial Q}{\partial v} = \rho v, \quad \frac{\partial Q}{\partial w} = \rho w \\
+    \frac{\partial \alpha}{\partial u} &= \frac{-w}{u^2+w^2}, \quad \frac{\partial \alpha}{\partial w} = \frac{u}{u^2+w^2} \\
+    \frac{\partial \beta}{\partial v} &= \frac{1}{\sqrt{V^2-v^2}} \left( 1 - \frac{v^2}{V^2} \right) \approx \frac{1}{V} \quad (\text{微小角近似})
+\end{align}
+
+\subsection{システム行列 $\bm{A}$}
+
+システム行列 $\bm{A} = [a_{ij}] \in \mathbb{R}^{12 \times 12}$ の非ゼロ要素を以下に示す．なお，$m$は質量，$S$は基準面積，$b$は全幅，$c$は翼弦長である．
+また，$\bm{I}^{-1}$ の要素を $\Gamma_{xx}, \Gamma_{xz}, \dots$ と表記する．
+
+\subsubsection{第1行：$u$（機体軸X速度）の微分}
+\begin{align}
+    a_{1,1} &= \frac{S}{m} \left[ \rho u C_X + Q \frac{\partial C_X}{\partial \alpha} \left( \frac{-w}{u^2+w^2} \right) \right] \\
+    a_{1,2} &= \frac{S}{m} \left[ \rho v C_X + Q \frac{\partial C_X}{\partial \beta} \frac{1}{V} \right] + r \\
+    a_{1,3} &= \frac{S}{m} \left[ \rho w C_X + Q \frac{\partial C_X}{\partial \alpha} \left( \frac{u}{u^2+w^2} \right) \right] - q \\
+    a_{1,5} &= -w, \quad a_{1,6} = v \\
+    a_{1,8} &= -g \cos\theta
+\end{align}
+ここで，$C_X$ は機体軸方向の空気力係数（$-C_D \cos\Gamma + C_L \sin\Gamma$ 等の合力）である．
+
+\subsubsection{第2行：$v$（機体軸Y速度）の微分}
+\begin{align}
+    a_{2,1} &= \frac{S}{m} \left[ \rho u C_Y + Q \frac{\partial C_Y}{\partial \alpha} \left( \frac{-w}{u^2+w^2} \right) \right] - r \\
+    a_{2,2} &= \frac{S}{m} \left[ \rho v C_Y + Q \frac{\partial C_Y}{\partial \beta} \frac{1}{V} \right] \\
+    a_{2,3} &= \frac{S}{m} \left[ \rho w C_Y + Q \frac{\partial C_Y}{\partial \alpha} \left( \frac{u}{u^2+w^2} \right) \right] + p \\
+    a_{2,4} &= w, \quad a_{2,6} = -u \\
+    a_{2,7} &= g \cos\theta \cos\phi, \quad a_{2,8} = -g \sin\theta \sin\phi
+\end{align}
+
+\subsubsection{第3行：$w$（機体軸Z速度）の微分}
+\begin{align}
+    a_{3,1} &= \frac{S}{m} \left[ \rho u C_Z + Q \frac{\partial C_Z}{\partial \alpha} \left( \frac{-w}{u^2+w^2} \right) \right] + q \\
+    a_{3,2} &= \frac{S}{m} \left[ \rho v C_Z + Q \frac{\partial C_Z}{\partial \beta} \frac{1}{V} \right] - p \\
+    a_{3,3} &= \frac{S}{m} \left[ \rho w C_Z + Q \frac{\partial C_Z}{\partial \alpha} \left( \frac{u}{u^2+w^2} \right) \right] \\
+    a_{3,4} &= -v, \quad a_{3,5} = u \\
+    a_{3,7} &= -g \cos\theta \sin\phi, \quad a_{3,8} = -g \sin\theta \cos\phi
+\end{align}
+ここで，$C_Z$ は機体軸Z方向係数（$-C_L \cos\Gamma - C_D \sin\Gamma$ 等）である．
+
+\subsubsection{第4～6行：$\bm{\omega}$（角速度）の微分}
+慣性行列の逆行列要素との積となるため，中間変数としてモーメント微分 $m_{i,j}$ とジャイロ項微分 $g_{i,j}$ を定義する．
+空力モーメントの偏微分項：
+\begin{align}
+    m_{L,u} &= S b \left[ \rho u C_l + Q \frac{\partial C_l}{\partial \alpha} \frac{-w}{u^2+w^2} \right], & m_{L,p} &= \frac{\rho u S b^2}{2} C_{lp} \\
+    m_{M,u} &= S c \left[ \rho u C_m + Q \frac{\partial C_m}{\partial \alpha} \frac{-w}{u^2+w^2} \right], & m_{M,q} &= \frac{\rho u S c^2}{2} C_{mq} \\
+    m_{N,v} &= S b \left[ \rho v C_n + Q \frac{\partial C_n}{\partial \beta} \frac{1}{V} \right], & m_{N,r} &= \frac{\rho u S b^2}{2} C_{nr}
+\end{align}
+（他成分も同様に展開される）
+
+ジャイロ項の偏微分項（$I_{xy}=I_{yz}=0$）：
+\begin{align}
+    g_{L,q} &= -I_{yy}q + I_{zz}r + I_{xz}p, & g_{L,r} &= (I_{yy}-I_{zz})q \\
+    g_{M,p} &= (I_{xx}-I_{zz})r - 2I_{xz}p, & g_{M,r} &= (I_{xx}-I_{zz})p + 2I_{xz}r \\
+    g_{N,p} &= (I_{yy}-I_{xx})q, & g_{N,q} &= (I_{xx}-I_{yy})p - I_{xz}r
+\end{align}
+
+これらを用いて，行列要素 $a_{4 \sim 6, j}$ は以下のように記述される．
+\begin{align}
+    a_{4,1} &= \Gamma_{xx} m_{L,u} + \Gamma_{xz} m_{N,u} \\
+    a_{4,4} &= \Gamma_{xx} (m_{L,p}) + \Gamma_{xz} (m_{N,p} - g_{N,p}) \\
+    a_{4,5} &= \Gamma_{xx} (m_{L,q} - g_{L,q}) + \Gamma_{xz} (m_{N,q} - g_{N,q}) \\
+    a_{5,5} &= \Gamma_{yy} (m_{M,q}) \\
+    a_{6,6} &= \Gamma_{xz} (m_{L,r} - g_{L,r}) + \Gamma_{zz} (m_{N,r})
+\end{align}
+（紙面の都合上，主要項のみ抜粋したが，全要素は $\bm{I}^{-1}(\partial \bm{M}/\partial \bm{x} - \bm{G})$ で計算される）
+
+\subsubsection{第7～9行：$\bm{\Theta}$（姿勢角）の微分}
+\begin{align}
+    a_{7,4} &= 1, \quad a_{7,5} = \sin\phi\tan\theta, \quad a_{7,6} = \cos\phi\tan\theta \\
+    a_{7,7} &= (q\cos\phi - r\sin\phi)\tan\theta \\
+    a_{7,8} &= (q\sin\phi + r\cos\phi)\sec^2\theta \\
+    a_{8,4} &= 0, \quad a_{8,5} = \cos\phi, \quad a_{8,6} = -\sin\phi \\
+    a_{8,7} &= -(q\sin\phi + r\cos\phi) \\
+    a_{9,5} &= \sin\phi\sec\theta, \quad a_{9,6} = \cos\phi\sec\theta \\
+    a_{9,7} &= (q\cos\phi - r\sin\phi)\sec\theta \\
+    a_{9,8} &= (q\sin\phi + r\cos\phi)\sec\theta\tan\theta
+\end{align}
+
+\subsubsection{第10～12行：$\bm{P}$（位置）の微分}
+\begin{align}
+    a_{10,1} &= \cos\theta\cos\psi \\
+    a_{10,2} &= \sin\phi\sin\theta\cos\psi - \cos\phi\sin\psi \\
+    a_{10,3} &= \cos\phi\sin\theta\cos\psi + \sin\phi\sin\psi \\
+    a_{10,8} &= -u\sin\theta\cos\psi + v\sin\phi\cos\theta\cos\psi + w\cos\phi\cos\theta\cos\psi \\
+    a_{10,9} &= -u\cos\theta\sin\psi - v(\sin\phi\sin\theta\sin\psi + \cos\phi\cos\psi) + \dots
+\end{align}
+
+\subsection{入力行列 $\bm{B}$}
+
+Softmin関数 $\delta_s = -k^{-1}\ln(e^{-k\delta_R} + e^{-k\delta_L})$ の偏微分係数を以下とする．
+\begin{equation}
+    \sigma_R = \frac{e^{-k\delta_R}}{e^{-k\delta_R} + e^{-k\delta_L}}, \quad \sigma_L = \frac{e^{-k\delta_L}}{e^{-k\delta_R} + e^{-k\delta_L}}
+\end{equation}
+
+行列 $\bm{B} = [b_{ij}] \in \mathbb{R}^{12 \times 2}$ の各要素は以下の通りである．
+ここで，$C_{X\delta_a}$ 等は各空力係数の操舵微分係数である．
+
+\subsubsection{第1～3行：並進力制御}
+\begin{align}
+    b_{1,1} &= \frac{Q S}{m} \left( C_{X\delta_a} + C_{X\delta_s}\sigma_R \right), & b_{1,2} &= \frac{Q S}{m} \left( -C_{X\delta_a} + C_{X\delta_s}\sigma_L \right) \\
+    b_{2,1} &= \frac{Q S}{m} \left( C_{Y\delta_a} + C_{Y\delta_s}\sigma_R \right), & b_{2,2} &= \frac{Q S}{m} \left( -C_{Y\delta_a} + C_{Y\delta_s}\sigma_L \right) \\
+    b_{3,1} &= \frac{Q S}{m} \left( C_{Z\delta_a} + C_{Z\delta_s}\sigma_R \right), & b_{3,2} &= \frac{Q S}{m} \left( -C_{Z\delta_a} + C_{Z\delta_s}\sigma_L \right)
+\end{align}
+
+\subsubsection{第4～6行：モーメント制御}
+慣性カップリングを含むため，係数行列との積となる．
+\begin{align}
+    b_{4,1} &= Q S b \left[ \Gamma_{xx}(C_{l\delta_a} + C_{l\delta_s}\sigma_R) + \Gamma_{xz}(C_{n\delta_a} + C_{n\delta_s}\sigma_R) \right] \\
+    b_{5,1} &= Q S c \left[ \Gamma_{yy}(C_{m\delta_a} + C_{m\delta_s}\sigma_R) \right] \\
+    b_{6,1} &= Q S b \left[ \Gamma_{xz}(C_{l\delta_a} + C_{l\delta_s}\sigma_R) + \Gamma_{zz}(C_{n\delta_a} + C_{n\delta_s}\sigma_R) \right]
+\end{align}
+第2列（左ブレーキ $\delta_L$ 入力）も同様に，$\delta_a$ の符号を反転し，$\sigma_R$ を $\sigma_L$ に置き換えることで得られる．
+
+\subsubsection{第7～12行}
+直接的な制御入力を持たないため，全て $0$ である．
 
 \begin{thebibliography}{1}
 %\bibitem{ref1} 李家 賢一，航空機設計法 実践編
