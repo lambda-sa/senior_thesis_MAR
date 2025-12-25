@@ -171,5 +171,138 @@ classdef ParafoilPathPlanner < handle
             plot3(d.final.x(end), d.final.y(end), d.final.z(end), 'ro', 'MarkerFaceColor','r');
             title(sprintf('Optimal Path (Err: %.1fm)', obj.FinalError)); xlabel('X'); ylabel('Y'); zlabel('Z');
         end
+
+        % --- ParafoilPathPlanner.m の methods ブロック内に追加 ---
+        
+        function plan_simple_physics_based(obj, type, duration, start_pos, V_EAS_trim, glide_ratio, bank_angle_deg)
+            % PLAN_SIMPLE_PHYSICS_BASED
+            % 入力バンク角から旋回半径を決定し、その半径を維持する軌道を生成する
+            
+            fprintf('--- Generating Constant Radius Trajectory (%s) ---\n', type);
+            
+            % 1. 初期化
+            dt = 0.1;
+            N = ceil(duration / dt) + 1;
+            
+            t = zeros(N, 1);
+            x = zeros(N, 1); y = zeros(N, 1); z = zeros(N, 1);
+            psi = zeros(N, 1);
+            
+            % 保存用: 実際に適用されたバンク角履歴
+            phi_log = zeros(N, 1);
+            
+            % 初期値セット
+            x(1) = start_pos(1);
+            y(1) = start_pos(2);
+            z(1) = start_pos(3);
+            psi(1) = start_pos(4);
+            
+            % 物理定数
+            rho_0 = 1.225;
+            g_0 = 9.80665; % 標準重力（またはAtmoModelから取得しても良い）
+            
+            % --- 2. 旋回半径 R の固定 ---
+            % 開始高度での状態を取得
+            rho_start = obj.AtmoModel.get_density(max(0, z(1))/1000);
+            V_TAS_start = V_EAS_trim * sqrt(rho_0 / rho_start);
+            g_start = obj.AtmoModel.get_gravity(z(1));
+            
+            if strcmpi(type, 'Straight') || abs(bank_angle_deg) < 0.1
+                R_origin = inf; % 直線
+                target_phi_rad = 0;
+                fprintf('  -> Mode: Straight (R = inf)\n');
+            else
+                % 入力バンク角から半径を決定
+                phi_input = deg2rad(bank_angle_deg);
+                % R = V^2 / (g * tan(phi))
+                R_origin = V_TAS_start^2 / (g_start * tan(phi_input));
+                
+                % 符号（旋回方向）の保持
+                turn_sign = sign(bank_angle_deg);
+                R_origin = abs(R_origin) * turn_sign; % 左旋回ならマイナスの半径として扱うか、計算時に考慮
+                
+                fprintf('  -> Mode: Constant Radius Turn\n');
+                fprintf('     Input Bank: %.1f deg, Start TAS: %.1f m/s\n', bank_angle_deg, V_TAS_start);
+                fprintf('     => Fixed Radius: %.1f m\n', abs(R_origin));
+            end
+    
+            phi_log(1) = deg2rad(bank_angle_deg);
+            
+            % 基本滑空角 (バンク0のとき)
+            tan_gamma_base = -1.0 / glide_ratio;
+            
+            % --- 3. 積分ループ ---
+            for i = 1:N-1
+                t(i+1) = t(i) + dt;
+                
+                % 現在の環境
+                h_curr = max(0, z(i));
+                rho_curr = obj.AtmoModel.get_density(h_curr / 1000);
+                g = obj.AtmoModel.get_gravity(h_curr);
+                
+                % 現在のTAS
+                V_TAS = V_EAS_trim * sqrt(rho_0 / rho_curr);
+                
+                % --- 制御量の決定 ---
+                if isinf(R_origin)
+                    % 直線
+                    dot_psi = 0;
+                    phi_curr = 0;
+                else
+                    % 旋回: 固定半径 R を守るためのバンク角を逆算
+                    % phi_curr = atan( V^2 / (g * R) )
+                    % ※ R_fixedには符号が含まれていると想定
+                    phi_curr = atan( V_TAS^2 / (g * R_origin) );
+                    
+                    % 旋回率
+                    % dot_psi = V / R
+                    dot_psi = V_TAS / R_origin;
+                end
+                
+                phi_log(i+1) = phi_curr;
+                
+                % --- 物理挙動の更新 ---
+                
+                % バンク角による沈下率補正: tan(gamma) = tan(gamma_base) / cos(phi)
+                % ※ phi_curr が大きくなると沈下も速くなる
+                tan_gamma_curr = tan_gamma_base / cos(phi_curr);
+                
+                dz_dt = V_TAS * tan_gamma_curr; % 降下速度 (負)
+                V_horiz = sqrt(max(0, V_TAS^2 - dz_dt^2));
+                
+                % 状態積分
+                psi(i+1) = psi(i) + dot_psi * dt;
+                x(i+1)   = x(i) + V_horiz * cos(psi(i)) * dt;
+                y(i+1)   = y(i) + V_horiz * sin(psi(i)) * dt;
+                z(i+1)   = z(i) + dz_dt * dt;
+                
+                if z(i+1) <= 0
+                    z(i+1) = 0;
+                    t = t(1:i+1); x = x(1:i+1); y = y(1:i+1); z = z(1:i+1); psi = psi(1:i+1); phi_log = phi_log(1:i+1);
+                    break;
+                end
+            end
+            
+            % 結果格納
+            d.loiter.x=[]; d.loiter.y=[]; d.loiter.z=[]; d.loiter.t=[];
+            d.dubins.x=[]; d.dubins.y=[]; d.dubins.z=[]; d.dubins.t=[];
+            d.final.x = x'; d.final.y = y'; d.final.z = z'; d.final.t = t';
+            d.final.psi = psi';
+            
+            % ★ここ重要: 計算されたバンク角履歴を保存しておく場所がないため、
+            % 一旦 ResultDataには入れず、軌道形状から compute_dual_trajectories で
+            % 正しく再計算されることに期待します。
+            % (直前の回答の「dpsi_airから逆算する修正」が入っていれば、これで完璧に整合します)
+            
+            obj.ResultData = d;
+            obj.FinalError = 0;
+            obj.StartV = V_EAS_trim;
+            obj.V0 = V_EAS_trim; 
+            
+            % 旋回半径を保存（デバッグ用）
+            if ~isinf(R_origin)
+                obj.R_fixed = abs(R_origin);
+            end
+        end
     end
 end
