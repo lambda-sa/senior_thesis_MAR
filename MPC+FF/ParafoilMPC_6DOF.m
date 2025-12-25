@@ -53,11 +53,56 @@ classdef ParafoilMPC_6DOF < handle
             
             % --- 重み行列 ---
             % 誤差に対する重み (Q)
-            err_vec = [2.0, 1.0, 1.0, ...
-                       deg2rad(10), deg2rad(10), deg2rad(10), ...
-                       deg2rad(15), deg2rad(15), deg2rad(5), ...
-                       5.0, 5.0, 10.0];
-            w_vec = 1 ./ (err_vec.^2);
+            % 1. 最大許容誤差の定義 (Maximum Allowable Deviations)
+            % --------------------------------------------------------
+            % [速度 (Body Velocity)]  単位: m/s
+            err_u = 2.0;   % 対気速度のズレ: ±2 m/s くらいまでは許容
+            err_v = 1.0;   % 横滑り速度: 横風で ±1 m/s 程度はずれる
+            err_w = 1.0;   % 降下速度: ±1 m/s の変動
+            
+            % [角速度 (Angular Rates)] 単位: rad/s
+            % ※ 10 deg/s = 0.17 rad/s 程度の揺れは許容範囲
+            err_p = deg2rad(10); 
+            err_q = deg2rad(10);
+            err_r = deg2rad(10);
+            
+            % [姿勢角 (Euler Angles)] 単位: rad
+            % ※ ロール・ピッチは ±15度ずれると怖いが、制御上は許容範囲とする
+            err_phi   = deg2rad(15); % ロール
+            err_theta = deg2rad(15); % ピッチ
+            err_psi   = deg2rad(5);  % ヨー (★重要: 方位は ±5度以内に抑えたい)
+            
+            % [位置 (Position NED)] 単位: m
+            % ※ 経路から ±5m 以内なら「オンコース」とみなす
+            err_N = 5.0; 
+            err_E = 5.0; 
+            err_D = 10.0; % 高度は XY より多少甘くても良い
+            
+            % 2. 重みベクトルの計算 (1/x^2)
+            % --------------------------------------------------------
+            w_vec = zeros(1, 12);
+            
+            w_vec(1) = 1 / err_u^2;
+            %w_vec(2) = 1 / err_v^2;
+            %w_vec(3) = 1 / err_w^2;
+
+            w_vec(2) =0;
+            w_vec(3) = 0;
+            
+            w_vec(4) = 1 / err_p^2;
+            w_vec(5) = 1 / err_q^2;
+            w_vec(6) = 1 / err_r^2;
+            
+            w_vec(7) = 1 / err_phi^2;
+            %w_vec(8) = 1 / err_theta^2;
+            w_vec(8) = 0;
+            %w_vec(9) = 1 / err_psi^2;
+            w_vec(9) = 0;
+            
+            w_vec(10)= 1 / err_N^2;
+            w_vec(11)= 1 / err_E^2;
+            w_vec(12)= 1 / err_D^2;
+
             obj.Q = diag(w_vec);
             obj.P = obj.Q;
             
@@ -70,7 +115,8 @@ classdef ParafoilMPC_6DOF < handle
             
             % --- 線形化オブジェクト ---
             obj.DynamicsModel = ParafoilDynamics(params); 
-            obj.Linearizer = ParafoilLinearizerNumeric(obj.DynamicsModel);
+            % ★修正: 新しいクラスをインスタンス化 (第2引数に Softmin係数 k=20 を指定)
+            obj.Linearizer = ParafoilLinearizerAnalytic(obj.DynamicsModel, 20);
             if isprop(obj.Linearizer, 'soft_min_k')
                 obj.Linearizer.soft_min_k = obj.SoftMinK;
             end
@@ -100,7 +146,33 @@ classdef ParafoilMPC_6DOF < handle
             
             % 1. 線形モデル更新
             if strcmpi(obj.LinearizationMode, 'Adaptive')
-                obj.update_linear_model_from_state(x_curr, obj.LastU);
+        
+                % 1. 現在時刻における「参照軌道」の状態 (12変数) を取得
+                %    (x_curr ではなく、RefFullTable から補間して取得する)
+                
+                ref_time = obj.RefFullTable.Time;
+                ref_data = obj.RefFullTable{:, 2:13}; % u,v,w...D の12列
+                
+                % 線形補間して「その時刻の理想状態」を取得
+                % 'extrap' により、着陸後(時刻超過時)は最後の状態を維持
+                x_ref_now = interp1(ref_time, ref_data, current_time, 'linear', 'extrap')';
+                
+                % ヨー角(psi)の連続性補正 (Unwrap)
+                % 参照軌道が 359度→1度 と回っている場合、補間で変な値にならないよう
+                % 現在の機体姿勢(x_curr(9))に近い値に補正して渡すのが安全です
+                d_psi = atan2(sin(x_ref_now(9) - x_curr(9)), cos(x_ref_now(9) - x_curr(9)));
+                x_ref_now(9) = x_curr(9) + d_psi;
+        
+                % 2. 線形化の実行
+                %    トリム入力 u_trim は、参照軌道(滑空)を前提として [0; 0] とするか、
+                %    あるいは前回の入力 obj.LastU を使うか選択の余地がありますが、
+                %    「参照軌道上のモデル」を作るなら [0; 0] (ニュートラル) が安定的です。
+                
+                u_trim_ref = [0; 0]; 
+                
+                % ★ x_ref_now (参照状態) を使って A, B を更新
+                obj.update_linear_model_from_state(x_ref_now, u_trim_ref);
+                
             end
             
             % 2. ホライゾン参照値の取得
@@ -243,7 +315,8 @@ classdef ParafoilMPC_6DOF < handle
             y_trim(10)= ref_row.N; y_trim(11)= ref_row.E; y_trim(12)= ref_row.D;
             u_trim = [0; 0]; 
             extra.GAMMA = 0; extra.wind_I = [0;0;0];
-            [A_c, B_c] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, extra);
+            %[A_c, B_c] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, extra);
+            [A_c, B_c] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, []);
             sys_d = c2d(ss(A_c, B_c, eye(12), zeros(12,2)), obj.Ts);
             obj.Ad = sys_d.A; obj.Bd = sys_d.B;
         end
@@ -251,7 +324,8 @@ classdef ParafoilMPC_6DOF < handle
         function update_linear_model_from_state(obj, x_vec, u_prev)
             y_trim = x_vec; u_trim = u_prev;
             extra.GAMMA = 0; extra.wind_I = [0;0;0];
-            [A_c, B_c] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, extra);
+            %[A_c, B_c] = obj.Linearizer.get_linear_model(0, y_trim, u_trim, extra);
+            [A_c, B_c] = obj.Linearizer.get_linear_model(0, x_vec, u_prev, []);
             sys_d = c2d(ss(A_c, B_c, eye(12), zeros(12,2)), obj.Ts);
             obj.Ad = sys_d.A; obj.Bd = sys_d.B;
         end

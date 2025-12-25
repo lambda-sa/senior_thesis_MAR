@@ -51,8 +51,8 @@ classdef MPCScheduler < handle
             
             % --- 2. 制御入力構造体の作成 ---
             u_current = obj.LastInput;
-            dL = u_current(1);
-            dR = u_current(2);
+            dR = u_current(1);
+            dL= u_current(2);
             
             inputs.delta_L = dL;
             inputs.delta_R = dR;

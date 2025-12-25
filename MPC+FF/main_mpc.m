@@ -9,7 +9,7 @@ mpcverbosity('off');
 
 %% --- 1. 経路生成 (Reference Generation) ---
 fprintf('=== Path Planning ===\n');
-excelFileName = 'parafoil_parameters_SRC.xlsx'; 
+excelFileName = 'parafoil_parameters_kawaguchi.xlsx'; 
 target_pos = [0, 2000, 3000];
 L_final = 1000;
 wind_vector_2d = [3.0; 3.0]; % 北東の風
@@ -96,6 +96,7 @@ mpc_ctrl = ParafoilMPC_6DOF(Ts_mpc, Horizon, params);
 % ★修正: Missionオブジェクトを丸ごと渡す
 % これにより、内部で「参照軌道データのロード」と「初期線形化(A, B行列計算)」が自動実行されます
 mpc_ctrl.load_reference(mission);
+mpc_ctrl.LinearizationMode = 'Adaptive';
 
 % スケジューラの作成
 wind_3d = [wind_vector_2d; 0];
