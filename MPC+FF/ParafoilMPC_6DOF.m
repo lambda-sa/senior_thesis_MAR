@@ -82,27 +82,31 @@ classdef ParafoilMPC_6DOF < handle
             % --------------------------------------------------------
             w_vec = zeros(1, 12);
             
-            w_vec(1) = 1 / err_u^2;
+            %w_vec(1) = 1 / err_u^2;
             %w_vec(2) = 1 / err_v^2;
             %w_vec(3) = 1 / err_w^2;
-
+            w_vec(1) = 0;
             w_vec(2) =0;
             w_vec(3) = 0;
             
-            w_vec(4) = 1 / err_p^2;
+            %w_vec(4) = 1 / err_p^2;
+            %w_vec(5) = 1 / err_q^2;
+            %w_vec(6) = 1 / err_r^2;
+
+            w_vec(4) = 0;
             w_vec(5) = 1 / err_q^2;
-            w_vec(6) = 1 / err_r^2;
+            w_vec(6) = 0;
             
             w_vec(7) = 1 / err_phi^2;
             %w_vec(8) = 1 / err_theta^2;
             w_vec(8) = 0;
-            %w_vec(9) = 1 / err_psi^2;
-            w_vec(9) = 0;
+            w_vec(9) = 1 / err_psi^2;
+            %w_vec(9) = 0;
             
             w_vec(10)= 1 / err_N^2;
             w_vec(11)= 1 / err_E^2;
-            w_vec(12)= 1 / err_D^2;
-
+            %w_vec(12)= 1 / err_D^2;
+            w_vec(12)= 0;
             obj.Q = diag(w_vec);
             obj.P = obj.Q;
             
