@@ -3,7 +3,7 @@
 clear; clc; close all;
 
 %% --- 1. 設定 ---
-excelFileName = 'parafoil_parameters_SRC.xlsx';
+excelFileName = 'parafoil_parameters_kawaguchi.xlsx';
 wind_vector_2d = [0; 0];  % テスト用に風は無風推奨
 % wind_vector_2d = [3; -3]; % 必要なら風を入れる
 
@@ -19,7 +19,7 @@ end
 % シミュレーション条件
 test_type = 'Turn';      % 'Straight' or 'Turn'
 bank_cmd  = 10.0;        % 旋回時のバンク角 [deg]
-sim_duration = 40;       % 秒
+sim_duration = 400;       % 秒
 wind_vec = [0; 0];       % 検証用は無風推奨（風を入れても計算はされます）
 
 %% 2. ミッション実行 (Physics-Based)

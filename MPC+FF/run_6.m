@@ -2,7 +2,7 @@
 clearvars; close all; clc;
 
 % 1. Excelからパラメータを読み込む
-excelFileName = 'parafoil_parameters_SRC.xlsx'; % ファイル名は適切に変更してください
+excelFileName = 'parafoil_parameters_ref.xlsx'; % ファイル名は適切に変更してください
 [params, sim_settings] = load_params_from_excel(excelFileName);
 
 % 2. 6自由度モデル用に params を拡張・整形する
@@ -83,8 +83,8 @@ h_step = 0.05;
 t_max  = sim_settings.t_max;
 
 % スケジューラ (制御なし)
-%scheduler = ZeroScheduler(); 
-scheduler = WindStepScheduler(sim_settings);
+scheduler = ZeroScheduler(); 
+%scheduler = WindStepScheduler(sim_settings);
 % エンジン初期化と実行
 fprintf('--- 6-DOF シミュレーション開始 ---\n');
 engine = SimulationEngine(dynamics_model, scheduler, h_step, t_max, y0);
