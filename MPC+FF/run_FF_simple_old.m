@@ -18,8 +18,8 @@ end
 % テストモード設定
 % シミュレーション条件
 test_type = 'Turn';      % 'Straight' or 'Turn'
-bank_cmd  = 10.0;        % 旋回時のバンク角 [deg]
-sim_duration = 40;       % 秒
+bank_cmd  = 5.0;        % 旋回時のバンク角 [deg]
+sim_duration = 400;       % 秒
 wind_vec = [0; 0];       % 検証用は無風推奨（風を入れても計算はされます）
 
 %% 2. ミッション実行 (Physics-Based)
@@ -64,7 +64,7 @@ params.prop = prop;
 
 % (A) 6-DOF Dynamics Model
 plant = ParafoilDynamics(params);
-mapper = ParafoilControlMapper(params);
+mapper = ParafoilControlMapper_linear(params);
 
 % トリム計算結果を初期値に使う（これがやりたかったこと）
 % Missionが計算した物理パラメータを取得
@@ -84,12 +84,7 @@ y0 = [V_tas_init; 0; 0; ...       % u, v, w (Body)
       trajRef.Position(1,1); trajRef.Position(1,2); -trajRef.Position(1,3)]; % NED Pos
 
 % スケジューラ作成
-scheduler = PlannerTrackingScheduler(mapper, ...
-    trajRef.Time, ...
-    trajRef.Euler_RPY(:,1), ... % Target Phi
-    sqrt(sum(trajRef.V_Air.^2,2)), ... % Target V
-    trajRef.Euler_RPY(:,2), ... % Target Theta
-    wind_vec);
+scheduler = PlannerTrackingScheduler(mission,mapper);
 
 % 実行
 engine = SimulationEngine(plant, scheduler, 0.05, sim_duration, y0);

@@ -1,62 +1,142 @@
 classdef PlannerTrackingScheduler < handle
     % PLANNERTRACKINGSCHEDULER
-    % 修正版: バンク角だけでなく、速度とピッチ角も計画値を使用する
+    % ParafoilMission の export_6dof_state 結果を読み込み、
+    % Mapper に参照状態(ref_state)を供給するクラス
     
     properties
-        Mapper
-        RefTime
-        RefBankAngle
+        Mapper          % ParafoilControlMapper_linear
         
-        % ★★★ 追加 ★★★
-        RefTrueAirspeed % 計画されたTAS [m/s]
-        RefPitchAngle   % 計画されたピッチ角 [rad]
+        % --- 時系列参照データ (補間用) ---
+        Time            % [s]
         
-        WindVector
-        phase = 1
+        % 状態量
+        Ref_u, Ref_w    % [m/s] Body velocities
+        Ref_V           % [m/s] TAS
+        Ref_p, Ref_q, Ref_r % [rad/s] Body rates
+        Ref_phi, Ref_theta  % [rad] Euler angles
+        
+        % --- 定数/設定 ---
+        WindVector = [0; 0; 0];
+        phase=1;
     end
     
     methods
-        % ★★★ コンストラクタ引数を追加 ★★★
-        function obj = PlannerTrackingScheduler(mapper, t_ref, phi_ref, V_ref, theta_ref, wind_vec)
+        function obj = PlannerTrackingScheduler(mission, mapper)
+            % コンストラクタ
+            % mission: ParafoilMission (または Wind) インスタンス
+            % mapper:  ParafoilControlMapper_linear インスタンス
+            
             obj.Mapper = mapper;
-            obj.RefTime = t_ref;
-            obj.RefBankAngle = phi_ref;
             
-            % 追加データの保存
-            obj.RefTrueAirspeed = V_ref;
-            obj.RefPitchAngle = theta_ref;
-            
-            if length(wind_vec) == 2
-                obj.WindVector = [wind_vec(1); wind_vec(2); 0];
-            else
-                obj.WindVector = wind_vec;
+            % 1. 風情報の取得
+            if isprop(mission, 'Planner') && isa(mission.Planner, 'ParafoilPathPlannerWind')
+                w = mission.Planner.WindVector;
+                obj.WindVector = [w(1); w(2); 0];
             end
+            
+            % 2. 6-DOF状態データの取得
+            % Missionクラスが計算済みの高精度な物理量テーブルを取得
+            stateTable = mission.export_6dof_state();
+            
+            if isempty(stateTable)
+                warning('Scheduler: No trajectory data found in Mission object.');
+                return;
+            end
+            
+            % 3. プロパティへの展開 (テーブル列へのアクセス)
+            % export_6dof_state は Ground 軌道をベースにしていますが、
+            % u, v, w は V_Air から計算されているため空力参照として適切です。
+            
+            % export_6dof_state は Time を返さない(テーブルに含まれない仕様の場合)か確認
+            % 先ほどのコードでは Time は export_detailed_trajectory にある。
+            % export_6dof_state の戻り値テーブル自体には Time 列がない実装でした。
+            % したがって、詳細ログから Time を取得して合わせます。
+            
+            detailedLog = mission.export_detailed_trajectory('Ground');
+            obj.Time = detailedLog.Time;
+            
+            % テーブル列の抽出
+            obj.Ref_u = stateTable.u;
+            obj.Ref_w = stateTable.w;
+            obj.Ref_p = stateTable.p;
+            obj.Ref_q = stateTable.q;
+            obj.Ref_r = stateTable.r;
+            obj.Ref_phi = stateTable.phi;
+            obj.Ref_theta = stateTable.theta;
+            
+            % TAS (True Airspeed) の計算
+            % u, w から計算 (vは通常0に近いが、厳密にはノルム)
+            obj.Ref_V = sqrt(stateTable.u.^2 + stateTable.v.^2 + stateTable.w.^2);
         end
         
-        function inputs = get_inputs(obj, t, ~, ~) % 第2引数(y)は使いません
-            % 1. 各参照値を線形補間
-            if t > obj.RefTime(end)
-                phi_cmd   = obj.RefBankAngle(end);
-                V_cmd     = obj.RefTrueAirspeed(end);
-                theta_cmd = obj.RefPitchAngle(end);
-            else
-                % まとめて補間 (interp1は行列も扱えるがわかりやすく個別に記述)
-                phi_cmd   = interp1(obj.RefTime, obj.RefBankAngle, t, 'linear', 'extrap');
-                V_cmd     = interp1(obj.RefTime, obj.RefTrueAirspeed, t, 'linear', 'extrap');
-                theta_cmd = interp1(obj.RefTime, obj.RefPitchAngle, t, 'linear', 'extrap');
+        function inputs = get_inputs(obj, t, y, ~)
+            % GET_INPUTS
+            % t: 現在時刻 [s]
+            % y: 現在の状態ベクトル [12x1]
+            
+            if isempty(obj.Time)
+                inputs = obj.get_fallback_inputs();
+                return;
             end
             
-            % 2. Mapperに「計画値」を渡して計算
-            [dR, dL, ~] = obj.Mapper.compute_input_from_reference(phi_cmd, V_cmd, theta_cmd);
+            % 1. 時刻クリップ (範囲外は端点保持)
+            t_safe = max(obj.Time(1), min(obj.Time(end), t));
             
-            % 3. パッキング
+            % 2. 参照値の一括線形補間
+            % interp1 は行列入力(Y)に対して、各列ごとの補間結果を返せます
+            % DataMatrix = [u, w, V, p, q, r, phi, theta]
+            
+            % プロパティアクセスが多少重い場合は、コンストラクタで行列化しておくと高速ですが、
+            % ここでは可読性重視で個別に書きます (MATLABのJITで十分高速)
+            
+            u_ref     = interp1(obj.Time, obj.Ref_u,     t_safe, 'linear');
+            w_ref     = interp1(obj.Time, obj.Ref_w,     t_safe, 'linear');
+            V_ref     = interp1(obj.Time, obj.Ref_V,     t_safe, 'linear');
+            
+            p_ref     = interp1(obj.Time, obj.Ref_p,     t_safe, 'linear');
+            q_ref     = interp1(obj.Time, obj.Ref_q,     t_safe, 'linear');
+            r_ref     = interp1(obj.Time, obj.Ref_r,     t_safe, 'linear');
+            
+            phi_ref   = interp1(obj.Time, obj.Ref_phi,   t_safe, 'linear');
+            theta_ref = interp1(obj.Time, obj.Ref_theta, t_safe, 'linear');
+            
+            % 3. ref_state 構造体の構築
+            % Mapper.compute_corrected_input が必要とするフィールドを全て網羅
+            ref_state.u = u_ref;
+            ref_state.w = w_ref;
+            ref_state.V = V_ref;
+            
+            ref_state.p = p_ref;
+            ref_state.q = q_ref;
+            ref_state.r = r_ref;
+            
+            ref_state.phi = phi_ref;
+            ref_state.theta = theta_ref;
+            
+            % 4. 補正付き操作量の計算 (Mapperへ委譲)
+            % 現在の状態 y と、上記の完全な参照状態 ref_state を比較し、
+            % 線形化モデルに基づいて delta_delta_a を計算します
+            [dR, dL, ~] = obj.Mapper.compute_corrected_input(y, ref_state, 0);
+            
+            % 5. 出力
             inputs.delta_R = dR;
             inputs.delta_L = dL;
             inputs.delta_a_cmd = dR - dL;
             inputs.delta_s_cmd = min(dR, dL);
+            inputs.wind_I = obj.WindVector;
             inputs.mu_cmd = 0;
             inputs.GAMMA = 0;
+        end
+        
+        function inputs = get_fallback_inputs(obj)
+            % データがない場合の安全策
+            inputs.delta_R = 0;
+            inputs.delta_L = 0;
+            inputs.delta_a_cmd = 0;
+            inputs.delta_s_cmd = 0;
             inputs.wind_I = obj.WindVector;
+            inputs.mu_cmd = 0;
+            inputs.GAMMA = 0;
         end
     end
 end
