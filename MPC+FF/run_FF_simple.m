@@ -1,45 +1,27 @@
 % run_simple_test.m
 % 単純軌道（直線/旋回）を用いた6DOFシミュレーションテスト
 clear; clc; close all;
+%% --- 1. 設定と参照軌道の生成 (Phase A) ---
+excelFileName = 'parafoil_parameters_SRC.xlsx';
+test_duration = 600;   % 秒
+bank_cmd_deg  = 5;   % 旋回テスト用のバンク角 [deg]
+test_type = "turn";
+fprintf('=== Phase A: Reference Generation (TestMission) ===\n');
+% 既存の MissionWind の機能を継承したテストクラスを使用
+mission = ParafoilTestMission(excelFileName);
 
-%% --- 1. 設定 ---
-excelFileName = 'parafoil_parameters_kawaguchi.xlsx';
-wind_vector_2d = [0; 0];  % テスト用に風は無風推奨
-% wind_vector_2d = [3; -3]; % 必要なら風を入れる
-
-% パラメータ読み込みとモデル構築
-if exist('load_params_from_excel', 'file')
-    [params, sim_settings] = load_params_from_excel(excelFileName);
-else
-    warning('load_params_from_excelが見つかりません。デフォルト値を使用します。');
-    params = ParafoilParams(); 
-    sim_settings = struct('X_initial', 0, 'Y_initial', 50, 'h_init', 1000, 't_max', 60, 'psi_initial_deg', 0);
-end
-% テストモード設定
-% シミュレーション条件
-test_type = 'Turn';      % 'Straight' or 'Turn'
-bank_cmd  = 10.0;        % 旋回時のバンク角 [deg]
-sim_duration = 400;       % 秒
-wind_vec = [0; 0];       % 検証用は無風推奨（風を入れても計算はされます）
-
-%% 2. ミッション実行 (Physics-Based)
-fprintf('=== Initializing Mission with Physics ===\n');
-mission = ParafoilMissionWind(excelFileName);
-
-% 必要なら風を設定 (Planner内部にセットされる)
-mission.Planner.WindVector = [wind_vec; 0];
-
-% ★ここが核心：Excelパラメータからトリムを計算し、軌道生成
-mission.run_simple_simulation(test_type, sim_duration, bank_cmd);
-
-% 参照軌道の取得
-trajRef = mission.export_detailed_trajectory('Air');
+% 12変数の参照テーブルを取得 (u,v,w, p,q,r, phi,theta,psi, N,E,D)
+% 内部でトリム計算と12変数変換 (export_6dof_state) が行われる
+trajRef = mission.run_test_maneuver(test_duration, bank_cmd_deg);
 
 %% --- 3. Phase B & C: 6DOFシミュレーション ---
 fprintf('\n=== Phase B: 6DOF Simulation Setup ===\n');
 
 % モデル準備
 %params = mission.Params;
+params = mission.Params; % Missionが読み込んだパラメータを共有
+atmo   = mission.AtmoModel;
+
 %% --- 2. モデル & 初期条件の準備 ---
 fprintf('=== Initializing Models ===\n');
 
@@ -66,33 +48,45 @@ params.prop = prop;
 plant = ParafoilDynamics(params);
 mapper = ParafoilControlMapper(params);
 
-% トリム計算結果を初期値に使う（これがやりたかったこと）
-% Missionが計算した物理パラメータを取得
-pp = mission.PhysicsParams;
+% --- 初期状態の設定 (参照軌道の最初の1行に完全一致させる) ---
+% trajRef(1, :) から 12変数を抽出
+u0 = trajRef.u(1); v0 = trajRef.v(1); w0 = trajRef.w(1);
+p0 = trajRef.p(1); q0 = trajRef.q(1); r0 = trajRef.r(1);
+ph0 = trajRef.phi(1); th0 = trajRef.theta(1); ps0 = trajRef.psi(1);
+N0 = trajRef.N(1); E0 = trajRef.E(1); D0 = -trajRef.D(1);
 
-% 初期条件ベクトル (NED)
-% [u, v, w, p, q, r, phi, theta, psi, N, E, D]
-% ※ theta_trim は trajectoryの最初の値を使うのが最も整合性が取れる
-phi_init   = trajRef.Euler_RPY(1, 1);
-theta_init = trajRef.Euler_RPY(1, 2);
-psi_init   = trajRef.Euler_RPY(1, 3);
-V_tas_init = norm(trajRef.V_Air(1, :));
+y0 = [u0; v0; w0; p0; q0; r0; ph0; th0; ps0; N0; E0; D0];
 
-y0 = [V_tas_init; 0; 0; ...       % u, v, w (Body)
-      0; 0; 0; ...                % p, q, r
-      phi_init; theta_init; psi_init; ... % Euler
-      trajRef.Position(1,1); trajRef.Position(1,2); -trajRef.Position(1,3)]; % NED Pos
+% --- スケジューラ用参照データの整理 ---
 
-% スケジューラ作成
+% 1. 時間軸の取得 (trajRefにTimeがない場合は、元のミッションデータから取得)
+if ismember('Time', trajRef.Properties.VariableNames)
+    t_plan = trajRef.Time;
+else
+    % export_6dof_stateの内部で使われていた時間軸を代入
+    t_plan = mission.export_detailed_trajectory('Ground').Time;
+    trajRef.Time = t_plan; % 後続の処理のためにテーブルに追加しておく
+end
+
+% 2. 各状態量の抽出
+phi_plan   = trajRef.phi;   % バンク角 [rad]
+theta_plan = trajRef.theta; % ピッチ角 [rad]
+
+% 3. 対気速度スカラ (V) の計算
+% export_6dof_state は u, v, w を出すため、そのノルムを計算します
+V_plan = sqrt(trajRef.u.^2 + trajRef.v.^2 + trajRef.w.^2);
+wind_vec = [0; 0];    % Step 1: 制御アルゴリズムの純粋な検証（まずはこれ！）
+% 4. スケジューラのインスタンス化
+% 定義した変数名を使用して、可読性を高めます
 scheduler = PlannerTrackingScheduler(mapper, ...
-    trajRef.Time, ...
-    trajRef.Euler_RPY(:,1), ... % Target Phi
-    sqrt(sum(trajRef.V_Air.^2,2)), ... % Target V
-    trajRef.Euler_RPY(:,2), ... % Target Theta
+    t_plan, ...
+    phi_plan, ...
+    V_plan, ...
+    theta_plan, ...
     wind_vec);
 
 % 実行
-engine = SimulationEngine(plant, scheduler, 0.05, sim_duration, y0);
+engine = SimulationEngine(plant, scheduler, 0.05, test_duration, y0);
 engine = engine.run();
 simData = engine.create_results_table();
 
@@ -116,7 +110,9 @@ end
 figure('Name', 'Physics-Based Simple Path Verification', 'Color', 'w', 'Position', [100,100,1000,600]);
 
 subplot(2,2,[1 3]);
-plot3(trajRef.Position(:,2), trajRef.Position(:,1), trajRef.Position(:,3), 'g--', 'LineWidth', 1.5, 'DisplayName', 'Ref (Trim)');
+%plot3(trajRef.Position(:,2), trajRef.Position(:,1), trajRef.Position(:,3), 'g--', 'LineWidth', 1.5, 'DisplayName', 'Ref (Trim)');
+% テーブルの列 (y=East, x=North, z=Alt) を指定
+plot3(trajRef.E, trajRef.N, trajRef.D, 'g--', 'LineWidth', 1.5, 'DisplayName', 'Ref (Mission)');
 hold on;
 plot3(simData.East, simData.North, -simData.Down, 'b-', 'LineWidth', 2, 'DisplayName', '6DOF');
 grid on; axis equal; view(3);
@@ -124,7 +120,7 @@ xlabel('East'); ylabel('North'); zlabel('Alt');
 legend; title(['Trajectory: ' test_type]);
 
 subplot(2,2,2);
-plot(trajRef.Time, rad2deg(trajRef.Euler_RPY(:,1)), 'g--', 'LineWidth',1.5, 'DisplayName','Ref');
+plot(trajRef.Time, rad2deg(trajRef.phi), 'g--', 'LineWidth',1.5, 'DisplayName','Ref');
 hold on;
 plot(simData.Time, simData.phi, 'b-', 'LineWidth',1.5, 'DisplayName','6DOF');
 ylabel('Bank [deg]'); grid on; title('Bank Angle');

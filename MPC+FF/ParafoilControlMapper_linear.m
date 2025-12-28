@@ -8,13 +8,16 @@ classdef ParafoilControlMapper_linear < handle
     properties
         Params       % 全パラメータ構造体
         Yaw_Factor   % ベースFF用係数
+        atmo_model
+
     end
     
     methods
         function obj = ParafoilControlMapper_linear(params)
             % コンストラクタ
             obj.Params = params;
-            
+            obj.atmo_model = AtmoTempPressRho();
+
             % --- パラメータ展開 ---
             if isfield(params, 'prop')
                 b = params.prop.b;
@@ -64,15 +67,30 @@ classdef ParafoilControlMapper_linear < handle
             [delta_R, delta_L] = obj.apply_mixing(delta_a, delta_s_bias);
         end
         
-        % ★★★ モーメント釣り合い(Izz不要)版 補正計算メソッド ★★★
+        % ★★★ 修正版: u_ref, w_ref を参照軌道から正しく取得 ★★★
         function [delta_R, delta_L, delta_a_total, delta_delta_a] = compute_corrected_input(obj, current_state, ref_state, delta_s_bias)
             if nargin < 4, delta_s_bias = 0; end
             
-            % 1. 参照状態の展開
+            % 1. 参照状態の展開 (u, w を含む)
             if isstruct(ref_state)
                 V_ref = ref_state.V;
                 phi_ref = ref_state.phi;
                 theta_ref = ref_state.theta;
+                
+                % ★ u_ref, w_ref の取得
+                if isfield(ref_state, 'u') && isfield(ref_state, 'w')
+                    u_ref = ref_state.u;
+                    w_ref = ref_state.w;
+                else
+                    % 万が一フィールドがない場合は alpha から計算 (フォールバック)
+                    if isfield(ref_state, 'alpha')
+                        alpha = ref_state.alpha;
+                    else
+                        alpha = 0; 
+                    end
+                    u_ref = V_ref * cos(alpha);
+                    w_ref = V_ref * sin(alpha);
+                end
                 
                 % ジャイロ項計算用の角速度
                 if isfield(ref_state, 'q') && isfield(ref_state, 'r')
@@ -92,8 +110,13 @@ classdef ParafoilControlMapper_linear < handle
                     [~, ~, da_ref] = obj.compute_input_from_reference(phi_ref, V_ref, theta_ref, 0);
                 end
             else
-                % 簡易ベクトルの場合
+                % 簡易ベクトル入力 [V, theta, phi] の場合 (u, wは近似)
                 V_ref = ref_state(1); theta_ref = ref_state(2); phi_ref = ref_state(3);
+                
+                % alpha=0 近似
+                u_ref = V_ref;
+                w_ref = 0;
+                
                 g = 9.81;
                 psi_dot = (g / V_ref) * tan(phi_ref);
                 q_ref = psi_dot * sin(phi_ref) * cos(theta_ref);
@@ -105,55 +128,52 @@ classdef ParafoilControlMapper_linear < handle
             u_curr = current_state(1); w_curr = current_state(3);
             phi_curr = current_state(7);
             
-            % 参照速度成分 (alpha=0, beta=0 仮定)
-            u_ref = V_ref; 
-            w_ref = 0;
-            
             du = u_curr - u_ref;
             dw = w_curr - w_ref;
             dphi = phi_curr - phi_ref;
             
-            % 3. モーメント感度係数の計算 (Izで割らず、Nm次元で計算)
+            % 3. モーメント感度係数の計算
             p = obj.Params;
             S = p.S_c; b = p.prop.b;
-            rho = 1.225; % 必要に応じて高度補正
-            
+            %rho = 1.225; % 必要に応じて高度補正
+            rho = obj.atmo_model.get_density(-current_state(12)/1000);
+
             % 定数定義 (PDFの k1, k2, k3 相当)
             % N = (1/4 rho S b^2 Cn_r) * V * r  + (1/2 rho S b Cn_da) * V^2 * da
             
             K_damp = 0.25 * rho * S * b^2 * p.C_n_r;       % V*r の係数
-            K_ctl  = 0.5  * rho * S * b   * p.C_n_delta_a; % V^2*da の係数
+            K_ctl  = 0.5  * rho * S /p.d  * p.C_n_delta_a; % V^2*da の係数
             
             % (A) 速度感度項 dN/du, dN/dw
             % dN/dV = K_damp * r + 2 * K_ctl * V * da
             dN_dV = K_damp * r_ref + 2 * K_ctl * V_ref * da_ref;
             
-            % u, w 方向への分解 (Izz不要)
+            % u, w 方向への分解 (u_ref, w_ref を使用)
             N_u = dN_dV * (u_ref / V_ref);
             N_w = dN_dV * (w_ref / V_ref);
             
             % (B) バンク角・ジャイロ補正項 (N_r, N_q, N_phi)
-            % PDF式: delta_r = -q * dphi, delta_q = r * dphi
-            % 項: (N_r * (-q) + N_q * r + N_phi) * dphi
-            
-            % N_r (Yaw Damping term): dN/dr
-            % N_r = K_damp * V
+            % N_r (Yaw Damping term): dN/dr = K_damp * V
             N_r = K_damp * V_ref;
             
-            % N_q (Gyro term): dN/dq
-            % ジャイロモーメント N_gyro approx (Ixx - Iyy) * p * q
-            % dN_gyro/dq = (Ixx - Iyy) * p_ref
-            % ※ Ixz=0 としたので Ixx, Iyy の差分項のみ考慮
+            % N_q (Gyro term): dN/dq approx (Ixx - Iyy) * p_ref
+            % p_ref を Kinematics から推定: p = -psi_dot * sin(theta)
+            % (または ref_state.p があればそれを使うべきですが、ここではKinematics優先)
             Ixx = p.I_xx; Iyy = p.I_yy;
-            p_ref = -(9.81 / V_ref * tan(phi_ref)) * sin(theta_ref); % Kinematics
+            
+            if isstruct(ref_state) && isfield(ref_state, 'p')
+                p_ref = ref_state.p;
+            else
+                psi_dot = (9.81 / V_ref) * tan(phi_ref);
+                p_ref = -psi_dot * sin(theta_ref);
+            end
             
             N_q = (Ixx - Iyy) * p_ref;
             
-            % N_phi (Gravity term)
-            % Ixz=0 の場合、重力はYawモーメントに直接影響しないためゼロ
+            % N_phi (Gravity term) -> Ixz=0 なので Yaw には直接効かない
             N_phi = 0;
             
-            % 感度総和
+            % 感度総和: delta_r = -q*dphi, delta_q = r*dphi を使用
             S_phi = N_r * (-q_ref) + N_q * (r_ref) + N_phi;
             
             % (C) 制御効力係数 N_da
@@ -162,7 +182,6 @@ classdef ParafoilControlMapper_linear < handle
             
             % 4. 補正量 delta_delta_a の計算
             % dda = -1/N_da * [ (N_u*du + N_w*dw) + S_phi*dphi ]
-            % (モーメントの釣り合い式 0 = dN + N_da * dda より)
             
             if abs(N_da) < 1e-9
                 delta_delta_a = 0;

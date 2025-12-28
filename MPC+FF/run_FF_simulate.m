@@ -4,7 +4,7 @@ clear; clc; close all;
 
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_SRC.xlsx'; % パラメータファイル
-wind_vector_2d = [3; -3];  % 風速 (North, East) [m/s]
+wind_vector_2d = [0; 0];  % 風速 (North, East) [m/s]
 target_pos = [0, 2000, 3000]; % 目標 [N, E, Alt]
 L_final = 2000;
 
