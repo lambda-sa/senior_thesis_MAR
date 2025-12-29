@@ -18,8 +18,8 @@ end
 % テストモード設定
 % シミュレーション条件
 test_type = 'Turn';      % 'Straight' or 'Turn'
-bank_cmd  = 5.0;        % 旋回時のバンク角 [deg]
-sim_duration = 400;       % 秒
+bank_cmd  = 7.0;        % 旋回時のバンク角 [deg]
+sim_duration = 600;       % 秒
 wind_vec = [0; 0];       % 検証用は無風推奨（風を入れても計算はされます）
 
 %% 2. ミッション実行 (Physics-Based)
