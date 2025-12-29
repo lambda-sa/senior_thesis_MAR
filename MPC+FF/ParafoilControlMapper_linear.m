@@ -79,9 +79,9 @@ classdef ParafoilControlMapper_linear < handle
                 phi_ref = ref_state.phi;
                 theta_ref = ref_state.theta;
 
-                x_ref = ref_state(10); % 北
-                y_ref = ref_state(11); % 東
-                psi_ref = ref_state(9); % 方位角
+                x_ref = ref_state.x; % 北
+                y_ref = ref_state.y; % 東
+                psi_ref = ref_state.z; % 方位角
 
              
                 q_0 = ref_state.q;
@@ -166,14 +166,14 @@ classdef ParafoilControlMapper_linear < handle
             
             C_phi = (q_0 * cos(phi_ref) - r_0 * sin(phi_ref)) / cos(theta_ref);
             
-            if abs(C_phi) < 1e-4, C_phi = 9.81 / V; end % 直線時の近似
+            if abs(C_phi) < 1e-4, C_phi = 9.81 / V_ref; end % 直線時の近似
             
             % 必要なバンク角修正量
             delta_phi = delta_psidot_target / C_phi;
-            phi_cmd = phi_ref + delta_phi;
+            phi_cmd = delta_phi;
             
             % バンク角リミッター
-            phi_cmd = max(min(phi_cmd, 35*pi/180), -35*pi/180);
+            %phi_cmd = max(min(phi_cmd, 35*pi/180), -35*pi/180);
             
            
             %% 非対称ブレーキの指示値δa_cmdの計算

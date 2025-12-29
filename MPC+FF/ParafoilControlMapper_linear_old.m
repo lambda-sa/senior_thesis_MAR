@@ -1,4 +1,4 @@
-classdef ParafoilControlMapper_linear < handle
+classdef ParafoilControlMapper_linear_old < handle
     % PARAFOILCONTROLMAPPER
     % 軌道計画の結果(V, theta, phi)からフィードフォワード操作量を計算し、
     % さらに現在の状態誤差に基づいて線形化モデルによる補正(delta_delta_a)を加えるクラス
@@ -9,14 +9,12 @@ classdef ParafoilControlMapper_linear < handle
         Params       % 全パラメータ構造体
         Yaw_Factor   % ベースFF用係数
         atmo_model
-        epsi_old = 0;          % 前回の方位偏差
-        %epsi_dot_filt = 0;     % フィルタ後の前回変化率
-        is_first = true;       % 初回実行フラグ
-        dt = 0.05;
+        
+
     end
     
     methods
-        function obj = ParafoilControlMapper_linear(params)
+        function obj = ParafoilControlMapper_linear_old(params)
             % コンストラクタ
             obj.Params = params;
             obj.atmo_model = AtmoTempPressRho();
@@ -73,20 +71,13 @@ classdef ParafoilControlMapper_linear < handle
         % ★★★ 修正版: u_ref, w_ref を参照軌道から正しく取得 ★★★
         function [delta_R, delta_L, delta_a_total, delta_delta_a] = compute_corrected_input(obj, current_state, ref_state, delta_s_bias)
             if nargin < 4, delta_s_bias = 0; end
-             %% 1. 参照状態の展開 (u, w を含む)
+            
+            % 1. 参照状態の展開 (u, w を含む)
             if isstruct(ref_state)
                 V_ref = ref_state.V;
                 phi_ref = ref_state.phi;
                 theta_ref = ref_state.theta;
-
-                x_ref = ref_state.x; % 北
-                y_ref = ref_state.y; % 東
-                psi_ref = ref_state.z; % 方位角
-
-             
-                q_0 = ref_state.q;
-                r_0 = ref_state.r;
-
+                
                 % ★ u_ref, w_ref の取得
                 if isfield(ref_state, 'u') && isfield(ref_state, 'w')
                     u_ref = ref_state.u;
@@ -116,8 +107,8 @@ classdef ParafoilControlMapper_linear < handle
                 % 参照操作量 (Trim)
                 if isfield(ref_state, 'delta_a')
                     da_ref = ref_state.delta_a;
-                %else
-                    %[~, ~, da_ref] = obj.compute_input_from_reference(phi_ref, V_ref, theta_ref, 0);
+                else
+                    [~, ~, da_ref] = obj.compute_input_from_reference(phi_ref, V_ref, theta_ref, 0);
                 end
             else
                 % 簡易ベクトル入力 [V, theta, phi] の場合 (u, wは近似)
@@ -131,55 +122,10 @@ classdef ParafoilControlMapper_linear < handle
                 psi_dot = (g / V_ref) * tan(phi_ref);
                 q_ref = psi_dot * sin(phi_ref) * cos(theta_ref);
                 r_ref = psi_dot * cos(phi_ref) * cos(theta_ref);
-                %[~, ~, da_ref] = obj.compute_input_from_reference(phi_ref, V_ref, theta_ref, 0);
+                [~, ~, da_ref] = obj.compute_input_from_reference(phi_ref, V_ref, theta_ref, 0);
             end
-            %% 展開ここまで
-            %% --- 1. 偏差 e_y, e_psi の幾何学的計算 ---
-            x = current_state(10); % 北
-            y = current_state(11); % 東
-            psi = current_state(9); % 方位角
             
-            
-
-            delta_x = x - x_ref;
-            delta_y = y - y_ref;
-            delta_psi = psi - psi_ref;
-
-            % 横ずれ偏差 (Path Frame への回転)
-            ey = -delta_x * sin(delta_psi) + delta_y * cos(delta_psi);
-            
-            % 方位偏差 (範囲を -pi to pi に丸める)
-            epsi = wrapToPi(delta_psi);
-
-            %% ヨーレートの指示値ψ_dotの計算
-            if obj.is_first
-                % 初回は前回値がないため、変化率は0とする
-                epsi_dot_raw = 0;
-                obj.is_first = false;
-            else
-                % プロパティ(obj.epsi_old)を使って数値微分 objに前回値を保存する
-                epsi_dot_raw = (epsi - obj.epsi_old) / obj.dt;
-            end
-            delta_psidot_target = epsi_dot_raw;
-
-            %% バンク角の指示値φ_cmdの計算
-            
-            C_phi = (q_0 * cos(phi_ref) - r_0 * sin(phi_ref)) / cos(theta_ref);
-            
-            if abs(C_phi) < 1e-4, C_phi = 9.81 / V_ref; end % 直線時の近似
-            
-            % 必要なバンク角修正量
-            delta_phi = delta_psidot_target / C_phi;
-            phi_cmd = phi_ref + delta_phi;
-            
-            % バンク角リミッター
-            phi_cmd = max(min(phi_cmd, 35*pi/180), -35*pi/180);
-            
-           
-            %% 非対称ブレーキの指示値δa_cmdの計算
-            [~, ~, da_ref] = obj.compute_input_from_reference(phi_cmd, V_ref, theta_ref, 0);
             % 2. 状態偏差 (Delta)
-
             u_curr = current_state(1); w_curr = current_state(3);
             phi_curr = current_state(7);
             
@@ -242,12 +188,12 @@ classdef ParafoilControlMapper_linear < handle
                 delta_delta_a = 0;
             else
                 %term_vel = N_u * du + N_w * dw;
-                term_vel = 0;
+                term_vel =0;
                 term_phi = S_phi * dphi;
                 delta_delta_a = - (1 / N_da) * (term_vel + term_phi);
             end
             
-            %% 5. 合成
+            % 5. 合成
             delta_a_total = da_ref + delta_delta_a;
             
             [delta_R, delta_L] = obj.apply_mixing(delta_a_total, delta_s_bias);
