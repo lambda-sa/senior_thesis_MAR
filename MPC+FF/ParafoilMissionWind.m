@@ -230,9 +230,9 @@ classdef ParafoilMissionWind < ParafoilMission
             % --- 位置 (NED) ---
             % T.Position = [North, East, Altitude]
             % D = -Altitude (Depth)
-            N = T.Position(:,1);
-            E = T.Position(:,2);
-            D = -T.Position(:,3);
+            x = T.Position(:,1);
+            y = T.Position(:,2);
+            z = -T.Position(:,3);
             
             % --- 姿勢角 (Euler) ---
             % T.Euler_RPY = [phi, theta, psi]
@@ -310,8 +310,8 @@ classdef ParafoilMissionWind < ParafoilMission
             end
             
             % --- テーブル作成 ---
-            stateTable = table(u, v, w, p, q, r, Phi, Theta, Psi, N, E, D, ...
-                'VariableNames', {'u','v','w', 'p','q','r', 'phi','theta','psi', 'N','E','D'});
+            stateTable = table(u, v, w, p, q, r, Phi, Theta, Psi, x, y, z, ...
+                'VariableNames', {'u','v','w', 'p','q','r', 'phi','theta','psi', 'x','y','z'});
             
             % 単位情報の付与 (Properties.VariableUnits)
             stateTable.Properties.VariableUnits = { ...

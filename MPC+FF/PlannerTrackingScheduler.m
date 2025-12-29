@@ -13,8 +13,9 @@ classdef PlannerTrackingScheduler < handle
         Ref_u, Ref_w    % [m/s] Body velocities
         Ref_V           % [m/s] TAS
         Ref_p, Ref_q, Ref_r % [rad/s] Body rates
-        Ref_phi, Ref_theta  % [rad] Euler angles
-        
+        Ref_phi, Ref_psi,Ref_theta  % [rad] Euler angles
+        Ref_x,Ref_y,Ref_z %[m] length
+
         % --- 定数/設定 ---
         WindVector = [0; 0; 0];
         phase=1;
@@ -58,12 +59,19 @@ classdef PlannerTrackingScheduler < handle
             % テーブル列の抽出
             obj.Ref_u = stateTable.u;
             obj.Ref_w = stateTable.w;
+
             obj.Ref_p = stateTable.p;
             obj.Ref_q = stateTable.q;
             obj.Ref_r = stateTable.r;
+
             obj.Ref_phi = stateTable.phi;
             obj.Ref_theta = stateTable.theta;
-            
+            obj.Ref_psi = stateTable.psi;
+
+            obj.Ref_x = stateTable.x;
+            obj.Ref_y = stateTable.y;
+            obj.Ref_z = stateTable.z;
+
             % TAS (True Airspeed) の計算
             % u, w から計算 (vは通常0に近いが、厳密にはノルム)
             obj.Ref_V = sqrt(stateTable.u.^2 + stateTable.v.^2 + stateTable.w.^2);
@@ -99,6 +107,11 @@ classdef PlannerTrackingScheduler < handle
             
             phi_ref   = interp1(obj.Time, obj.Ref_phi,   t_safe, 'linear');
             theta_ref = interp1(obj.Time, obj.Ref_theta, t_safe, 'linear');
+            psi_ref = interp1(obj.Time, obj.Ref_psi, t_safe, 'linear');
+
+            x_ref = interp1(obj.Time, obj.Ref_x, t_safe, 'linear');
+            y_ref = interp1(obj.Time, obj.Ref_y, t_safe, 'linear');
+            z_ref = interp1(obj.Time, obj.Ref_z, t_safe, 'linear');
             
             % 3. ref_state 構造体の構築
             % Mapper.compute_corrected_input が必要とするフィールドを全て網羅
@@ -112,7 +125,12 @@ classdef PlannerTrackingScheduler < handle
             
             ref_state.phi = phi_ref;
             ref_state.theta = theta_ref;
-            
+            ref_state.psi = psi_ref;
+
+            ref_state.x = x_ref;
+            ref_state.y = y_ref;
+            ref_state.z = z_ref;
+
             % 4. 補正付き操作量の計算 (Mapperへ委譲)
             % 現在の状態 y と、上記の完全な参照状態 ref_state を比較し、
             % 線形化モデルに基づいて delta_delta_a を計算します
@@ -121,10 +139,10 @@ classdef PlannerTrackingScheduler < handle
             % 5. 出力
             inputs.delta_R = dR;
             inputs.delta_L = dL;
-            inputs.delta_a_cmd = dR - dL;
-            inputs.delta_s_cmd = min(dR, dL);
+            %inputs.delta_a_cmd = dR - dL;
+            %inputs.delta_s_cmd = min(dR, dL);
             inputs.wind_I = obj.WindVector;
-            inputs.mu_cmd = 0;
+            %inputs.mu_cmd = 0;
             inputs.GAMMA = 0;
         end
         
