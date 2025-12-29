@@ -53,7 +53,7 @@ mapper = ParafoilControlMapper(params);
 u0 = trajRef.u(1); v0 = trajRef.v(1); w0 = trajRef.w(1);
 p0 = trajRef.p(1); q0 = trajRef.q(1); r0 = trajRef.r(1);
 ph0 = trajRef.phi(1); th0 = trajRef.theta(1); ps0 = trajRef.psi(1);
-N0 = trajRef.N(1); E0 = trajRef.E(1); D0 = -trajRef.D(1);
+N0 = trajRef.x(1); E0 = trajRef.y(1); D0 = -trajRef.z(1);
 
 y0 = [u0; v0; w0; p0; q0; r0; ph0; th0; ps0; N0; E0; D0];
 

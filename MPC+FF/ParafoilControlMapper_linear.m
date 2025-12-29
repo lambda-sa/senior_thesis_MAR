@@ -13,6 +13,8 @@ classdef ParafoilControlMapper_linear < handle
         %epsi_dot_filt = 0;     % フィルタ後の前回変化率
         is_first = true;       % 初回実行フラグ
         dt = 0.05;
+        epsi_dot_filt = 0;
+        lpf_alpha = 0.1; % 0.1〜0.2 程度がノイズ除去に効果的
     end
     
     methods
@@ -160,7 +162,14 @@ classdef ParafoilControlMapper_linear < handle
                 % プロパティ(obj.epsi_old)を使って数値微分 objに前回値を保存する
                 epsi_dot_raw = (epsi - obj.epsi_old) / obj.dt;
             end
-            delta_psidot_target = epsi_dot_raw;
+
+            % ★ ローパスフィルタの適用 (ここでノイズを除去)
+            obj.epsi_dot_filt = obj.lpf_alpha * epsi_dot_raw + (1 - obj.lpf_alpha) * obj.epsi_dot_filt;
+            
+            % ★ 次回ステップのために前回値を必ず更新
+            obj.epsi_old = epsi;
+            delta_psidot_target = obj.epsi_dot_filt;
+            %delta_psidot_target = epsi_dot_raw;
 
             %% バンク角の指示値φ_cmdの計算
             
@@ -170,7 +179,7 @@ classdef ParafoilControlMapper_linear < handle
             
             % 必要なバンク角修正量
             delta_phi = delta_psidot_target / C_phi;
-            phi_cmd = delta_phi;
+            phi_cmd = phi_ref + delta_phi;
             
             % バンク角リミッター
             %phi_cmd = max(min(phi_cmd, 35*pi/180), -35*pi/180);
