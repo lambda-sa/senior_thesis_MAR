@@ -162,6 +162,7 @@ classdef PayloadPlotter
                 plot(ax7, t, simData.delta_L, 'g-'); ylabel(ax7, 'Brake');
                 yyaxis(ax7, 'right');
                 plot(ax7, t, simData.delta_a, 'b-'); ylabel(ax7, 'Asym');
+                legend(ax7,'Location','best');
             else
                 text(ax7, 0.5, 0.5, 'No Data');
             end
@@ -183,6 +184,33 @@ classdef PayloadPlotter
                 %title(ax9, 'Phase');
             end
             %grid(ax9, 'on');
+
+            % ★追加項目 Tab 3: Attitude History (3軸独立表示)
+            % =========================================================
+            tabAttitude = uitab(tabGroup, 'Title', 'Attitude History');
+            
+            % --- Roll ---
+            axA1 = subplot(3,1,1, 'Parent', tabAttitude);
+            plot(axA1, t, simData.Roll_Angle, 'b-', 'LineWidth', 1.5);
+            ylabel(axA1, 'Roll (phi) [deg]');
+            grid(axA1, 'on'); title(axA1, 'Attitude Angles vs Time');
+            
+            % --- Pitch ---
+            axA2 = subplot(3,1,2, 'Parent', tabAttitude);
+            plot(axA2, t, simData.Pitch_Angle, 'r-', 'LineWidth', 1.5);
+            ylabel(axA2, 'Pitch (theta) [deg]');
+            grid(axA2, 'on');
+            
+            % --- Yaw ---
+            axA3 = subplot(3,1,3, 'Parent', tabAttitude);
+            plot(axA3, t, simData.Yaw_Angle, 'g-', 'LineWidth', 1.5);
+            ylabel(axA3, 'Yaw (psi) [deg]');
+            xlabel(axA3, 'Time [s]');
+            grid(axA3, 'on');
+
+            % 3つのグラフの横軸を同期（ズームした時に連動するようになります）
+            linkaxes([axA1, axA2, axA3], 'x');
+
         end
     end
 end

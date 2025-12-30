@@ -194,7 +194,7 @@ classdef ParafoilControlMapper_linear_old < handle
             end
             
             % 5. 合成
-            delta_a_total = da_ref + delta_delta_a;
+            delta_a_total = da_ref ;
             
             [delta_R, delta_L] = obj.apply_mixing(delta_a_total, delta_s_bias);
         end

@@ -65,7 +65,7 @@ fprintf('\n=== Phase B: 6DOF Simulation Setup (Pure Feedforward) ===\n');
 
 % 3-1. モデルとコントローラのインスタンス化
 plant = ParafoilDynamics(params);
-mapper = ParafoilControlMapper(params);
+mapper = ParafoilControlMapper_linear(params);
 
 % ★★★ 3-2. 参照データの抽出 ★★★
 t_plan = trajPlanAir.Time;
@@ -76,7 +76,9 @@ theta_plan = trajPlanAir.Euler_RPY(:, 2); % ピッチ角 (ここ重要)
 V_plan = sqrt(sum(trajPlanAir.V_Air.^2, 2));
 
 % ★★★ 3-3. スケジューラの作成 (VとThetaも渡す) ★★★
-scheduler = PlannerTrackingScheduler(mapper, t_plan, phi_plan, V_plan, theta_plan, wind_vector_2d);
+%scheduler = PlannerTrackingScheduler(mapper, t_plan, phi_plan, V_plan, theta_plan, wind_vector_2d);
+
+scheduler = PlannerTrackingScheduler(mission,mapper);
 % 3-3. 初期条件の抽出 (Plannerの開始状態に合わせる)
 % Plannerの初期状態:
 start_pos_ned = trajPlanGnd.Position(1, :); % [N, E, Alt] (Altは正)

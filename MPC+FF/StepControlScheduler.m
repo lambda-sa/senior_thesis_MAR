@@ -47,7 +47,7 @@ classdef StepControlScheduler < handle
                 obj.phase = 1; % Phase 1: 直進/待機
             else
                 % 50秒以降: 左旋回入力
-                inputs.delta_L = 0.2;
+                inputs.delta_L = 1;
                 obj.phase = 2; % Phase 2: 左旋回
             end
         end

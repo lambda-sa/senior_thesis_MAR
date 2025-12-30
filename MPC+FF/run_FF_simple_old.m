@@ -3,7 +3,7 @@
 clear; clc; close all;
 
 %% --- 1. 設定 ---
-excelFileName = 'parafoil_parameters_SRC.xlsx';
+excelFileName = 'parafoil_parameters_ref.xlsx';
 wind_vector_2d = [0; 0];  % テスト用に風は無風推奨
 % wind_vector_2d = [3; -3]; % 必要なら風を入れる
 
@@ -18,8 +18,8 @@ end
 % テストモード設定
 % シミュレーション条件
 test_type = 'Turn';      % 'Straight' or 'Turn'
-bank_cmd  = 7.0;        % 旋回時のバンク角 [deg]
-sim_duration = 600;       % 秒
+bank_cmd  = 10.0;        % 旋回時のバンク角 [deg]
+sim_duration = 500;       % 秒
 wind_vec = [0; 0];       % 検証用は無風推奨（風を入れても計算はされます）
 
 %% 2. ミッション実行 (Physics-Based)
@@ -64,7 +64,7 @@ params.prop = prop;
 
 % (A) 6-DOF Dynamics Model
 plant = ParafoilDynamics(params);
-mapper = ParafoilControlMapper_linear(params);
+mapper = ParafoilControlMapper_linear_old(params);
 
 % トリム計算結果を初期値に使う（これがやりたかったこと）
 % Missionが計算した物理パラメータを取得
@@ -90,7 +90,7 @@ scheduler = PlannerTrackingScheduler(mission,mapper);
 engine = SimulationEngine(plant, scheduler, 0.05, sim_duration, y0);
 engine = engine.run();
 simData = engine.create_results_table();
-
+%{
 V_down_act = zeros(height(simData), 1);
 
 for i = 1:height(simData)
@@ -106,14 +106,14 @@ for i = 1:height(simData)
                      v * sin(phi) * cos(theta) + ...
                      w * cos(phi) * cos(theta);
 end
-
+%}
 %% 4. 比較プロット
 figure('Name', 'Physics-Based Simple Path Verification', 'Color', 'w', 'Position', [100,100,1000,600]);
 
 subplot(2,2,[1 3]);
 plot3(trajRef.Position(:,2), trajRef.Position(:,1), trajRef.Position(:,3), 'g--', 'LineWidth', 1.5, 'DisplayName', 'Ref (Trim)');
 hold on;
-plot3(simData.East, simData.North, -simData.Down, 'b-', 'LineWidth', 2, 'DisplayName', '6DOF');
+plot3(simData.Inertial_Y_Position, simData.Inertial_X_Position, -simData.Inertial_Z_Position, 'b-', 'LineWidth', 2, 'DisplayName', '6DOF');
 grid on; axis equal; view(3);
 xlabel('East'); ylabel('North'); zlabel('Alt');
 legend; title(['Trajectory: ' test_type]);
@@ -121,13 +121,13 @@ legend; title(['Trajectory: ' test_type]);
 subplot(2,2,2);
 plot(trajRef.Time, rad2deg(trajRef.Euler_RPY(:,1)), 'g--', 'LineWidth',1.5, 'DisplayName','Ref');
 hold on;
-plot(simData.Time, simData.phi, 'b-', 'LineWidth',1.5, 'DisplayName','6DOF');
+plot(simData.Time, simData.Roll_Angle, 'b-', 'LineWidth',1.5, 'DisplayName','6DOF');
 ylabel('Bank [deg]'); grid on; title('Bank Angle');
 
 subplot(2,2,4);
 plot(trajRef.Time, -trajRef.V_Air(:,3), 'g--', 'LineWidth',1.5, 'DisplayName','Ref');
 hold on;
-plot(simData.Time, simData.w, 'b-', 'LineWidth',1.5, 'DisplayName','6DOF w');
+plot(simData.Time, simData.Body_W_Vel, 'b-', 'LineWidth',1.5, 'DisplayName','6DOF w');
 ylabel('Sink Speed [m/s]'); grid on; title('Descent Rate (Check Trim)');
 legend;
 
@@ -141,10 +141,10 @@ plot(trajRef.Time, trajRef.V_Air(:, 3), 'g--', 'LineWidth', 2.0, 'DisplayName', 
 hold on;
 
 % 6DOFの降下速度 (計算した V_down_act)
-plot(simData.Time, V_down_act, 'b-', 'LineWidth', 1.5, 'DisplayName', '6DOF (Actual V_{down})');
+%plot(simData.Time, V_down_act, 'b-', 'LineWidth', 1.5, 'DisplayName', '6DOF (Actual V_{down})');
 
 % (参考) これまで表示していた w を点線で表示 -> 値が全然違うことがわかるはず
-plot(simData.Time, simData.w, 'r:', 'LineWidth', 1.0, 'DisplayName', '6DOF (Body w - Wrong!)');
+plot(simData.Time, simData.Body_W_Vel, 'r:', 'LineWidth', 1.0, 'DisplayName', '6DOF (Body w - Wrong!)');
 
 grid on; legend('Location', 'best');
 xlabel('Time [s]'); ylabel('Vertical Velocity [m/s] (Positive = Down)');
@@ -153,23 +153,7 @@ title('Correct Descent Rate Comparison');
 t_rk4_result = engine.TimeVector;
 y_rk4_result = engine.ResultsMatrix;
 
-% --- 結果の処理 (6_simulatorの形式) ---
-simData = table(t_rk4_result, ...
-                y_rk4_result(:, 10), y_rk4_result(:, 11), y_rk4_result(:, 12), ...
-                y_rk4_result(:, 1), y_rk4_result(:, 2), y_rk4_result(:, 3), ...
-                y_rk4_result(:, 4), y_rk4_result(:, 5), y_rk4_result(:, 6), ...
-                rad2deg(y_rk4_result(:, 7)), rad2deg(y_rk4_result(:, 8)), rad2deg(y_rk4_result(:, 9)), ...
-                engine.PhaseVector, ...
-                engine.InertialVelMatrix(:, 1), engine.InertialVelMatrix(:, 2), engine.InertialVelMatrix(:, 3), ...
-                engine.EulRateMatrix(:, 1), engine.EulRateMatrix(:, 2), engine.EulRateMatrix(:, 3), ...
-                'VariableNames', {'Time', ...
-                                 'Inertial_X_Position', 'Inertial_Y_Position', 'Inertial_Z_Position', ...
-                                 'Body_U_Vel', 'Body_V_Vel', 'Body_W_Vel', ...
-                                 'Body_P_Vel', 'Body_Q_Vel', 'Body_R_Vel', ...
-                                 'Roll_Angle', 'Pitch_Angle', 'Yaw_Angle', ...
-                                 'Phase', ...
-                                 'Inertial_Vx', 'Inertial_Vy', 'Inertial_Vz', ...
-                                 'Eul_Phi_Dot', 'Eul_Theta_Dot', 'Eul_Psi_Dot'}); % [cite: 2829-2847]
+
 
 % --- 結果のプロットと保存 (6_simulatorのプロッターを使用) ---
 PayloadPlotter.plotResults(simData, engine.ControlScheduler); % [cite: 2848]

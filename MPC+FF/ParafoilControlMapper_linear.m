@@ -140,7 +140,10 @@ classdef ParafoilControlMapper_linear < handle
             x = current_state(10); % 北
             y = current_state(11); % 東
             psi = current_state(9); % 方位角
-            
+            phi_curr = current_state(7);
+            theta_curr = current_state(8);
+            q_curr = current_state(5);
+            r_curr = current_state(6);
             
 
             delta_x = x - x_ref;
@@ -154,6 +157,8 @@ classdef ParafoilControlMapper_linear < handle
             epsi = wrapToPi(delta_psi);
 
             %% ヨーレートの指示値ψ_dotの計算
+
+            %{
             if obj.is_first
                 % 初回は前回値がないため、変化率は0とする
                 epsi_dot_raw = 0;
@@ -170,6 +175,18 @@ classdef ParafoilControlMapper_linear < handle
             obj.epsi_old = epsi;
             delta_psidot_target = obj.epsi_dot_filt;
             %delta_psidot_target = epsi_dot_raw;
+            %}
+
+            % --- 3. ★重要：数値微分を使わない「変化率」の取得 ---
+            % 現在の方位変化率 (運動学式から算出)
+            psi_dot_curr = (q_curr * sin(phi_curr) + r_curr * cos(phi_curr)) / cos(theta_curr);
+            
+            % 参照の方位変化率
+            psi_dot_ref  = (q_ref * sin(phi_ref) + r_ref * cos(phi_ref)) / cos(theta_ref);
+            
+            % e_psi の変化率 (ノイズなし)
+            epsi_dot = psi_dot_curr - psi_dot_ref;
+            delta_psidot_target = epsi_dot;
 
             %% バンク角の指示値φ_cmdの計算
             
@@ -190,8 +207,7 @@ classdef ParafoilControlMapper_linear < handle
             % 2. 状態偏差 (Delta)
 
             u_curr = current_state(1); w_curr = current_state(3);
-            phi_curr = current_state(7);
-            
+          
             du = u_curr - u_ref;
             dw = w_curr - w_ref;
             dphi = phi_curr - phi_ref;
@@ -257,7 +273,7 @@ classdef ParafoilControlMapper_linear < handle
             end
             
             %% 5. 合成
-            delta_a_total = da_ref + delta_delta_a;
+            delta_a_total = da_ref;
             
             [delta_R, delta_L] = obj.apply_mixing(delta_a_total, delta_s_bias);
         end
