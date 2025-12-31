@@ -18,7 +18,7 @@ end
 % テストモード設定
 % シミュレーション条件
 test_type = 'Turn';      % 'Straight' or 'Turn'
-bank_cmd  = 10.0;        % 旋回時のバンク角 [deg]
+bank_cmd  = 3.0;        % 旋回時のバンク角 [deg]
 sim_duration = 500;       % 秒
 wind_vec = [0; 0];       % 検証用は無風推奨（風を入れても計算はされます）
 
@@ -64,7 +64,7 @@ params.prop = prop;
 
 % (A) 6-DOF Dynamics Model
 plant = ParafoilDynamics(params);
-mapper = ParafoilControlMapper_linear_old(params);
+mapper = ParafoilControlMapper_linear_FF(params);
 
 % トリム計算結果を初期値に使う（これがやりたかったこと）
 % Missionが計算した物理パラメータを取得
