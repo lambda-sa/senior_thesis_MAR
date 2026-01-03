@@ -235,12 +235,12 @@ c_\phi s_\theta c_\psi + s_\phi s_\psi & c_\phi s_\theta s_\psi - s_\phi c_\psi 
 
 
 \begin{equation}
-\begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} = \frac{1}{m}(F_W + F_A + F_S) - S_{\omega}^B \begin{bmatrix} u \\ v \\ w \end{bmatrix} \label{eq:dynamics_trans}
+\begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} = \frac{1}{m}(F_\mathrm{W} + F_\mathrm{A} + F_\mathrm{S}) - S_{\omega}^B \begin{bmatrix} u \\ v \\ w \end{bmatrix} \label{eq:dynamics_trans}
 \end{equation}
 
 回転運動の方程式は
 \begin{equation}
-\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [I_{\mathrm{T}}]^{-1} \left\{ \bm{M}_A + \bm{S}_{CP \cdot B} \times F_A + \bm{S}_{CS \cdot B} \times F_S - S_{\omega}^B[I_{\mathrm{T}}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \label{eq:dynamics_rot}
+\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [I_{\mathrm{T}}]^{-1} \left\{ \bm{M}_A + \bm{S}_{CP \cdot B} \times F_\mathrm{A} + \bm{S}_{CS \cdot B} \times F_\mathrm{S} - S_{\omega}^B[I_{\mathrm{T}}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \label{eq:dynamics_rot}
 \end{equation}
 
 ここで，$S_{\omega}^B$ は機体軸における角速度のクロス積行列であり以下に示される．
@@ -267,47 +267,47 @@ r_z & 0 & -r_x \\
 \end{equation}
 
 \subsection{力の定義}
-式(\ref{eq:dynamics_trans})の線形運動量は，重力項 $F_W$，キャノピーとペイロードに生じる空力項（キャノピー $F_A$，ペイロード $F_S$）によって定義される．重力項は式(\ref{eq:force_gravity})で表され，全システム質量中心に生じる．
+式(\ref{eq:dynamics_trans})の線形運動量は，重力項 $F_\mathrm{W}$，キャノピーとペイロードに生じる空力項（キャノピー $F_\mathrm{A}$，ペイロード $F_\mathrm{S}$）によって定義される．重力項は式(\ref{eq:force_gravity})で表され，全システム質量中心に生じる．
 
 \begin{equation}
-F_W = [T_{\mathrm{IB}}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \label{eq:force_gravity}
+F_\mathrm{W} = [T_{\mathrm{IB}}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \label{eq:force_gravity}
 \end{equation}
 
 \subsubsection{キャノピーの空力}
-キャノピーの空力項を定義する前に，キャノピー座標系における空力速度 $[u_c, v_c, w_c]^T$ 及び角速度 $[p_c, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する．
+キャノピーの空力項を定義する前に，キャノピー座標系における空力速度 $[u_{\mathrm{c}}, v_{\mathrm{c}}, w_c]^T$ 及び角速度 $[p_{\mathrm{c}}, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する．
 
 \begin{equation}
-\begin{bmatrix} u_c \\ v_c \\ w_c \end{bmatrix} = [\bm{T}_{BC}] \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + S_{\omega}^B \begin{bmatrix} \Delta x_c \\ \Delta y_c \\ \Delta z_c \end{bmatrix} + [\bm{T}_{BC}]^T \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix} \right) - [T_{\mathrm{IB}}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:canopy_vel}
+\begin{bmatrix} u_{\mathrm{c}} \\ v_{\mathrm{c}} \\ w_{\mathrm{c}} \end{bmatrix} = [T_{\mathrm{BC}}] \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + S_{\omega}^B \begin{bmatrix} \Delta x_c \\ \Delta y_c \\ \Delta z_c \end{bmatrix} + [T_{\mathrm{BC}}]^T \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix} \right) - [T_{\mathrm{IB}}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:canopy_vel}
 \end{equation}
 
 \begin{equation}
-\begin{bmatrix} p_c \\ q_c \\ r_c \end{bmatrix} = [\bm{T}_{BC}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \label{eq:canopy_ang_vel}
+\begin{bmatrix} p_{\mathrm{c}} \\ q_{\mathrm{c}} \\ r_{\mathrm{c}} \end{bmatrix} = [T_{\mathrm{BC}}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \label{eq:canopy_ang_vel}
 \end{equation}
 
 ここで，$\Delta x_c, \Delta y_c, \Delta z_c$ は機体座標系における質量中心からキャノピー回転中心までの距離，$\Delta x_p, \Delta y_p, \Delta z_p$ はキャノピー座標系におけるキャノピー回転中心から空力中心までの距離である．
-また，$ [\bm{T}_{BC}] $ は機体座標系からキャノピー座標系への変換行列である．
+また，$ [T_{\mathrm{BC}}] $ は機体座標系からキャノピー座標系への変換行列である．
 
 \begin{equation}
-[\bm{T}_{BC}] = \begin{bmatrix}
+[T_{\mathrm{BC}}] = \begin{bmatrix}
 \cos\Gamma & 0 & -\sin\Gamma \\
 0 & 1 & 0 \\
 \sin\Gamma & 0 & \cos\Gamma
 \end{bmatrix} \label{eq:matrix_tbc}
 \end{equation}
 
-キャノピー座標系における空力角は以下で定義される．キャノピーの合成空力速度は $V_C = \sqrt{u_c^2 + v_c^2 + w_c^2}$ である．
+キャノピー座標系における空力角は以下で定義される．キャノピーの合成空力速度は $V_{\mathrm{c}} = \sqrt{u_{\mathrm{c}}^2 + v_{\mathrm{c}}^2 + w_{\mathrm{c}}^2}$ である．
 
 \begin{equation}
-\alpha = \tan^{-1} \left( \frac{w_c}{u_c} \right) \label{eq:alpha}
+\alpha = \tan^{-1} \left( \frac{w_{\mathrm{c}}}{u_{\mathrm{c}}} \right) \label{eq:alpha}
 \end{equation}
 \begin{equation}
-\beta = \sin^{-1} \left( \frac{v_c}{V_C} \right) \label{eq:beta}
+\beta = \sin^{-1} \left( \frac{v_{\mathrm{c}}}{V_{\mathrm{c}}} \right) \label{eq:beta}
 \end{equation}
 
-キャノピーに生じる空力項 $F_A$ は，キャノピーの空力座標系の原点に作用し，式(\ref{eq:force_aero})〜式(\ref{eq:coeff_cl})で表される．
+キャノピーに生じる空力項 $F_\mathrm{A}$ は，キャノピーの空力座標系の原点に作用し，式(\ref{eq:force_aero})〜式(\ref{eq:coeff_cl})で表される．
 
 \begin{equation}
-F_A = \frac{1}{2} \rho V_C^2 S_C [\bm{T}_{BC}]^T [\bm{T}_{AC}] \begin{bmatrix} -C_D \\ C_Y \beta \\ -C_L \end{bmatrix} \label{eq:force_aero}
+F_\mathrm{A} = \frac{1}{2} \rho V_{\mathrm{c}}^2 S_C [T_{\mathrm{BC}}]^T [\bm{T}_{AC}] \begin{bmatrix} -C_D \\ C_Y \beta \\ -C_L \end{bmatrix} \label{eq:force_aero}
 \end{equation}
 
 \begin{equation}
@@ -331,7 +331,7 @@ C_L = C_{L0} + C_{L\alpha}\alpha + C_{L\delta_a}\delta_a + C_{L\delta_s}\delta_s
 ペイロードに作用する空力項は形状抗力によって定義され，キャノピーと同様にペイロードにおいても大気風の要素を考慮した空力速度 $[u_S, v_S, w_S]^T$ を用いる．ペイロードの合成空力速度は $V_S = \sqrt{u_S^2 + v_S^2 + w_S^2}$ である．
 
 \begin{equation}
-F_S = -\frac{1}{2} \rho V_S S_S C_{DS} \begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} \label{eq:force_payload}
+F_\mathrm{S} = -\frac{1}{2} \rho V_S S_S C_{DS} \begin{bmatrix} u_S \\ v_S \\ w_S \end{bmatrix} \label{eq:force_payload}
 \end{equation}
 
 \begin{equation}
@@ -339,22 +339,22 @@ F_S = -\frac{1}{2} \rho V_S S_S C_{DS} \begin{bmatrix} u_S \\ v_S \\ w_S \end{bm
 \end{equation}
 
 \subsection{モーメントの定義}
-式(\ref{eq:dynamics_rot})の角運動量は，質量中心に生じるモーメント $\bm{M}_A$，キャノピーとペイロードに生じる空力モーメント（キャノピー $\bm{S}_{CP \cdot B} \times F_A$，ペイロード $\bm{S}_{CS \cdot B} \times F_S$）によって定義される．質量中心に生じるモーメント $\bm{M}_A$ は式(\ref{eq:moment_aero})で表される．
+式(\ref{eq:dynamics_rot})の角運動量は，質量中心に生じるモーメント $\bm{M}_A$，キャノピーとペイロードに生じる空力モーメント（キャノピー $\bm{S}_{CP \cdot B} \times F_\mathrm{A}$，ペイロード $\bm{S}_{CS \cdot B} \times F_\mathrm{S}$）によって定義される．質量中心に生じるモーメント $\bm{M}_A$ は式(\ref{eq:moment_aero})で表される．
 
 \begin{equation}
-\bm{M}_A = \frac{1}{2} \rho V_C^2 S_C [\bm{T}_{BC}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
+\bm{M}_A = \frac{1}{2} \rho V_{\mathrm{c}}^2 S_C [T_{\mathrm{BC}}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
 \end{equation}
 
 \begin{equation}
-C_l = C_{l\phi}\phi + C_{lp} \frac{p_c b}{2V_C} + C_{l\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_roll}
+C_l = C_{l\phi}\phi + C_{lp} \frac{p_{\mathrm{c}} b}{2V_{\mathrm{c}}} + C_{l\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_roll}
 \end{equation}
 
 \begin{equation}
-C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_C} \label{eq:coeff_pitch}
+C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_{\mathrm{c}}} \label{eq:coeff_pitch}
 \end{equation}
 
 \begin{equation}
-C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_yaw}
+C_n = C_{nr} \frac{r_c b}{2V_{\mathrm{c}}} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_yaw}
 \end{equation}
 ここで $d$ はブレーキラインの作用点間距離，$b$ はスパンである．
 
@@ -384,9 +384,22 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 % 第2章 軌道計画 (Trajectory Planning)
 % =========================================
 \section{軌道計画}
-本章では，パラフォイルが目標地点へ到達するための軌道生成アルゴリズムについて述べる．エネルギー管理の観点から独立変数を高度に変換し，幾何学的な最短経路問題（Dubins Path）を用いて基準軌道を生成する手法を採用する．
+\subsection{アルゴリズムの概要}
+本章では，空中回収においてパラフォイルを会合点へ到達させるための軌道を計画する方法について述べる．
+パラフォイルは動力を持たないため，パラフォイルの持つエネルギーは初期高度と会合点の高度の差によって決まる．
+したがって，パラフォイルが会合点にたどり着く際には初期高度差を過不足なく消費するような軌道を設計する必要がある．
 
-\subsection{独立変数の変換と簡易運動方程式}
+
+本研究では，Brandenの研究を参考に，図に示すように3つのフェーズに分けてパラフォイルの軌道を設計した．\cite{ref_Branden}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{画像/plannning_phase_dubins.png}
+  \caption{Trajectory Planning of MAR.}
+  \label{fig:para_traj_plan}
+\end{figure}
+
+
+\subsection{軌道計画で使われる簡易的な運動モデル}
 パラフォイルの状態ベクトルを $\mathbf{x} = [x, y, \psi, h]^T$ とし，対気速度 $V$，飛行経路角 $\gamma$（降下角），旋回半径 $R$ を用いると，時間 $t$ に関する簡易運動方程式は以下のように記述される．
 \begin{equation}
     \dot{x} = V \cos \gamma \cos \psi, \quad \dot{y} = V \cos \gamma \sin \psi, \quad \dot{\psi} = \frac{V \cos \gamma}{R}, \quad \dot{h} = V \sin \gamma
@@ -423,6 +436,12 @@ $d\tau = -\dot{h} dt = -V \sin \gamma dt$ より，高度微分形式の運動�
 \end{align}
 
 \subsubsection{各モードの経路長計算}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{画像/Branden_Dubins_paths.jpeg}
+  \caption{Three of the six Dubins paths. \cite{ref_Branden}}
+  \label{fig:dubins_type}
+\end{figure}
 正規化された空間において，経路は「第1旋回区間（長さ $t$）」「直線区間（長さ $p$）」「第2旋回区間（長さ $q$）」の3要素で構成される．これらはすべて無次元化された長さ（角度）である．
 主要な4つのCSC（Curve-Straight-Curve）モードにおける構成要素は以下の通り計算される．なお，計算結果が実数解を持たない（ルートの中が負になる）場合，そのモードは幾何学的に成立しない．
 
@@ -944,5 +963,6 @@ Lake Elsinore, CA, AIAA SPACE 2008 Conference \& Exposition % ほんとはand→
 its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001, from
 <https://www.nasa.gov/image-detail/amf-ec01-0339-146/>, (参照日2024年1月2日)
 \bibitem[川口,2023]{ref_kawa}川口康太，複数の風情報を用いたパラフォイル回収システムの誘導性能評価，(2023年)，修士論文
+\bibitem[Branden,2009]{ref_Branden}In-flight trajectory planning and guidance for autonomous parafoils，Branden J. LacyBranden James Rademacher, Ph.D. Dissertation, University of Minnesota(2009)
 \end{thebibliography}
 \end{document}
