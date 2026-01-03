@@ -15,8 +15,7 @@
 %\usepackage{comment}
 % Document margins
 \usepackage[a4paper, left=25mm, right=10mm, top=25mm, bottom=15mm]{geometry}
-% ▼▼▼ 追加設定: 式番号を (セクション番号.式番号) の形式にする ▼▼▼
-\numberwithin{equation}{section}
+
 % ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 \setlength{\mathindent}{2em}
 % Line spacing
@@ -43,16 +42,42 @@
 %\setcounter{section}{-1}
 \setcounter{secnumdepth}{3}%見出しの番号をどの深さまで入れるか
 
-\renewcommand{\figurename}{Fig.}
-\renewcommand{\tablename}{Table}
+
 \makeatletter
-\renewcommand{\section}{\@startsection{section}{1}{\z@}%
-    {1.5\Cvs \@plus.5\Cdp \@minus.2\Cdp}%
-    {.5\Cvs \@plus.3\Cdp}%
-    {\reset@font\centering\Large\bfseries}}
+% 1. 番号の形式を「第1章」に変更
+\renewcommand{\thesection}{第\arabic{section}章}
+
+% 2. sectionの振る舞いを再定義（改ページ + 中央揃え）
+\renewcommand{\section}{%
+  \if@noskipsec \leavevmode \fi
+  \par
+  \clearpage % 新しいページから開始
+  \@startsection{section}{1}{\z@}%
+    {1.5\Cvs \@plus.5\Cdp \@minus.2\Cdp}% 見出し上のスペース
+    {.5\Cvs \@plus.3\Cdp}% 見出し下のスペース
+    {\reset@font\centering\Large\bfseries}% 中央揃え・書式
+}
+
+% 3. 番号とタイトルの間の空白を調整（必要に応じて）
+% デフォルトのままだと「第1章タイトル」と密着してしまう場合があります
+\def\@seccntformat#1{\csname the#1\endcsname\quad} 
 \makeatother
 
+% --- 数式番号の修正 ---
+\numberwithin{equation}{section} % 節ごとにリセット
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}} % 「節番号.式番号」に固定
 
+% --- （参考）図・表も同様に修正する場合 ---
+\renewcommand{\figurename}{Fig.}
+\renewcommand{\tablename}{Table}
+
+\renewcommand{\thefigure}{\arabic{section}.\arabic{figure}}
+\renewcommand{\thetable}{\arabic{section}.\arabic{table}}
+
+%\usepackage[style=authoryear, backend=biber]{biblatex}
+\makeatletter
+\renewcommand{\@cite}[2]{({#1\if@tempswa , #2\fi})}
+\makeatother
 %表紙用の大きなフォントの定義
 \def\HUGE{\fontsize{18pt}{22pt}\selectfont}
 
@@ -61,14 +86,14 @@
 \begin{titlepage}
 \begin{center}
 \vspace*{8\baselineskip}
-2025年度
+2025年度卒業論文
 \vspace*{2\baselineskip}
 
 \HUGE
-パラフォイルの空中回収における風の影響下での誘導則に関する研究
+パラフォイルの空中回収における\\風の影響下での誘導則に関する研究
 \vspace*{9\baselineskip}
 
-2025年8月
+2026年2月
 \vspace*{2\baselineskip}
 
 東京理科大学創域理工学部機械航空宇宙工学科
@@ -94,13 +119,13 @@
 \subsection{研究背景}
 %近年，宇宙開発の分野において，安全かつ効率的な宇宙飛行士の地球帰還手段の確立が求められている．特に，緊急時における迅速な帰還能力は，宇宙ミッションの成功と宇宙飛行士の安全確保に不可欠である．このような背景から，パラフォイルを用いた宇宙飛行士の地球帰還システムが注目されている．パラフォイルは，従来のパラシュートに比べて高い制御性と滑空性能を有しており，精密な着陸地点への誘導が可能である．そのため，パラフォイルを活用した帰還システムは，宇宙飛行士の安全性向上とミッション成功率の向上に寄与すると期待されている．本研究では，パラフォイルを用いた宇宙飛行士の地球帰還システムの設計と最適化を目的とし，その性能評価と実用化に向けた課題解決を目指す．
 
-近年，宇宙開発の分野において，パラフォイルを展開して降下するペイロードをヘリコプターで捕獲する空中回収という方式の研究が行われている．ペイロードはパラフォイルを展開して地上や水上に落下させる方式が一般的であるが，これらの方式は着陸または着水時にペイロードに大きな衝撃が加わる上，
-空中回収はGenesisのサンプルリターンミッションなどで採用されており，太陽風などの衝撃に弱い物体を地球に持ち帰る手段として有効である．
+宇宙開発の分野において，パラフォイルを展開して降下するペイロードをヘリコプターで捕獲する空中回収という方式の研究が行われている．ペイロードの回収では，パラフォイルを展開して地上や水上に落下させる方式が一般的であるが，これらの方式は着陸または着水時にペイロードに大きな衝撃が加わる上，落下したペイロードを回収するのに時間がかかる．
+空中回収はヘリコプターを用いてペイロードを空中で捕獲する方式であり，ペイロードに衝撃を与えずに迅速に回収できる利点があるため，Genesisのサンプルリターンミッションなどで採用されており，太陽風などの衝撃に弱い物体を地球に持ち帰る手段として有効である．
 
 \subsection{先行研究}
 \subsubsection{3GMAR(3rd Generation Mid-Air Retrieval )の手順}
 空中回収において，ヘリコプターとパラフォイルが安定した会合を行うため，会合時の衝撃荷重及び相対速度の低減及び空中回収に適したパラフォイルの種類の研究が行われてきた．
-Deanらは，3GMAR(3rd Generation Mid-Air Retrieval )という空中回収の方式を提案した．3GMARの手順は以下の通りである(図(\ref{fig:para_real}))．
+Deanらは，3GMAR(3rd Generation Mid-Air Retrieval )という空中回収の方式を提案した．3GMARの手順を図(\ref{fig:para_real})に示す．
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.8\linewidth]{画像/3GMARの概念図.jpg}
@@ -113,16 +138,26 @@ Deanらは，3GMAR(3rd Generation Mid-Air Retrieval )という空中回収の方
 会合段階では，ヘリコプターはパラフォイルに向かって徐々に接近し，ドローグパラシュートにフックをかける．
 引き上げ段階では，ヘリコプターはドローグパラシュートを引き上げる．この際，係合ラインに張力がかかり，パラフォイルのサスペンションラインに取り付けられた「スライダー」と呼ばれる部品が引き上げられキャノピーが収縮する．これにより，パラフォイルの揚力が減少し，ヘリコプターへの負荷が軽減される．\\
 3GMARでは，パラフォイルがヘリコプターの前方を滑空するため，ヘリコプターのパイロットがパラフォイルを追跡するのが容易である上，ヘリコプターとパラフォイルの相対速度が小さいため，会合時の衝撃荷重が低減される．これにより，安全かつ効率的な空中回収が可能となる．
-その一方，3GMARではパラフォイルが自律制御を行うことは想定されていないため，風などの外乱やパラフォイルの初期値のずれによりパラフォイルがヘリコプターから離れた方向に移動する可能性がある．したがって空中回収の成功は、ヘリコプターの性能及びパイロットの技術に依存している．(\cite{ref_mar_past_pre})
+その一方，3GMARではパラフォイルが自律制御を行うことは想定されていないため，風などの外乱やパラフォイルの初期値のずれによりパラフォイルがヘリコプターから離れた方向に移動する可能性がある．したがって空中回収の成功は、ヘリコプターの性能及びパイロットの技術に依存している．\cite{ref_mar_past_pre}
 
-\subsubsection{空中回収におけるパラフォイルの自律誘導}
-Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画するにあたって，パラフォイルに自律誘導システムを導入することを検討した．ペイロードの内部にGPSを搭載することで，パラフォイル展開後にペイロードの位置情報を取得し，目標地点に向かって自律的に誘導することを目的としている．
-このシステムは実証されておらず，(\cite{ref_mar_atlas})
+%\subsubsection{空中回収におけるパラフォイルの自律誘導}
+%Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画するにあたって，自律誘導システムを持つMegaflyというパラフォイルを使用することを検討した．Megaflyはペイロードの内部にGPSを搭載することで，パラフォイル展開後にペイロードの位置情報を取得し，目標地点に向かって自律的に誘導することを目的としている．
+%\begin{figure}[H]
+%  \centering
+%  \includegraphics[width=0.8\linewidth]{画像/Mari_traj_plan.png}
+ % \caption{Anticipated impact ellipses for the Atlas 401 ATS.\cite{ref_mar_atlas}}
+ % \label{fig:3gMAR}
+%\end{figure}
+%Megaflyを用いた空中回収の例は検討されておらず，\cite{ref_mar_atlas}
 \subsection{研究目的}
+空中回収においては，ヘリコプターが回収しやすいようパラフォイルの軌道を設計し，計画された軌道にパラフォイルを誘導する必要がある．
+本研究では，風の影響下でのパラフォイルの誘導性能を評価するため，パラフォイルの6自由度モデルを構築し，空中回収に適した軌道設計及び誘導則の開発を目的とする．
+
+
 
 \section{パラフォイルモデル}
 \subsection{パラフォイルの仕組み}
-この節では，パラフォイルの基本的な仕組みについて説明する．パラフォイルは，展開可能な柔軟構造を有し，端部の形状を変形させることで姿勢の変更及び軌道制御が可能な落下傘を指す(図(\ref{fig:para_real}))．
+この節では，パラフォイルの基本的な仕組みについて説明する．パラフォイルは，展開可能な柔軟構造を有し，端部の形状を変形させることで姿勢の変更及び軌道制御が可能な落下傘を指す．パラフォイルの全体像を図(\ref{fig:para_real})に示す．
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.6\linewidth]{画像/パラフォイル_実機正面図.jpeg}
@@ -139,7 +174,7 @@ Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画
 実際のパラフォイルの運動では，テザーで接続されたキャノピーとペイロードが相互に干渉しながら運動するので，パラフォイルのモデルを構築するにあたり，キャノピーとペイロードの拘束条件によって自由度が異なる．
 キャノピーとペイロードが単一の剛体として接続された6自由度モデルは誘導・航法・制御(GNC: Guidance, Navigation, and Control)システムのダイナミクスを表現する上で最小次数のモデルである．
 8-9自由度の高次のモデルではキャノピーとペイロードの相対運動を表現でき，揺れに対する安定性の応答の解析に使用できる一方，GNCシステムの解析を行う上で解析が複雑になる．
-本研究では，空中回収のために計画された軌道へのパラフォイルの誘導性能を評価することが目的であるため，川口の研究を参考に6自由度モデルを採用した．(\cite{ref_kawa})
+本研究では，空中回収のために計画された軌道へのパラフォイルの誘導性能を評価することが目的であるため，川口の研究を参考に6自由度モデルを採用した．\cite{ref_kawa}
 %川口論文の6DoFモデルの図を貼り付ける
 
 \subsubsection{座標系とモデルの定義}
@@ -147,12 +182,19 @@ Mariらは，ATLAS Vに搭載されたRD-180エンジンの空中回収を計画
 本モデルは以下の4つの座標系を持つ．
 
 \begin{itemize}
-    \item 慣性座標系 ($O_I-X_I Y_I Z_I$): 原点 $O_I$ は地上の任意の点，$X_I$ 軸は北，$Y_I$ 軸は東，$Z_I$ 軸は下方向とする．
-    \item 機体座標系 ($O_B-X_B Y_B Z_B$): 原点 $O_B$ は全システムの質量中心，$X_B$ 軸は機体正面，$X_B-Y_B$ 面はシステム対称面とする．
-    \item キャノピー座標系 ($O_C-X_C Y_C Z_C$): 原点 $O_C$ はキャノピーの回転中心位置，$X_C$ 軸はキャノピー正面，$X_C-Z_C$ 面はキャノピー対称面とする．
-    \item 空力座標系 ($O_A-X_A Y_A Z_A$): 原点 $O_A$ はキャノピーの空力中心位置（前縁から $0.25\bar{c}$），$X_A$ 軸はキャノピー正面，$X_A-Z_A$ 面はキャノピー対称面とする．
+    \item 慣性座標系 ($\mathrm{O_I}-\mathrm{X_I} \mathrm{Y_I} \mathrm{Z_I}$): 原点 $\mathrm{O_I}$ は地上の任意の点，$\mathrm{X_I}$ 軸は北，$\mathrm{Y_I}$ 軸は東，$\mathrm{Z_I}$ 軸は下方向とする．
+    \item 機体座標系 ($\mathrm{O_B}-\mathrm{X_B} \mathrm{Y_B} \mathrm{Z_B}$): 原点 $\mathrm{O_B}$ は全システムの質量中心，$\mathrm{X_B}$ 軸は機体正面，$\mathrm{X_B}-\mathrm{Y_B}$ 面はシステム対称面とする．
+    \item キャノピー座標系 ($\mathrm{O_C}-\mathrm{X_C} \mathrm{Y_C} \mathrm{Z_C}$): 原点 $\mathrm{O_C}$ はキャノピーの回転中心位置，$\mathrm{X_C}$ 軸はキャノピー正面，$\mathrm{X_C}-\mathrm{Z_C}$ 面はキャノピー対称面とする．
+    \item 空力座標系 ($\mathrm{O_A}-\mathrm{X_A} \mathrm{Y_A} \mathrm{Z_A}$): 原点 $\mathrm{O_A}$ はキャノピーの空力中心位置（前縁から $0.25\bar{c}$），$\mathrm{X_A}$ 軸はキャノピー正面，$\mathrm{X_A}-\mathrm{Z_A}$ 面はキャノピー対称面とする．
 \end{itemize}
 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\linewidth]{画像/川口_座標系.jpeg}
+  \caption{Parafoil Model. \cite{ref_kawa}}
+  \label{fig:para_kawa}
+\end{figure}
 また，運動を表現するにあたりペイロードの質量中心に点 $S$ を定義する．
 このシステムでは，全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される．
 
@@ -326,6 +368,8 @@ C_n = C_{nr} \frac{r_c b}{2V_C} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:co
 \end{equation}
 
 以上を全システム中心で合計することで，式(\ref{eq:dynamics_trans})，(\ref{eq:dynamics_rot})が構成される．
+
+%妥当性の検証はここで行う？
 
 
 % =========================================
@@ -885,8 +929,7 @@ Softmin関数 $\delta_s = -k^{-1}\ln(e^{-k\delta_R} + e^{-k\delta_L})$ の偏微
 直接的な制御入力を持たないため，全て $0$ である．
 
 \begin{thebibliography}{1}
-%\bibitem{ref1} 李家 賢一，航空機設計法 実践編
-%- 小型ジェット旅客機からハイブリッド電動航空機の概念設計まで -，pp. 14―32.
+
 \bibitem[Dean,2005]{ref_mar_past_pre}The Past, Present, and Future of Mid-Air Retrieval
 Dean S. Jorgensen•, Roy A. Haggardt and Glen J. Brown Vertigo, Inc., Lake Elsinore, California 92531, 18th AIM Aerodynamic DeceleratorS ystems Technology Conference and Seminar(2005)
 \bibitem[Mari,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery
