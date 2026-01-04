@@ -386,11 +386,14 @@ C_n = C_{nr} \frac{r_c b}{2V_{\mathrm{c}}} + C_{n\delta_a}\delta_a \frac{d}{b} \
 \section{軌道計画}
 \subsection{アルゴリズムの概要}
 本章では，空中回収においてパラフォイルを会合点へ到達させるための軌道を計画する方法について述べる．
-パラフォイルは動力を持たないため，パラフォイルの持つエネルギーは初期高度と会合点の高度の差によって決まる．
-したがって，パラフォイルが会合点にたどり着く際には初期高度差を過不足なく消費するような軌道を設計する必要がある．
+ヘリコプターがパラフォイルと協調して飛行するためには，パラフォイルが会合点において特定の高度と速度で到達する必要がある．\cite{ref_mar_past_pre}
+また，空中回収ではヘリコプターは備え付けのフックを用いてドローグパラシュートを懸架するため，ドローグパラシュートが風によって揺れずに安定するためには，パラフォイルは風上方向へ滑空しながら会合点に向かう必要がある．
+そのため，本研究ではパラフォイルが会合点において特定の高度と速度で到達し，かつ風上方向へ進入するような軌道を計画する．
+%パラフォイルは動力を持たないため，パラフォイルの持つエネルギーは初期高度と会合点の高度の差によって決まる．
+%したがって，パラフォイルが会合点にたどり着く際には初期高度差を過不足なく消費するような軌道を設計する必要がある．
 
 
-本研究では，Brandenの研究を参考に，図に示すように3つのフェーズに分けてパラフォイルの軌道を設計した．\cite{ref_Branden}
+本研究では，Brandenの研究を参考に，図に示すように3つのPhaseに分けてパラフォイルの軌道を設計した．\cite{ref_Branden}
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.8\linewidth]{画像/plannning_phase_dubins.png}
@@ -398,21 +401,54 @@ C_n = C_{nr} \frac{r_c b}{2V_{\mathrm{c}}} + C_{n\delta_a}\delta_a \frac{d}{b} \
   \label{fig:para_traj_plan}
 \end{figure}
 
+Phase1では，余分な高度の消費を行う．パラフォイルが円旋回を続けることで、会合点$P_{\mathrm{engage}}$の上空を通過することを防ぐ．
+Phase2では，次節で述べるDubinsパスを用いてパラフォイルを風上方向に進入させる．得られた最短経路に対して，必要な高度を消費するために旋回半径を調整しながら軌道を延長する．
+Phase3では，パラフォイルを会合点に向けて風上方向に直進させる．
 
 \subsection{軌道計画で使われる簡易的な運動モデル}
-パラフォイルの状態ベクトルを $\mathbf{x} = [x, y, \psi, h]^T$ とし，対気速度 $V$，飛行経路角 $\gamma$（降下角），旋回半径 $R$ を用いると，時間 $t$ に関する簡易運動方程式は以下のように記述される．
+軌道計画の段階では，パラフォイルの詳細な6自由度モデルを用いるのではなく，パラフォイルを質点とみなし，定常滑空を行うと仮定したモデルを用いて計算を行う．
+
+パラフォイルの状態ベクトルを $\mathbf{x} = [x, y, \psi, h]^T$ とし，対気速度 $V$，飛行経路角 $\gamma$（降下角），旋回半径 $R$ を用いると，時間 $t$ に関する運動方程式は
 \begin{equation}
-    \dot{x} = V \cos \gamma \cos \psi, \quad \dot{y} = V \cos \gamma \sin \psi, \quad \dot{\psi} = \frac{V \cos \gamma}{R}, \quad \dot{h} = V \sin \gamma
+    \dot{x} = V \cos \gamma \cos \psi, \quad \dot{y} = V \cos \gamma \sin \psi, \quad \dot{\psi} = \frac{V \cos \gamma}{r}, \quad \dot{h} = V \sin \gamma
 \end{equation}
-ここで，目標高度への到達を確実にするため，独立変数を時間 $t$ から消費高度 $\tau$ に変換する考察を行う．$\tau$ は飛行開始時の高度 $h_0$ からの低下分として $\tau = h_0 - h$ と定義される．
+と表される．\\
+軌道計画において，水平位置の変化と高度の変化を直接結び付けるために，独立変数を時間 $t$ から消費高度 $\tau$ に変換する．$\tau$ は飛行開始時の高度 $h_0$ からの低下分として $\tau = h_0 - h$ と定義される．
+軌道計画においては，この関係性を基礎とし，パラフォイルが水平方向に移動したときに消費される高度を計算している．
+パラフォイルが定常飛行だと仮定すると，旋回時の様子は図(\ref{fig:para_alti_EOM})に示すようになる．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{画像/para_alti_EOM.png}
+  \caption{Steady-state spiral descent of Parafoil.}
+  \label{fig:para_alti_EOM}
+\end{figure}
+
+揚抗比 $L/D$ は一定であり，飛行経路角 $\gamma$ は以下のように表される．
+\begin{equation}
+    \frac{L}{D}= \frac{V \cos \gamma}{V \sin \gamma}= \frac{1}{\tan \gamma } 
+\end{equation}
+
+
 $d\tau = -\dot{h} dt = -V \sin \gamma dt$ より，高度微分形式の運動方程式が得られる．
 \begin{equation}
-    x' = \frac{dx}{d\tau} = -\frac{\cos \psi}{\tan \gamma}, \quad y' = \frac{dy}{d\tau} = -\frac{\sin \psi}{\tan \gamma}, \quad \psi' = -\frac{1}{R \tan \gamma}
+    x' = \frac{dx}{d\tau} = \frac{L}{D}\cos \psi, \quad y' = \frac{dy}{d\tau} =  \frac{L}{D}\sin \psi, \quad \psi' =  \frac{L}{D}\frac{1}{r}
 \end{equation}
-本システムの実装においては，この関係性を基礎とし，必要な水平距離を稼ぐために必要な高度（コスト）を計算している．
 
-\subsection{Dubins経路の解析的解法}
-水平面の経路計画には，Dubins曲線を採用する．本システムでは，始点 $\bm{S}=(x_s, y_s, \psi_s)$ から終点 $\bm{E}=(x_e, y_e, \psi_e)$ への最短経路を，数値探索ではなく幾何学的な解析解として求めている．
+\subsection{Dubinsパスの解析的解法}
+\subsubsection{Dubinsパスの概要}
+ここではPhase2の軌道計画に用いられるDubinsパスについて説明する．
+軌道計画のPhase2では開始位置$P_2$と終了位置$P_3$の水平位置に加えて進行方向が指定されているため，単純な直線経路ではなく，指定された開始位置と終了位置および進行方向を満たす軌道を求める必要がある．
+Dubinsパスとは，始点と終点の位置および方位が与えられたときに，始点と終点を直進か一定曲率のカーブを組合せて結ぶ経路のことであり，最小旋回半径の制約下で最短経路を求める問題である．\cite{ref_Branden}
+図\ref{fig:dubins_concept}にDubinsパスの一例を示す．
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{画像/Dubins_concept.png}
+  \caption{Concept of Dubins path.}
+  \label{fig:dubins_concept}
+\end{figure}
+
+Dubinsパスでは，始点 $\bm{S}=(x_s, y_s, \psi_s)$ から終点 $\bm{E}=(x_e, y_e, \psi_e)$ への最短経路を，数値探索ではなく幾何学的な解析解として求めている．
 
 \subsubsection{座標変換と正規化}
 計算を簡略化するため，問題を最小旋回半径 $R$ で正規化し，始点が原点 $(0,0)$ かつ方位 $0$ となるような局所座標系へ変換する．
@@ -499,7 +535,7 @@ LSRの対称形である．
 
 \subsection{経路コストと物理的制約}
 求めた幾何学的経路長を，高度消費コストに換算する．
-%dubins経路の図が欲しい→パワポのやつ改造and流用
+%Dubinsパスの図が欲しい→パワポのやつ改造and流用
 幾何学的長さ（旋回角 $t, q$，直線長 $p$）から，消費高度としての総コスト $\tau_{path}$ は次式で求められる．
 \begin{equation}
     \tau_{path} = |R \tan \gamma (t + q) + (p \cdot R) \tan \gamma_G|
@@ -510,11 +546,10 @@ LSRの対称形である．
     R(h) = \frac{V_{\text{TAS}}(h)^2}{g \tan \phi_{\max}}
 \end{equation}
 ここで $\phi_{\max}$ は最大バンク角である．
-高高度では空気密度低下により $V_{\text{TAS}}$ が増大するため，旋回半径 $R$ も増大する．本システムでは初期高度における $R$ を基準値として採用し，物理的に破綻のない経路を生成している．
-
+高高度では空気密度低下により $V_{\text{TAS}}$ が増大するため，バンク角を固定しておくと旋回半径 $R$ も増大する．本システムでは初期高度における $R$ 一定になるように，バンク角を高度降下に応じて浅くするようにしている．
 \subsection{高度マージンと待機旋回戦略}
 \subsubsection{高度マージン $\eta$}
-利用可能な総高度を $\tau_f$（現在高度），最短Dubins経路のコストを $\tau_{min}$ とすると，高度マージン $\eta$ は以下のように定義される．
+利用可能な総高度を $\tau_f$（現在高度），最短Dubinsパスのコストを $\tau_{min}$ とすると，高度マージン $\eta$ は以下のように定義される．
 \begin{equation}
     \eta = \frac{\tau_f - \tau_{min}}{\tau_{360}}, \quad \text{where } \tau_{360} = |2\pi R \tan \gamma|
 \end{equation}
@@ -564,18 +599,21 @@ $N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大�
 \begin{equation}
     \psi_f = \text{atan2}(-W_y, -W_x)
 \end{equation}
-この $\psi_f$ をDubins経路の終端条件として与えることで，どのような風況であっても安全な着陸経路が生成される．
+この $\psi_f$ をDubinsパスの終端条件として与えることで，どのような風況であっても安全な着陸経路が生成される．
 
 % =========================================
 % 第3章 6自由度モデルの説明 (6-DOF Model)
 % =========================================
 \subsection{クロゾイド曲線適用時の軌道補正手法}
-前節で述べた風補正アルゴリズムは一般的な手法であるが，クロゾイド曲線による平滑化を適用する場合，単純な幾何学的経路長に基づく計算では不十分となる．
+前節で述べた風補正アルゴリズムでは，Dubinsパスに基づく単純な幾何学的経路長を用いて軌道計画を行っている．しかしこの方法では，直進区間と旋回区間の接続点でバンク角が瞬時に変化するため，慣性モーメントや機体の横滑りを無視できない実際のパラフォイルでは追従が難しいと考えられる．
+そのため，本システムではDubinsパスの各旋回区間に対しクロゾイド曲線を適用し，曲率及びバンク角を滑らかに遷移させる．\cite{ref_CC_Dubins}．\\
+クロゾイド曲線とは，曲率が曲線長に比例して変化する曲線であり，鉄道や道路の線形設計において，直線区間と円曲線区間を滑らかに接続するために用いられる．
+クロゾイド曲線による平滑化を適用する場合，単純な幾何学的経路長に基づく計算では不十分となる．
 これは，ロール角の遷移に伴う軌道の「膨らみ」や，バンク角に応じた沈下速度の変化により，到達時間 $t$ および到達位置に微細なズレが生じるためである．
 本システムでは，これらを解消するために「先行切り替え（Look-ahead）」と「ドライラン（Dry Run）」を組み合わせた拡張補正手法を実装している．
 
 \subsubsection{先行切り替えによる空間的補正 (Look-ahead Compensation)}
-幾何学的なDubins経路は，接点において瞬時に旋回を開始することを前提としている．しかし，実際のパラフォイルにはロールレート制限（$\dot{\phi}_{\max}$）が存在するため，接点で操作を開始すると応答遅れにより旋回外側へ逸脱（オーバーシュート）してしまう．
+幾何学的なDubinsパスは，接点において瞬時に旋回を開始することを前提としている．しかし，実際のパラフォイルにはロールレート制限（$\dot{\phi}_{\max}$）が存在するため，接点で操作を開始すると応答遅れにより旋回外側へ逸脱（オーバーシュート）してしまう．
 これを防ぐため，本手法では幾何学的な接点よりも手前で旋回を開始する空間的補正を行う．
 
 先行距離 $L_{lead}$ は，現在の対気速度 $V$ と目標バンク角 $\phi_{cmd}$ から算出される遷移所要距離に基づき決定される．
@@ -583,7 +621,7 @@ $N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大�
     L_{lead} = K_{LA} \cdot \frac{V |\phi_{cmd}|}{\dot{\phi}_{\max}}
 \end{equation}
 ここで $K_{LA}$ は先行係数（通常 $0.4 \sim 0.5$）である．
-この補正により，クロゾイド曲線はDubins経路の内側をショートカットする形で描かれ，旋回終了時に幾何学的経路上の直線と滑らかに合流する．
+この補正により，クロゾイド曲線はDubinsパスの内側をショートカットする形で描かれ，旋回終了時に幾何学的経路上の直線と滑らかに合流する．
 
 \subsubsection{ドライランによる時間的補正 (Dry Run Simulation)}
 風によるドリフト量 $\bm{D} = \bm{W} \cdot t$ を正確に予測するためには，正確な飛行時間 $t$ の見積もりが不可欠である．
@@ -592,7 +630,7 @@ $N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大�
 そこで，風補正ループの内部において，以下の手順で物理シミュレーション（ドライラン）を実行する．
 
 \begin{enumerate}
-    \item \textbf{幾何学的解の導出}: 現在の目標点に基づき，Dubins経路（$L_{geom}$）を算出する．
+    \item \textbf{幾何学的解の導出}: 現在の目標点に基づき，Dubinsパス（$L_{geom}$）を算出する．
     \item \textbf{高速物理積分}: $L_{lead}$ を適用したクロゾイド軌道を生成し，数値積分によって終端までの正確な所要時間 $t_{actual}$ を計測する．
     \item \textbf{ドリフト更新}: 計測された $t_{actual}$ を用いて風によるドリフト量を再計算する．
     \[ \bm{D}_{new} = \bm{W} \cdot t_{actual} \]
@@ -949,9 +987,9 @@ Softmin関数 $\delta_s = -k^{-1}\ln(e^{-k\delta_R} + e^{-k\delta_L})$ の偏微
 
 \begin{thebibliography}{1}
 
-\bibitem[Dean,2005]{ref_mar_past_pre}The Past, Present, and Future of Mid-Air Retrieval
+\bibitem[Dean他,2005]{ref_mar_past_pre}The Past, Present, and Future of Mid-Air Retrieval
 Dean S. Jorgensen•, Roy A. Haggardt and Glen J. Brown Vertigo, Inc., Lake Elsinore, California 92531, 18th AIM Aerodynamic DeceleratorS ystems Technology Conference and Seminar(2005)
-\bibitem[Mari,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery
+\bibitem[Mari他,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery
 Mari Gravlee*, Bernard Kutter†, Frank Zegler‡, Brooke Mosley§
 United Launch Alliance
 Denver, CO
@@ -964,5 +1002,6 @@ its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, 
 <https://www.nasa.gov/image-detail/amf-ec01-0339-146/>, (参照日2024年1月2日)
 \bibitem[川口,2023]{ref_kawa}川口康太，複数の風情報を用いたパラフォイル回収システムの誘導性能評価，(2023年)，修士論文
 \bibitem[Branden,2009]{ref_Branden}In-flight trajectory planning and guidance for autonomous parafoils，Branden J. LacyBranden James Rademacher, Ph.D. Dissertation, University of Minnesota(2009)
+\bibitem[Thierry他，2004]{ref_CC_Dubins}From Reeds and Shepp’s to Continuous-Curvature Paths， Thierry Fraichard ，Alexis Scheuer，IEEE TRANSACTIONS ON ROBOTICS, VOL. 20, NO. 6, DECEMBER 2004 (2004)
 \end{thebibliography}
 \end{document}
