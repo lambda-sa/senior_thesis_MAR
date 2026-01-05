@@ -474,7 +474,7 @@ Dubins Pathでは，始点 $\bm{S}=(x_s, y_s, \psi_s)$ から終点 $\bm{E}=(x_e
 \subsubsection{各モードの経路長計算}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\linewidth]{画像/Branden_Dubins_paths.jpeg}
+  \includegraphics[width=0.9\linewidth]{画像/Branden_Dubins_paths.jpeg}
   \caption{Three of the six Dubins paths. \cite{ref_Branden}}
   \label{fig:dubins_type}
 \end{figure}
@@ -549,21 +549,18 @@ LSRの対称形であるRSL (Right-Straight-Left)の式は
 \end{equation}
 ここで $\phi_{\max}$ は最大バンク角である．
 高高度では空気密度低下により $V_{\text{TAS}}$ が増大するため，バンク角を固定しておくと旋回半径 $R$ も増大する．本システムでは初期高度における $R$ 一定になるように，バンク角を高度降下に応じて浅くするようにしている．
-\subsection{高度マージンと待機旋回戦略}
+\subsection{Phase1での旋回回数の計算}
 \subsubsection{高度マージン $\eta$}
-利用可能な総高度を $\tau_f$（現在高度），最短Dubins Pathのコストを $\tau_{min}$ とすると，高度マージン $\eta$ は以下のように定義される．
-\begin{equation}
-    \eta = \frac{\tau_f - \tau_{min}}{\tau_{360}}, \quad \text{where } \tau_{360} = |2\pi R \tan \gamma|
-\end{equation}
-$\eta$ は「あと何周旋回できる余裕があるか」を意味する指標である．
+%利用可能な総高度を $\tau_f$（現在高度），最短Dubins Pathのコストを $\tau_{min}$ とすると，高度マージン $\eta$ は以下のように定義される．
 
-\subsubsection{Loiter（待機旋回）による調整}
-本システムでは，パラフォイルの操作性（半径 $R$ を連続的に変化させることの難しさ）を考慮し，修正ダビンズ経路（半径拡大）の代わりに，**整数回の待機旋回（Loiter）**を採用している．
+%$\eta$ は「あと何周旋回できる余裕があるか」を意味する指標である．
+
+Phase1では，パラフォイルの高度が会合点からずれないように，余剰高度を消費するための旋回回数を計算する．
+Phase1でのパラフォイルの旋回回数をが$\eta$，すべてのPhaseでのパラフォイルでの消費高度を$\tau_{total}$とすると，
 \begin{equation}
-    N_{orbit} = \lfloor \eta \rfloor
+    \tau_{total} = \tau_{2→3} +\tau_{3→\mathrm{glide}} +\eta \cdot 2 \pi R \tan \gamma
 \end{equation}
-$N_{orbit}$ 回の旋回を初期位置で行うことで，余剰高度の大半を消費する．
-なお，$\eta$ の小数部分（端数）に相当する高度誤差や，風によるドリフト誤差については，次節の反復補正によって吸収する．
+となる．このとき$\eta$は，初期高度差と$\tau_{total}$が等しくなるように計算される．
 
 \subsection{反復法による風外乱補正 (Iterative Wind Correction)}
 風がある場合，対地座標系における位置 $\bm{P}_g$ は，対気座標系における位置 $\bm{P}_a$ と風速ベクトル $\bm{W}$ を用いて記述される．
