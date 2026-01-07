@@ -6,9 +6,9 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
     %   data.dubins.x = [] に変更。これにより親クラスでのドットアクセスエラーを回避。
     
     properties
-        MaxRollRate = 10.0;     % [deg/s]
+        MaxRollRate = 0.5;     % [deg/s]
         LookAheadFactor = 0.5;  % 先行係数
-        RunUpDistance = 30.0;   % 助走距離 [m]
+        RunUpDistance = 0.0;   % 助走距離 [m]
         FineStepMultiplier = 5; % 積分精度
         
         ResultDataWind   % 対地データ

@@ -15,7 +15,7 @@ classdef ParafoilControlMapper_linear_FF < handle
         dt = 0.05;
 
         % --- 追加: バンク角遅れ補償用 ---
-        tau_phi =25;         % 機体のロール応答時定数 [s] (要調整)
+        tau_phi =10;         % 機体のロール応答時定数 [s] (要調整)
         %da_ref_old = 0;       % 微分計算用の前回値
         phi_cmd_old = 0;       % 微分計算用の前回値   
 
@@ -100,7 +100,7 @@ classdef ParafoilControlMapper_linear_FF < handle
             
             % ★ 物理的な一次遅れ T (tau_phi) を代入して進ませる
             % この phi_leaded が「遅れがない場合に、今すぐ出すべきバンク指令」になる
-            phi_cmd = phi_ref -obj.tau_phi * dot_phi_cmd;
+            phi_cmd = phi_ref +obj.tau_phi * dot_phi_cmd;
 
              %% 1. 参照状態の展開 (u, w を含む)
             if isstruct(ref_state)
@@ -214,15 +214,15 @@ classdef ParafoilControlMapper_linear_FF < handle
             if abs(N_da) < 1e-9
                 delta_delta_a = 0;
             else
-                %term_vel = N_u * du + N_w * dw;
-                term_vel =0;
+                term_vel = N_u * du + N_w * dw;
+                %term_vel =0;
                 term_phi = S_phi * dphi;
                 delta_delta_a = - (1 / N_da) * (term_vel + term_phi);
             end
             
 
             % 5. 合成
-            delta_a_total = da_ref + delta_delta_a;
+            delta_a_total = da_ref+delta_delta_a ;
             
             [delta_R, delta_L] = obj.apply_mixing(delta_a_total, delta_s_bias);
         end

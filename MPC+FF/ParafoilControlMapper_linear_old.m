@@ -65,7 +65,7 @@ classdef ParafoilControlMapper_linear_old < handle
             g = 9.81; 
             if V_ref < 1.0, V_ref = 1.0; end
             K_dyn = (g / (V_ref^2)) * cos(theta_ref);
-            delta_a = obj.Yaw_Factor * K_dyn * sin(phi_ref);
+            delta_a = obj.Yaw_Factor * K_dyn * tan(phi_ref);
             [delta_R, delta_L] = obj.apply_mixing(delta_a, delta_s_bias);
         end
         
@@ -133,7 +133,10 @@ classdef ParafoilControlMapper_linear_old < handle
             du = u_curr - u_ref;
             dw = w_curr - w_ref;
             dphi = phi_curr - phi_ref;
-            
+            %% 合わせる定数
+            %K= 0.029;
+             K = 0;
+
             % 3. モーメント感度係数の計算
             p = obj.Params;
             S = p.S_c; b = p.prop.b;
@@ -144,7 +147,7 @@ classdef ParafoilControlMapper_linear_old < handle
             % N = (1/4 rho S b^2 Cn_r) * V * r  + (1/2 rho S b Cn_da) * V^2 * da
             
             K_damp = 0.25 * rho * S * b^2 * p.C_n_r;       % V*r の係数
-            K_ctl  = 0.5  * rho * S /p.d  * p.C_n_delta_a; % V^2*da の係数
+            K_ctl  = 0.5  * rho * S*b /p.d  * p.C_n_delta_a; % V^2*da の係数
             
             % (A) 速度感度項 dN/du, dN/dw
             % dN/dV = K_damp * r + 2 * K_ctl * V * da
@@ -170,7 +173,7 @@ classdef ParafoilControlMapper_linear_old < handle
                 p_ref = -psi_dot * sin(theta_ref);
             end
             
-            N_q = (Ixx - Iyy) * p_ref;
+            N_q = (Iyy - Ixx) * p_ref;
             
             % N_phi (Gravity term) -> Ixz=0 なので Yaw には直接効かない
             N_phi = 0;
@@ -196,7 +199,7 @@ classdef ParafoilControlMapper_linear_old < handle
             
 
             % 5. 合成
-            delta_a_total = da_ref + delta_delta_a;
+            delta_a_total = da_ref+ delta_delta_a + K*dphi ;
             
             [delta_R, delta_L] = obj.apply_mixing(delta_a_total, delta_s_bias);
         end
