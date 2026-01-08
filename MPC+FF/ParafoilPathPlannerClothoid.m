@@ -35,11 +35,12 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
             rho_st = obj.AtmoModel.get_density(max(0, curr.z/1000));
             data.V_start = V0 * sqrt(rho0 / rho_st);
             
-            max_dkappa_ds = (9.80665 * deg2rad(obj.MaxRollRate)) / V0^2;
+            max_dkappa_ds = (9.80665 * deg2rad(obj.MaxRollRate)) / V0^2;%dκ/dsの最大値　1m進むごとに，どれくらい曲率を変えていいか
             k_loiter = (strcmp(l_dir, 'L') * 1 + strcmp(l_dir, 'R') * -1) / R;
             current_kappa = 0;
             
             % --- Phase -1: Run-up ---
+            %空配列を回避したい→最初から正しい構造体フォーマット
             rx=[curr.x]; ry=[curr.y]; rz=[curr.z]; rt=[current_time]; rpsi=[curr.yaw];
             dist_run = 0;
             while dist_run < obj.RunUpDistance
@@ -49,7 +50,7 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
             end
             data.runup.x=rx; data.runup.y=ry; data.runup.z=rz; data.runup.t=rt; data.runup.psi=rpsi;
             
-            % --- Phase 0: Entry ---
+            % --- Phase 0: Entry ---　滑空→Loiterの遷移区間
             ex=[]; ey=[]; ez=[]; et=[]; epsi=[];
             while abs(current_kappa - k_loiter) > 1e-6
                 % ★修正1: 異常終了時のデータ構造を維持する
@@ -69,9 +70,9 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
             end
             data.entry.x=ex; data.entry.y=ey; data.entry.z=ez; data.entry.t=et; data.entry.psi=epsi;
             
-            % --- Phase 2 (Dry Run) ---
+            % --- Phase 2 (Dry Run) --- 一回リハーサルで走らせてみる
             psi_land = deg2rad(land_deg);
-            fix_x = t3d(1) - Lf*cos(psi_land); fix_y = t3d(2) - Lf*sin(psi_land);
+            fix_x = t3d(1) - Lf*cos(psi_land); fix_y = t3d(2) - Lf*sin(psi_land);%風のオフセットあり(一応)での目標点
             
             [~, ~, ~, mode, lengths] = obj.dubins_solve(...
                 [curr.x, curr.y, mod(curr.yaw, 2*pi)], [fix_x, fix_y, psi_land], 1/R, step, d_dir);
@@ -95,7 +96,7 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
             tan_phi = abs(current_kappa) * V_TAS^2 / g_ref;
             dz_ds_loiter = abs(tan_g_str / (1 / sqrt(1 + tan_phi^2)));
             
-            if z_to_burn < -10, req_loiter_dist = 0; else, req_loiter_dist = z_to_burn / dz_ds_loiter; end
+            if z_to_burn < -10, req_loiter_dist = 0; else, req_loiter_dist = z_to_burn / dz_ds_loiter; end %余剰高度の算出
             
             % --- Phase 1: Loiter ---
             lx=[]; ly=[]; lz=[]; lt=[]; lpsi=[];
@@ -115,7 +116,7 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
             end
             data.loiter.x=lx; data.loiter.y=ly; data.loiter.z=lz; data.loiter.t=lt; data.loiter.psi=lpsi;
 
-            % --- Phase 2: Dubins Path (Replan) ---
+            % --- Phase 2: Dubins Path (Replan) ---　高度消費が終わったタイミングで，本番の軌道を求める
             [~, ~, ~, mode, lengths] = obj.dubins_solve(...
                 [curr.x, curr.y, mod(curr.yaw, 2*pi)], [fix_x, fix_y, psi_land], 1/R, step, d_dir);
              
@@ -125,7 +126,7 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
                  data.dubins.x=[]; data.final.x=[]; 
                  return; 
              end
-
+            %Dubinsにクロゾイドを追加する
             [D_res, final_state] = obj.run_dubins_integration(...
                  curr, current_time, current_kappa, mode, lengths, step, V0, rho0, g_ref, tan_g_str, R, max_dkappa_ds);
              
@@ -149,25 +150,32 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
         end
         
         % =========================================================
-        % Dubins積分制御 (Safe Look-ahead Logic)
+        % Dubins積分制御 (Safe Look-ahead Logic)　
         % =========================================================
         function [Data, EndState] = run_dubins_integration(obj, start_curr, start_time, start_kappa, mode, lengths, step, V0, rho0, g_ref, tan_g_str, R, max_dkappa_ds)
             curr = start_curr; current_time = start_time; current_kappa = start_kappa;
             dx=[]; dy=[]; dz=[]; dt=[]; dpsi=[];
             dx(1)=curr.x; dy(1)=curr.y; dz(1)=curr.z; dt(1)=current_time; dpsi(1)=curr.yaw;
             
-            est_bank = atan(V0^2 / (g_ref * R));
+            est_bank = atan(V0^2 / (g_ref * R));%0.5*理論的な先行距離…(速度*バンク角)/ロールレート
             theoretical_lead = (V0 * est_bank) / deg2rad(obj.MaxRollRate) * obj.LookAheadFactor;
             
-            total_len = sum(lengths); dist_accum = 0; seg_idx = 1; dist_in_seg = 0;
+            total_len = sum(lengths); dist_accum = 0; seg_idx = 1; dist_in_seg = 0;%安全装置:セグメント長より長くならないように
             
             while dist_accum < total_len
                 cur_len = lengths(seg_idx); cur_m = mode{seg_idx};
                 if seg_idx < 3, nxt_m = mode{seg_idx+1}; else, nxt_m = 'F'; end
                 base_k = obj.char2kappa(cur_m, R); next_k = obj.char2kappa(nxt_m, R);
-                
-                L_lead = min(theoretical_lead, cur_len * 0.45);
-                if (cur_len - dist_in_seg) < L_lead, target_k = next_k; else, target_k = base_k; end
+
+                %L_lead...カーブの手前でクロゾイドの操作を開始するための距離
+                L_lead = min(theoretical_lead, cur_len * 0.45);%セグメント長より長くならないように
+
+
+                if (cur_len - dist_in_seg) < L_lead
+                    target_k = next_k;%もうすぐカーブ→次の曲率を目指そう
+                else
+                    target_k = base_k; 
+                end
                 
                 d_k = target_k - current_kappa;
                 if abs(d_k) > 1e-6
@@ -175,6 +183,7 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
                     for k=1:obj.FineStepMultiplier
                         d_k_sub = target_k - current_kappa;
                         current_kappa = current_kappa + sign(d_k_sub) * min(abs(d_k_sub), max_dkappa_ds * fine_step);
+                        %ハンドルを切る速さは上で決まってる→integrate_stepで、実際に機体がどこに進むかを計算する
                          [curr, current_time] = obj.integrate_step(curr, current_kappa, fine_step, V0, rho0, g_ref, tan_g_str, current_time);
                     end
                 else
@@ -186,15 +195,24 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
             end
             Data.x = dx; Data.y = dy; Data.z = dz; Data.t = dt; Data.psi = dpsi; EndState = curr;
         end
-        
+        %simulate_dubins_sequence...結果を保存せずに、最終形態だけを知りたいときに用いる
+        %最終到達点をget
         function [xf, yf, zf, tf] = simulate_dubins_sequence(obj, start_curr, start_time, start_kappa, mode, lengths, step, V0, rho0, g_ref, tan_g_str, R, max_dkappa_ds)
             [~, EndState] = obj.run_dubins_integration(start_curr, start_time, start_kappa, mode, lengths, step, V0, rho0, g_ref, tan_g_str, R, max_dkappa_ds);
             xf = EndState.x; yf = EndState.y; zf = EndState.z; tf = 0; 
         end
 
         function [next_curr, next_t] = integrate_step(obj, curr, kappa, step, V0, rho0, g_ref, tan_g_str, t_now)
+            % 1. 現在高度での対気速度 (TAS) の計算
             h_now = max(0, curr.z); V_TAS = V0 * sqrt(rho0 / obj.AtmoModel.get_density(h_now/1000));
+
+            % 2. 曲率(kappa)からバンク角(phi)を逆算
+            % 物理式: tan(phi) = (V^2 * kappa) / g
             tan_phi = kappa * V_TAS^2 / g_ref; cos_phi = 1 / sqrt(1 + tan_phi^2);
+
+            % 3. バンク角による沈下率の補正 ★重要
+            % 旋回中は揚力が傾くため、高度維持に必要な揚力が増え、抗力も増える＝沈下が速くなる
+            % 簡易モデルとして dz/ds = 基本沈下率 / cos(phi) で計算
             dz_ds = tan_g_str / cos_phi;
             next_curr.yaw = curr.yaw + kappa * step;
             next_curr.x = curr.x + step * cos(curr.yaw);
