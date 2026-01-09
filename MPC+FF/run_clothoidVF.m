@@ -5,7 +5,7 @@ clear; clc; close all;
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
 wind_planned = [0; 0];  % 風速 (North, East) [m/s]
-wind_disturbance = [0; 0];  % 予期せぬ外乱（未知の風）
+wind_disturbance = [3;0];  % 予期せぬ外乱（未知の風）
 wind_actual = wind_planned + wind_disturbance; % 実際に吹いている風
 
 target_pos = [0, 600, 1000]; % 目標 [N, E, Alt]
@@ -22,10 +22,10 @@ end
 
 %% --- 2. Phase A: 軌道計画 (Mission & Planner) ---
 fprintf('=== Phase A: Path Planning ===\n');
-mission = ParafoilMissionWind(excelFileName);
+mission = ParafoilMissionClothoid(excelFileName);
 
 % クロゾイド設定 (ロールレート10deg/s, 先行係数0.5, 助走30m)
-%mission.set_clothoid_options(1.2, 0.5, 0.0);
+mission.set_clothoid_options(1.2, 0.5, 0.0);
 
 % シミュレーション実行 (内部で風補正計算が行われる)
 mission.run_wind_simulation(target_pos, L_final, wind_planned);
@@ -108,6 +108,12 @@ scheduler.WindVector_Truth = [wind_actual; 0];
 scheduler.WindVector_Est = [wind_actual; 0]; 
 
 fprintf('Setting: Autopilot knows Actual Wind (Crab Angle ON).\n');
+% ここに wind_actual を入れることで「風は分かっている」前提のシミュレーションになる
+scheduler.WindVector_Est   = [wind_actual; 0]; 
+
+fprintf('Simulation Setup: Wind Truth=[%.1f, %.1f], Est=[%.1f, %.1f]\n', ...
+    wind_actual(1), wind_actual(2), wind_actual(1), wind_actual(2));
+
 % LoiterからMission(着陸)へ切り替える高度を設定
 % 例: 高度300m (z = -300) を切ったら切り替え
 %scheduler.MissionSwitchAlt = -300;
@@ -338,3 +344,117 @@ fprintf('  -> Ground velocity plot created.\n');
 
 simData = engine.create_results_table();
 PayloadPlotter.plotResults(simData, engine.ControlScheduler); % [cite: 2848]
+
+%% --- Debug: Loiter Vector Field Visualization ---
+if strcmpi(autopilot.CurrentMode, 'Loiter') || ~isempty(autopilot.LoiterParams)
+    fprintf('\n=== Debugging Loiter Guidance ===\n');
+    
+    % 1. Loiterパラメータの取得
+    p = autopilot.LoiterParams;
+    if isempty(p)
+        % もしAutopilot内に残ってなければ、Plannerの結果から再構築
+        if isfield(mission.Planner.ResultData, 'loiter')
+             lx = mission.Planner.ResultData.loiter.x;
+             ly = mission.Planner.ResultData.loiter.y;
+             p.xc = (min(lx)+max(lx))/2; p.yc = (min(ly)+max(ly))/2; 
+             p.R = (max(lx)-min(lx))/2;
+             % 方向はとりあえず CW(1) と仮定して確認
+             p.lambda = 1; 
+        end
+    end
+
+    figure('Name', 'Loiter Guidance Debug', 'Color', 'w', 'Position', [100, 100, 800, 800]);
+    hold on; grid on; axis equal;
+    
+    % 2. 目標円の描画
+    th = 0:0.01:2*pi;
+    cx = p.xc + p.R * cos(th);
+    cy = p.yc + p.R * sin(th);
+    plot(cy, cx, 'k--', 'LineWidth', 1.5, 'DisplayName', 'Target Circle'); % Plotは (East, North)
+    
+    % 3. 軌跡の描画
+    plot(simData.Inertial_Y_Position, simData.Inertial_X_Position, 'b-', 'LineWidth', 1.2, 'DisplayName', 'Trajectory');
+    
+    % 4. ベクトル（矢印）の描画
+    % 全データだと重すぎるので間引く
+    step_idx = 1:50:height(simData); 
+    
+    for i = step_idx
+        % 位置 (NED -> Plot: Y, X)
+        pos_n = simData.Inertial_X_Position(i);
+        pos_e = simData.Inertial_Y_Position(i);
+        
+        % 実際のヘディング (青矢印)
+        psi = simData.Yaw_Angle(i);
+        scale = 40; % 矢印の長さ
+        quiver(pos_e, pos_n, scale*sin(psi), scale*cos(psi), ...
+            'Color', 'b', 'LineWidth', 1, 'MaxHeadSize', 0.5, 'HandleVisibility', 'off');
+        
+        % --- ここで当時の誘導計算を再現 ---
+        % (ログに psi_cmd が残っていればそれを使うのがベストですが、再現計算します)
+        
+        % 1. 基本コース角 (Chi)
+        dx = pos_n - p.xc; dy = pos_e - p.yc;
+        dist = sqrt(dx^2 + dy^2);
+        phi_pos = atan2(dy, dx);
+        tilde_d = (dist - p.R) / p.R;
+        k = autopilot.Gains.k_vf_loiter;
+        lambda = p.lambda;
+        
+        % 収束角
+        correction = (pi/2) + atan(k * tilde_d);
+        chi_cmd = phi_pos + lambda * correction;
+        
+        % 2. 風補正 (Crab)
+        % 風データは Scheduler の Est を使う想定 (定常風と仮定)
+        if exist('wind_actual', 'var')
+            Wx = wind_actual(1); Wy = wind_actual(2);
+        else
+            Wx = 0; Wy = 0;
+        end
+        W_mag = norm([Wx, Wy]);
+        chi_wind = atan2(Wy, Wx);
+        
+        % V_horiz 推定 (ログになければ近似)
+        u=simData.Body_U_Vel(i); v=simData.Body_V_Vel(i); w=simData.Body_W_Vel(i);
+        theta = simData.Pitch_Angle(i);
+        % キネマティクス推定を簡易再現
+        % V_air ~ V_ground - Wind
+        % ここでは簡易的に V_horiz = V_ground_h (風が弱い場合) 
+        % または 前回の議論の V_tas * cos(theta-alpha)
+        V_tas = sqrt(u^2+v^2+w^2);
+        V_horiz = V_tas * cos(theta); % 簡易版
+        
+        if V_horiz > 1
+            W_cross = W_mag * sin(chi_cmd - chi_wind);
+            sin_eta = max(-0.95, min(0.95, W_cross/V_horiz));
+            eta = asin(sin_eta);
+            psi_cmd = chi_cmd - eta;
+        else
+            psi_cmd = chi_cmd;
+        end
+        
+        % 目標ヘディング (緑矢印)
+        quiver(pos_e, pos_n, scale*sin(psi_cmd), scale*cos(psi_cmd), ...
+            'Color', 'g', 'LineWidth', 1.5, 'MaxHeadSize', 0.5, 'HandleVisibility', 'off');
+            
+        % 風向 (赤矢印, 短く)
+        if i == step_idx(1) % 凡例用に1回だけ描画
+             quiver(pos_e, pos_n, scale*0.5*sin(chi_wind), scale*0.5*cos(chi_wind), ...
+            'Color', 'r', 'LineWidth', 1, 'DisplayName', 'Wind Dir');
+        else
+             quiver(pos_e, pos_n, scale*0.5*sin(chi_wind), scale*0.5*cos(chi_wind), ...
+            'Color', 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+        end
+    end
+    
+    % 凡例用ダミープロット
+    plot(nan, nan, 'b-', 'DisplayName', 'Actual Heading');
+    plot(nan, nan, 'g-', 'DisplayName', 'Command Heading');
+    
+    xlabel('East [m]'); ylabel('North [m]');
+    title('Loiter Debug: Blue=Actual, Green=Command, Red=Wind');
+    legend('Location', 'bestoutside');
+    xlim([p.yc-p.R*1.5, p.yc+p.R*1.5]);
+    ylim([p.xc-p.R*1.5, p.xc+p.R*1.5]);
+end

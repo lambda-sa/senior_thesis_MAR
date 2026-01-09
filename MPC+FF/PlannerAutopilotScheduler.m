@@ -46,12 +46,57 @@ classdef PlannerAutopilotScheduler < handle
             obj.Autopilot.set_mode('Loiter');
         end
         
-        function inputs = get_inputs(obj, ~, y, ~)
-            % (中略: フェーズ切り替えロジック等はそのまま)
+        function inputs = get_inputs(obj, t, y, ~)
+            % 1. モード切替判定
+            current_z = y(12);
+            if strcmp(obj.Autopilot.CurrentMode, 'Loiter') && current_z > obj.MissionSwitchAlt
+                obj.Autopilot.set_mode('Mission');
+            end
             
-            % ★★★ 変更点 1: Autopilotには「推定風 (Est)」を渡す ★★★
-            % これにより、外乱込みの風をセットしていればクラブ角補正が効く
-            [dR, dL, ~] = obj.Autopilot.update(y, obj.WindVector_Est, 0);
+            
+            % ====================================================
+            % ★★★ キネマティクスによる対気状態推定 ★★★
+            % ====================================================
+            
+            % (1) センサ値の取得
+            V_g_Body = y(1:3); % 対地速度(機体軸) [u; v; w]
+            phi=y(7); theta=y(8); psi=y(9);
+            
+            % (2) 回転行列 (NED -> Body)
+            % ※ RotationMatricesクラスがない場合は自前で定義してください
+            T_IB = RotationMatrices.get_inertial_to_body_matrix(phi, theta, psi);
+            
+            % (3) 風ベクトルの座標変換 (NED -> Body)
+            % Schedulerが持っている「推定風」を使う
+            wind_Body = T_IB * obj.WindVector_Est;
+            
+            % (4) 対気速度ベクトルの計算 (Body Frame)
+            % V_air = V_ground - Wind
+            V_air_Body = V_g_Body - wind_Body;
+            
+            u_a = V_air_Body(1);
+            w_a = V_air_Body(3);
+            V_tas_est = norm(V_air_Body);
+            
+            % (5) 迎角 alpha の推定 (幾何学的定義)
+            alpha_est = atan2(w_a, u_a);
+            
+            % (6) 経路角 gamma と 水平速度 V_horiz の推定
+            % 理論: theta = gamma + alpha
+            gamma_est = theta - alpha_est;
+            
+            % これが求めたかった「真の水平対気速度」
+            V_horiz_est = V_tas_est * cos(gamma_est);
+            
+            % ゼロ割防止
+            if V_horiz_est < 0.1, V_horiz_est = 0.1; end
+            
+            % ====================================================
+            % Autopilotへ推定値を渡す
+            % ====================================================
+            
+            % ★修正: 推定した V_horiz_est を渡す
+            [dR, dL, ~] = obj.Autopilot.update(t, y, obj.WindVector_Est, V_horiz_est);
             
             % ★★★ 変更点 2: 物理モデルには「真の風 (Truth)」を渡す ★★★
             inputs.delta_R = dR;
@@ -61,6 +106,8 @@ classdef PlannerAutopilotScheduler < handle
             
             inputs.delta_a_cmd = dR - dL;
             inputs.delta_s_cmd = min(dR, dL);
+
+            inputs.mu_cmd = 0;
         end
     end
 end
