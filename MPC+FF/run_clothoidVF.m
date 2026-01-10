@@ -5,7 +5,7 @@ clear; clc; close all;
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
 wind_planned = [0; 0];  % 風速 (North, East) [m/s]
-wind_disturbance = [3;0];  % 予期せぬ外乱（未知の風）
+wind_disturbance = [0;0];  % 予期せぬ外乱（未知の風）
 wind_actual = wind_planned + wind_disturbance; % 実際に吹いている風
 
 target_pos = [0, 600, 1000]; % 目標 [N, E, Alt]
@@ -344,7 +344,7 @@ fprintf('  -> Ground velocity plot created.\n');
 
 simData = engine.create_results_table();
 PayloadPlotter.plotResults(simData, engine.ControlScheduler); % [cite: 2848]
-
+%{
 %% --- Debug: Loiter Vector Field Visualization ---
 if strcmpi(autopilot.CurrentMode, 'Loiter') || ~isempty(autopilot.LoiterParams)
     fprintf('\n=== Debugging Loiter Guidance ===\n');
@@ -458,3 +458,5 @@ if strcmpi(autopilot.CurrentMode, 'Loiter') || ~isempty(autopilot.LoiterParams)
     xlim([p.yc-p.R*1.5, p.yc+p.R*1.5]);
     ylim([p.xc-p.R*1.5, p.xc+p.R*1.5]);
 end
+
+%}

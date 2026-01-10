@@ -1,534 +1,306 @@
 classdef ParafoilAutopilot < handle
     % PARAFOILAUTOPILOT
-    % 誘導(Guidance)と制御(Control)を統合した自律飛行クラス
-    %
-    % [概要]
-    % Plannerが作成した軌道データを読み込み、現在の機体状態(位置・速度・風)に基づいて
-    % 最適なトグル操作量(delta_R, delta_L)を計算して出力します。
-    %
-    % [座標系の定義]
-    % - NED座標系 (North-East-Down): X=北, Y=東, Z=下
-    % - 方位角(Psi): 北を0として時計回り(CW)が正
-    %
-    % [誘導ロジックの特徴]
-    % 1. Loiter (待機): 位相角ベースの解析的ベクトル場 (指定論文の式)
-    % 2. Mission (着陸): 点群に対するウィンドウ探索 + General Path VF
+    % ベクトル場誘導 (Vector Field Guidance) と 解析的線形化補正 (Analytical Linearization)
+    % を融合した、風外乱に強い高精度パラフォイル自律制御クラス。
     
     properties
-        % --- 機体・空力パラメータ ---
-        Params       % 全パラメータ構造体 (質量, 翼面積, 空力係数など)
-        Yaw_Factor   % トグル操作量 -> ヨーモーメントへの変換係数 (FF制御用)
+        % --- 機体パラメータ ---
+        Params       % 質量、空力係数、幾何形状などを含む構造体
+        Yaw_Factor   % [FF用] バンク角 -> トグル操作量 への変換係数 (簡易モデル)
+        AtmoModel    % ★追加: 大気モデル (AtmoTempPressRho)
         
-        % --- ゲイン設定 (要調整) ---
+        % --- 制御ゲイン (要調整) ---
         Gains
-        % .k_vf_loiter : Loiter時の収束ゲイン (小さい=マイルド, 大きい=急激)
-        % .k_vf_mission: Mission時の収束ゲイン (着陸精度に直結)
-        % .chi_inf     : 無限遠での最大進入角 [rad] (通常 pi/2 = 90度)
-        % .kp_psi      : [制御] ヘディング誤差 -> 目標バンク角 の比例ゲイン
-        % .kp_phi      : [制御] バンク角誤差 -> トグル操作量 の比例ゲイン
+        % .k_vf_loiter, .k_vf_mission, .chi_inf
+        % .K_linear, .kp_psi, .ki_psi, .kd_psi, .kp_phi
         
-        % --- 軌道データ (import_mission_dataでセット) ---
-        CurrentMode     % 現在のモード: 'Loiter' or 'Mission'
+        % --- 状態・軌道管理 ---
+        CurrentMode = 'Loiter';
+        LoiterParams
+        MissionPath
         
-        % Loiter用: 円軌道の幾何学情報
-        LoiterParams    % .xc, .yc (中心), .R (半径), .lambda (+1:右回り, -1:左回り)
+        LastIndex = 1;      % Mission用インデックス
+        WindowSize = 100;
         
-        % Mission用: 点群データ (Entry -> Dubins -> Final)
-        MissionPath     % .x, .y, .z, .chi(接線), .kappa(曲率), .num_points
-        LastIndex       % 前回の最近傍点インデックス (探索高速化 & 逆走防止用)
-        WindowSize      % 前方探索ウィンドウサイズ (点の個数)
+        % --- 内部状態 ---
+        PsiErrIntegral = 0;
+        LastUpdateTime = -1;
+        UpdateInterval = 0.05; 
         
-        % --- 状態管理 ---
-        IsReady         % 初期化完了フラグ
-        % ★追加: 状態管理用
-        PsiErrIntegral=0;  % ヘディング誤差の積分値 (I制御用)
-        LastUpdateTime=-1;        % 前回の呼び出し時刻 (dt計算用)
-        UpdateInterval = 0.05; % 制御周期 (20Hz)
-        
-        % ★追加: ホールド用の前回値 (Zero-Order Hold)
         LastDeltaR = 0;
         LastDeltaL = 0;
+        
+        IsReady = false;
     end
     
     methods
+        % =========================================================
+        % コンストラクタ
+        % =========================================================
         function obj = ParafoilAutopilot(params)
-            % コンストラクタ: パラメータの展開と初期設定
             obj.Params = params;
-            obj.IsReady = false;
             
-            % -----------------------------------------------------
-            % 1. トグル操作量のFF係数 (Yaw_Factor) の計算
-            % -----------------------------------------------------
-            % 「ある旋回レート(r)を出したい時、どれくらいトグルを引けばいいか？」
-            % を、線形化モデルのモーメント釣り合い式から逆算するための係数です。
-            % 式: delta_a_req = Yaw_Factor * (g / V^2) * sin(phi)
+            % --- ★追加: 大気モデルの初期化 ---
+            % ParafoilControlMapper_linear_old と同様に外部クラスを使用
+            try
+                obj.AtmoModel = AtmoTempPressRho();
+            catch
+                warning('AtmoTempPressRho class not found. Falling back to simple model.');
+                obj.AtmoModel = [];
+            end
             
-            if isfield(params, 'prop'), b = params.prop.b; else, b = params.b; end
+            % --- ゲイン設定 ---
+            obj.Gains.k_vf_loiter  = 0.04;
+            obj.Gains.k_vf_mission = 0.1;
+            obj.Gains.chi_inf      = pi/2;
+            obj.Gains.K_linear     = 1.0; 
+            
+            obj.Gains.kp_psi = 1.0;
+            obj.Gains.ki_psi = 0.1;
+            obj.Gains.kd_psi = 0.5;
+            obj.Gains.kp_phi = 1.0;
+            
+            % --- Yaw_Factor計算 ---
+            if isfield(params, 'prop'), b=params.prop.b; else, b=params.b; end
             if isfield(params, 'params')
-                d = params.params.d; % 吊り下げ長
-                Cn_r = params.params.C_n_r; % ヨー減衰係数
-                Cn_da = params.params.C_n_delta_a; % 舵効き係数
+                d=params.params.d; Cnr=params.params.C_n_r; Cnda=params.params.C_n_delta_a;
             else
-                d = params.d; Cn_r = params.C_n_r; Cn_da = params.C_n_delta_a;
+                d=params.d; Cnr=params.C_n_r; Cnda=params.C_n_delta_a;
             end
-            
-            % 物理的意味: (減衰項) / (操舵効力項)
-            obj.Yaw_Factor = -d * b * Cn_r / (2 * Cn_da);
-            
-            % -----------------------------------------------------
-            % 2. 制御ゲインのデフォルト設定
-            % -----------------------------------------------------
-            obj.Gains.k_vf_loiter  = 4;   % Loiterは滑らかさ重視 (低め)
-            obj.Gains.chi_inf      = pi/3;   % 最大90度でコースに戻る
-            obj.Gains.k_vf_mission = 0.10;   % Missionは追従精度重視 (高め)
-            
-            obj.Gains.kp_psi       = 0;    % 方位ズレ1度に対し、バンクkp_psi度指令
-            
-
-            % ★追加: Iゲイン設定 (デフォルト値)
-            % Pゲイン(1.5)の 1/5 ~ 1/10 程度から始めるのが定石
-            obj.Gains.ki_psi = 3; 
-            % ★追加: Dゲイン (Yaw Damper)
-            % 目安: Pゲインの 1/3 ~ 1/2 程度
-            % 役割: 旋回速度(r)に比例して反対方向に舵を当てる（ダンピング）
-            obj.Gains.kd_psi       = 0.5;
-            obj.Gains.kp_phi       = 0;    % バンクズレ1radに対し、トグル0.5操作
-            
-            % 変数初期化
-            obj.PsiErrIntegral = 0;
-            obj.LastUpdateTime = -1;
-
-            % 内部変数の初期化
-            obj.CurrentMode = 'Loiter';
-            obj.WindowSize = 100; % 探索範囲は前方100点まで
-            obj.LastIndex = 1;
-        end
-        
-        % =========================================================
-        % データ取り込み: Plannerの出力結果を解釈する
-        % =========================================================
-        function import_mission_data(obj, planner)
-            % ParafoilPathPlannerClothoid の結果(ResultData)を読み込み、
-            % 誘導則が扱いやすい形に変換して保持します。
-            
-            % 風を考慮した計画データがあればそれを優先
-            if isprop(planner, 'ResultDataWind') && ~isempty(planner.ResultDataWind)
-                d = planner.ResultDataWind;
-            else
-                d = planner.ResultData;
-            end
-            if isempty(d), error('Planner has no data.'); end
-            
-            % --- A. Loiterデータの解析 (点群 -> 円パラメータ) ---
-            % Loiterは点群を追うより、中心と半径から解析的に計算する方が
-            % 計算負荷が低く、かつ真円に近い滑らかな旋回ができます。
-            if isfield(d, 'loiter') && length(d.loiter.x) > 10
-                lx = d.loiter.x; ly = d.loiter.y;
-                
-                % 最大値・最小値から中心と半径を推定
-                xc = (min(lx) + max(lx)) / 2;
-                yc = (min(ly) + max(ly)) / 2;
-                R  = (max(lx) - min(lx)) / 2;
-                
-                % 回転方向(Lambda)の自動判定
-                % 始点付近の2つのベクトル外積を用いて判定
-                % NED系(X:北, Y:東)における外積 (x1*y2 - x2*y1)
-                % 時計回り(CW)なら外積はプラスになる傾向があるが、場所による。
-                % 確実な方法: 角度の変化を見る
-                ang1 = atan2(ly(1)-yc, lx(1)-xc);
-                ang2 = atan2(ly(5)-yc, lx(5)-xc);
-                diff = ang2 - ang1;
-                % 角度補正 (-pi~piのまたぎ処理)
-                if diff > pi, diff = diff - 2*pi; end
-                if diff < -pi, diff = diff + 2*pi; end
-                
-                % NED系では時計回りが「角度増加」なので diff > 0 ならCW
-                if diff > 0
-                    lambda = 1;  % 右旋回 (Clockwise)
-                else
-                    lambda = -1; % 左旋回 (Counter-Clockwise)
-                end
-                
-                obj.LoiterParams = struct('xc',xc, 'yc',yc, 'R',R, 'lambda',lambda);
-            else
-                warning('No Loiter data found.');
-                obj.LoiterParams = [];
-            end
-            
-            % --- B. Missionデータの結合 (Entry + Dubins + Final) ---
-            % 複雑な経路は「一本の点群」として扱います。
-            raw_x=[]; raw_y=[]; raw_z=[]; raw_psi=[];
-            phases = {'entry', 'dubins', 'final'}; 
-            for i = 1:length(phases)
-                p = phases{i};
-                if isfield(d, p) && ~isempty(d.(p).x)
-                    raw_x = [raw_x, d.(p).x(:)'];
-                    raw_y = [raw_y, d.(p).y(:)'];
-                    raw_z = [raw_z, d.(p).z(:)'];
-                    raw_psi = [raw_psi, d.(p).psi(:)'];
-                end
-            end
-            
-            if isempty(raw_x)
-                warning('No Mission data found.');
-                obj.MissionPath = [];
-            else
-                % 曲率 (Kappa) の数値再計算
-                % Plannerが出力する座標から、数値微分で曲率を求めます。
-                % これにより、バンク角のフィードフォワード制御が可能になります。
-                dx = gradient(raw_x); dy = gradient(raw_y);
-                ds = sqrt(dx.^2 + dy.^2); ds(ds<0.1) = 0.1; % ゼロ割防止
-                dpsi = gradient(unwrap(raw_psi));
-                
-                kappa = dpsi ./ ds; % 曲率定義: d(角度)/d(距離)
-                kappa = smoothdata(kappa, 'movmean', 5); % 微分ノイズを除去
-                
-                obj.MissionPath.x = raw_x;
-                obj.MissionPath.y = raw_y;
-                obj.MissionPath.z = raw_z;
-                obj.MissionPath.chi = unwrap(raw_psi);
-                obj.MissionPath.kappa = kappa;
-                obj.MissionPath.num_points = length(raw_x);
-            end
+            obj.Yaw_Factor = -d * b * Cnr / (2 * Cnda);
             
             obj.IsReady = true;
-            obj.CurrentMode = 'Loiter'; % 初期モード設定
-            obj.LastIndex = 1;
-            
-            fprintf('[Autopilot] Initialized. Loiter: %s (R=%.1fm), Mission: %d pts.\n', ...
-                calc_rot_str(obj.LoiterParams.lambda), obj.LoiterParams.R, obj.MissionPath.num_points);
-        end
-        
-        % モード手動切替 (Schedulerから呼ばれる)
-        function set_mode(obj, mode_str)
-            if strcmpi(mode_str, 'Loiter') || strcmpi(mode_str, 'Mission')
-                if ~strcmpi(obj.CurrentMode, mode_str)
-                    obj.PsiErrIntegral = 0; % モードが変わったらリセット
-                end
-                obj.CurrentMode = mode_str;
-            else
-                error('Mode must be "Loiter" or "Mission"');
-            end
         end
         
         % =========================================================
-        % ★★★ メイン更新メソッド (シミュレーション毎ステップ実行) ★★★
+        % 軌道データの取り込み
+        % =========================================================
+        function import_mission_data(obj, planner)
+            d = planner.ResultData;
+            if isfield(d, 'loiter') && length(d.loiter.x) > 5
+                lx=d.loiter.x; ly=d.loiter.y;
+                xc = (min(lx)+max(lx))/2; yc = (min(ly)+max(ly))/2;
+                R = (max(lx)-min(lx))/2;
+                ang1 = atan2(ly(1)-yc, lx(1)-xc); 
+                ang2 = atan2(ly(5)-yc, lx(5)-xc);
+                lambda = sign(obj.normalize_angle(ang2 - ang1));
+                obj.LoiterParams = struct('xc',xc, 'yc',yc, 'R',R, 'lambda',lambda);
+            end
+            if isfield(d, 'final')
+                obj.MissionPath = d.final; 
+                obj.MissionPath.num_points = length(obj.MissionPath.x);
+            end
+            obj.LastIndex = 1;
+        end
+        
+        function set_mode(obj, mode_str)
+            if any(strcmpi(mode_str, {'Loiter', 'Mission'}))
+                obj.CurrentMode = mode_str;
+                obj.PsiErrIntegral = 0;
+            end
+        end
+
+        % =========================================================
+        % ★★★ メイン更新ループ ★★★
         % =========================================================
         function [delta_R, delta_L, log_struct] = update(obj, t, current_state, wind_vec, V_horiz, delta_s_bias)
-            % 入力:
-            %   current_state : [u, v, w, p, q, r, phi, theta, psi, x, y, z]
-            %   wind_vec      : [Wx, Wy, 0] (NED系)
-            %   delta_s_bias  : 対称操作量 (高度制御用)
             
-            if nargin < 6, delta_s_bias = 0; end
-            if ~obj.IsReady, error('Autopilot not initialized.'); end
-
             if (obj.LastUpdateTime >= 0) && (t - obj.LastUpdateTime < obj.UpdateInterval)
-                delta_R = obj.LastDeltaR;
-                delta_L = obj.LastDeltaL;
-                
-                % ログ用のダミー (または前回の値を保存しておく)
-                log_struct.mode = obj.CurrentMode;
-                log_struct.chi_cmd = 0; % 簡易的
-                log_struct.psi_cmd = 0;
-                log_struct.phi_cmd = 0;
-                log_struct.delta_a = delta_R - delta_L;
-                log_struct.psi_err_integ = obj.PsiErrIntegral;
-                return; 
+                delta_R = obj.LastDeltaR; delta_L = obj.LastDeltaL; log_struct=[]; return;
             end
             
-            % --- ここから下は「更新タイミング」に来た時だけ実行される ---
-            
-            % 時間刻みの計算 (固定周期とみなして UpdateInterval を使うのが安全)
             dt = obj.UpdateInterval;
-
-            % 状態展開
-            phi=current_state(7); theta=current_state(8); psi=current_state(9);
             pos_ned = current_state(10:12);
+            psi = current_state(9);
             
-            % 制御ゲイン用のTAS (動圧計算用など) は簡易的に計算
-            u=current_state(1); v=current_state(2); w=current_state(3);
-            V_tas = sqrt(u^2+v^2+w^2); %あくまで「動圧」の計算法
-            
-            % -----------------------------------------------------
-            % Step 1: 誘導 (Guidance)
-            % -----------------------------------------------------
-            % 現在位置に基づき、目指すべき「対地コース(Chi)」と「曲率(Kappa)」を計算
-            cmd = obj.run_vf_guidance(pos_ned, V_horiz, wind_vec);
-
-            % ★★★ 修正箇所: 変数を確実に定義する ★★★
-            chi_cmd = cmd.chi_cmd;
-
-            % 構造体 cmd から psi_cmd を取り出して、ローカル変数にする
-            if isfield(cmd, 'psi_cmd')
-                psi_cmd = cmd.psi_cmd; 
-            else
-                % もし古いGuidanceコードが残っていてフィールドがない場合の保険
-                psi_cmd = chi_cmd; 
+            if strcmpi(obj.CurrentMode, 'Mission') && ~isempty(obj.MissionPath)
+                obj.LastIndex = obj.find_closest_index(pos_ned(1), pos_ned(2));
             end
-            % -----------------------------------------------------
-            % Step 2: 制御目標の計算 (Control Target)
-            % -----------------------------------------------------
-            % (A) 風補正 (Crab Angle Compensation)
-            % VFが出した「対地コース」通りに進むために、機首を何度ずらすべきか？
             
-            %{
-            % 風向・風速から横風成分を計算
-            W_mag = norm(wind_vec(1:2));
-            chi_wind = atan2(wind_vec(2), wind_vec(1));
-            W_cross = W_mag * sin(chi_cmd - chi_wind); % 進行方向に対する横風
+            % --- Step 1 & 2: VF誘導と空間微分 ---
+            cmd_now = obj.run_vf_guidance(pos_ned, V_horiz, wind_vec);
             
-            % クラブ角 eta の計算 (sin(eta) = W_cross / V_tas)
-            %eta = asin(max(-0.9, min(0.9, W_cross/V_tas)));
-            eta = asin(W_cross/V_tas);
-            % 最終的な目標ヘディング角
-            psi_cmd = chi_cmd - eta;
-            %}
-            % (B) 目標バンク角の決定
+            dt_lookahead = 0.5;
+            u_g = V_horiz * cos(psi); v_g = V_horiz * sin(psi);
+            pos_next = pos_ned + [u_g; v_g; 0] * dt_lookahead;
+            cmd_next = obj.run_vf_guidance(pos_next, V_horiz, wind_vec);
+            
+            d_psi = obj.normalize_angle(cmd_next.psi_cmd - cmd_now.psi_cmd);
+            r_req = d_psi / dt_lookahead;
+            
+            % --- Step 3: 動的参照生成 ---
             g = 9.81;
+            phi_ref = atan( (V_horiz * r_req) / g );
+            phi_ref = max(-0.8, min(0.8, phi_ref));
             
-
-            % バンク角FF計算にも V_horiz を使うのが物理的に正しい
-            V_turn = V_horiz; 
-            phi_ff = atan( (V_turn^2 / g) * cmd.kappa_ref ); 
+            ref_state.V = sqrt(sum(current_state(1:3).^2));
+            ref_state.phi = phi_ref;
+            ref_state.theta = current_state(8);
+            ref_state.r_req = r_req;
+            if current_state(1) > 0.1
+                ref_state.alpha = atan2(current_state(3), current_state(1));
+            else
+                ref_state.alpha = 0;
+            end
             
-            % FB項: ヘディング誤差を埋めるための修正バンク角
-            % (PID制御のP項に相当)
-            psi_err = obj.normalize_angle(psi_cmd - psi);
-            % ★追加: 積分項 (I Control)
-            % 積分加算
-            obj.PsiErrIntegral = obj.PsiErrIntegral + psi_err * dt;
+            % --- Step 4: 解析的線形化補正 ---
+            [delta_delta_a, da_ref] = obj.calc_linear_correction(current_state, ref_state);
+            dda_term = obj.Gains.K_linear * delta_delta_a;
             
-            % ★重要: アンチワインドアップ (Anti-Windup)
-            % 積分値が溜まりすぎて制御不能になるのを防ぐため、リミットをかける
-            % 例: 積分項だけで出せるバンク角を最大 +/- 15度 (0.26rad) に制限
-            integ_limit = deg2rad(20); 
-            obj.PsiErrIntegral = max(-integ_limit, min(integ_limit, obj.PsiErrIntegral));
-
-            % ★追加: 角速度 r (Yaw Rate) を取得
-            r = current_state(6);
-
-            phi_fb_p = obj.Gains.kp_psi * psi_err;% P項
-            phi_fb_i = obj.Gains.ki_psi * obj.PsiErrIntegral;   % I項
-            % D項: 旋回速度(r)を抑える (Damping)
-            % 符号はマイナス（旋回を止めようとする方向）
-            phi_fb_d = -obj.Gains.kd_psi * r;
-
-            phi_fb = phi_fb_p + phi_fb_i + phi_fb_d;
+            % --- Step 5: 統合とPID補正 ---
+            psi_err = obj.normalize_angle(cmd_now.psi_cmd - psi);
+            obj.PsiErrIntegral = max(-0.3, min(0.3, obj.PsiErrIntegral + psi_err * dt));
             
-            % 合成とリミッター (パラフォイルは45度以上傾けると危険)
-            phi_cmd = max(-0.8, min(0.8, phi_ff + phi_fb));
+            phi_pid = obj.Gains.kp_psi * psi_err ...
+                    + obj.Gains.ki_psi * obj.PsiErrIntegral ...
+                    - obj.Gains.kd_psi * (current_state(6) - r_req);
             
-            % -----------------------------------------------------
-            % Step 3: アクチュエータ操作 (Actuation)
-            % -----------------------------------------------------
-            % (A) FF項: 定常旋回操作量
-            % 空力モデルに基づき、そのバンク角を維持するのに必要なトグル量を予測
-            K_dyn = (g / V_tas^2) * cos(theta);
-            da_ff = obj.Yaw_Factor * K_dyn * sin(phi_cmd);
+            phi_cmd_final = phi_ref + phi_pid;
             
-            % (B) FB項: バンク角追従誤差補正
-            % モデル化誤差や外乱でバンク角がズレた分をPID(P)で戻す
-            phi_err = phi_cmd - phi;
-            da_fb = obj.Gains.kp_phi * phi_err;
+            phi_curr = current_state(7);
+            da_fb = obj.Gains.kp_phi * (phi_cmd_final - phi_curr);
             
-            % 合計操作量
-            da_total = da_ff + da_fb;
-            
-            % (C) ミキシング (左右トグルへの配分)
-            % ブレーキ量(delta_s)をベースに、旋回成分(da_total)を差動で加える
+            da_total = da_ref + dda_term + da_fb;
             [delta_R, delta_L] = obj.apply_mixing(da_total, delta_s_bias);
             
-            % -----------------------------------------------------
-            % ログ出力
-            % -----------------------------------------------------
-
+            % ログ
             obj.LastUpdateTime = t;
-            obj.LastDeltaR = delta_R;
-            obj.LastDeltaL = delta_L;
-            
-            log_struct.mode = obj.CurrentMode;
-            log_struct.chi_cmd = chi_cmd;
-            log_struct.psi_cmd = psi_cmd;
-            log_struct.phi_cmd = phi_cmd;
-            log_struct.kappa_ref = cmd.kappa_ref;
-            log_struct.error = cmd.error;
-            log_struct.delta_a = da_total;
-            log_struct.psi_err_integ = obj.PsiErrIntegral; % デバッグ用に積分値も出力
-
-            % ログ出力に追加しておくと便利
-            log_struct.psi_err_p = phi_fb_p;
-            log_struct.psi_err_i = phi_fb_i;
-            log_struct.psi_err_d = phi_fb_d;
-            
+            obj.LastDeltaR = delta_R; obj.LastDeltaL = delta_L;
+            %log_struct.chi_cmd = cmd_now.chi_cmd;
+            log_struct.psi_cmd = cmd_now.psi_cmd;
+            log_struct.r_req   = r_req;
+            log_struct.phi_ref = phi_ref;
+            log_struct.da_ref  = da_ref;
+            log_struct.dda     = dda_term;
+            log_struct.da_total= da_total;
         end
     end
     
     methods (Access = private)
+        
         % =========================================================
-        % ★★★ 誘導ロジック (Hybrid Vector Field) ★★★
+        % VF誘導 (V_horiz風補正)
         % =========================================================
-        function cmd = run_vf_guidance(obj, pos, V_horiz, wind_vec)
-            % 座標取り出し (NED座標系: x=North, y=East)
-            x_north = pos(1); 
-            y_east  = pos(2);
+        function cmd = run_vf_guidance(obj, pos_ned, V_horiz, wind_vec)
+            cmd.chi_cmd = 0; cmd.psi_cmd = 0;
+            x = pos_ned(1); y = pos_ned(2);
             
-            % デフォルト
-            cmd = struct('chi_cmd',0, 'psi_cmd',0, 'kappa_ref',0, 'error',0);
-            
-            % -----------------------------------------------------
-            % 1. Loiter誘導 (Vector Field)
-            % -----------------------------------------------------
-            if strcmpi(obj.CurrentMode, 'Loiter')
-                if isempty(obj.LoiterParams), return; end
+            if strcmpi(obj.CurrentMode, 'Loiter') && ~isempty(obj.LoiterParams)
                 p = obj.LoiterParams;
-                
-                % 中心からの相対位置
-                dx = x_north - p.xc; 
-                dy = y_east  - p.yc;
-                dist = sqrt(dx^2 + dy^2);
-                
-                % [重要] 位相角 phi の計算
-                % NED座標系の方位角定義 (北=0, 東=90) に合わせるには atan2(East, North)
-                phi_pos = atan2(dy, dx); 
-                
-                % 正規化誤差 (距離/半径)
-                tilde_d = (dist - p.R) / p.R;
-                
-                % パラメータ
-                lambda = p.lambda;  % +1(CW), -1(CCW)
-                k = obj.Gains.k_vf_loiter; % 注視距離の逆数に相当
-                
-                % === 誘導の式 (The Equation) ===
-                % Chi_d = phi_pos + lambda * (pi/2 + atan(k * error))
-                
-                % 1. 基本の接線方向 (円周上にいるとき)
-                tangent_dir = phi_pos + lambda * (pi/2);
-                
-                % 2. 進入角 (Approach Angle)
-                % 外側(tilde_d > 0)にいるとき:
-                %  CW(lam=1)なら、さらに時計回りに回し込みたい -> プラス加算 (OK)
-                %  CCW(lam=-1)なら、さらに反時計に回し込みたい -> マイナス加算 (OK)
-                approach_angle = lambda * atan(k * tilde_d);
-                
-                % 3. 合成
-                chi_cmd_val = tangent_dir + approach_angle;
-                
-                % 結果格納
-                cmd.chi_cmd   = obj.normalize_angle(chi_cmd_val);
-                cmd.kappa_ref = lambda * (1/p.R); % フィードフォワード用曲率
-                cmd.error     = dist - p.R;
-
-            % -----------------------------------------------------
-            % 2. Mission誘導 (Path Following)
-            % -----------------------------------------------------
-            else
-                % (既存のコードと同じため省略、ただしatanの項を確認)
-                if isempty(obj.MissionPath), return; end
+                dx = x - p.xc; dy = y - p.yc;
+                dist = sqrt(dx^2+dy^2);
+                phi_pos = atan2(dy, dx);
+                err = dist - p.R;
+                chi_raw = phi_pos + p.lambda*(pi/2) + p.lambda * atan(obj.Gains.k_vf_loiter * err);
+            elseif strcmpi(obj.CurrentMode, 'Mission') && ~isempty(obj.MissionPath)
+                idx = obj.find_closest_index(x, y);
                 P = obj.MissionPath;
-                
-                % 最近傍点探索
-                range = obj.LastIndex : min(obj.LastIndex + obj.WindowSize, P.num_points);
-                d_sq = (P.x(range) - x_north).^2 + (P.y(range) - y_east).^2;
-                [~, min_loc] = min(d_sq);
-                idx = range(min_loc);
-                obj.LastIndex = idx;
-                
-                chi_ref = P.chi(idx);
-                
-                % クロストラックエラー (進行方向に対して右ズレが正)
-                dx = x_north - P.x(idx); 
-                dy = y_east  - P.y(idx);
-                e_cross = -sin(chi_ref)*dx + cos(chi_ref)*dy;
-                
-                % 誘導式
-                % chi_cmd = chi_ref - chi_inf * (2/pi) * atan(k * e)
-                % 右にズレてる(e>0)なら、左(-方向)に向けたい
-                correction = obj.Gains.chi_inf * (2/pi) * atan(obj.Gains.k_vf_mission * e_cross);
-                
-                cmd.chi_cmd = obj.normalize_angle(chi_ref - correction);
-                cmd.kappa_ref = P.kappa(idx);
-                cmd.error = e_cross;
+                path_x = P.x(idx); path_y = P.y(idx); chi_path = P.chi(idx);
+                dx = x - path_x; dy = y - path_y;
+                e_cross = -sin(chi_path)*dx + cos(chi_path)*dy;
+                chi_raw = chi_path - obj.Gains.chi_inf * (2/pi) * atan(obj.Gains.k_vf_mission * e_cross);
+            else
+                chi_raw = 0;
             end
             
-            % -----------------------------------------------------
-            % 3. 風補正 (Crab Angle) - ここも幾何学的に再確認
-            % -----------------------------------------------------
+            chi_cmd = obj.normalize_angle(chi_raw);
+            cmd.chi_cmd = chi_cmd;
+            
             if V_horiz > 1.0
-                if length(wind_vec)>=2, Wx=wind_vec(1); Wy=wind_vec(2); else, Wx=0; Wy=0; end
-                
-                % 風速ベクトル (NED)
-                % 風向 chi_wind = atan2(East, North)
+                Wx = wind_vec(1); Wy = wind_vec(2);
                 chi_wind = atan2(Wy, Wx);
                 W_mag = norm([Wx, Wy]);
-                
-                % コースに対する相対風向
-                % wind_rel = chi_wind - chi_cmd
-                % 正なら「右後ろ」から吹いている
-                wind_rel = obj.normalize_angle(chi_wind - cmd.chi_cmd);
-                
-                % 横風成分 (右から左へ吹く成分が正？)
-                % ここをシンプルに考える:
-                % 風ベクトル W を、進行方向軸(T)と横軸(N)に分解する。
-                % W_cross = W dot N
-                % 進行方向ベクトル T = [cos(chi), sin(chi)]
-                % 右横ベクトル N = [sin(chi), -cos(chi)] ??? いや NEDだと
-                % T = [cos(chi); sin(chi)] (North, East)
-                % 右ベクトル N = [sin(chi); -cos(chi)] は間違い。
-                % 90度回転行列: [0 1; -1 0] -> N = [sin(chi); -cos(chi)] ?
-                
-                % もっと直感的に:
-                % 機首方位 psi と コース chi の関係:
-                % V_g = V_a + W
-                % 3角形の正弦定理より:
-                % sin(eta) / W = sin(chi - chi_wind) / V_a ... 符号がややこしい
-                
-                % ★決定版公式★
-                % クラブ角 eta = psi - chi
-                % sin(eta) = - (W / V_a) * sin(chi - chi_wind)
-                
-                sin_val = -(W_mag / V_horiz) * sin(cmd.chi_cmd - chi_wind);
-                sin_val = max(-0.95, min(0.95, sin_val));
-                eta = asin(sin_val);
-                
-                % よって目標ヘディングは
-                cmd.psi_cmd = obj.normalize_angle(cmd.chi_cmd + eta);
-                
+                chi_diff = chi_cmd - chi_wind;
+                sin_eta = -(W_mag / V_horiz) * sin(chi_diff);
+                sin_eta = max(-0.95, min(0.95, sin_eta));
+                eta = asin(sin_eta);
+                psi_cmd = chi_cmd + eta;
             else
-                cmd.psi_cmd = cmd.chi_cmd;
+                psi_cmd = chi_cmd;
             end
+            cmd.psi_cmd = obj.normalize_angle(psi_cmd);
         end
         
-        % --- ユーティリティ関数 ---
+        % =========================================================
+        % 解析的線形化補正
+        % =========================================================
+        function [delta_delta_a, da_ref] = calc_linear_correction(obj, current_state, ref_state)
+            p = obj.Params;
+            if isfield(p, 'prop'), b=p.prop.b; else, b=p.b; end
+            if isfield(p, 'params')
+                d=p.params.d; Cnr=p.params.C_n_r; Cnda=p.params.C_n_delta_a;
+                Ixx=p.params.I_xx; Iyy=p.params.I_yy;
+            else
+                d=p.d; Cnr=p.C_n_r; Cnda=p.C_n_delta_a;
+                Ixx=p.I_xx; Iyy=p.I_yy;
+            end
+            S = p.S_c;
+            
+            u_curr = current_state(1); w_curr = current_state(3);
+            phi_curr = current_state(7); z_curr = current_state(12);
+            
+            V_ref = ref_state.V; phi_ref = ref_state.phi;
+            theta_ref = ref_state.theta; alpha_ref = ref_state.alpha;
+            u_ref = V_ref * cos(alpha_ref); w_ref = V_ref * sin(alpha_ref);
+            
+            g = 9.81;
+            K_dyn = (g / (V_ref^2)) * cos(theta_ref);
+            da_ref = obj.Yaw_Factor * K_dyn * tan(phi_ref); 
+            
+            psi_dot = (g / V_ref) * tan(phi_ref);
+            r_ref_body = psi_dot * cos(phi_ref) * cos(theta_ref);
+            p_ref_body = -psi_dot * sin(theta_ref);
+            q_ref_body = psi_dot * sin(phi_ref) * cos(theta_ref);
+            
+            du = u_curr - u_ref; dw = w_curr - w_ref; dphi = phi_curr - phi_ref;
+            
+            % --- ★修正: 高度から密度への変換 (Old Mapper準拠) ---
+            % NED座標系 z_curr (Down) -> 高度(km) = -z_curr / 1000
+            if ~isempty(obj.AtmoModel)
+                rho = obj.AtmoModel.get_density(-z_curr / 1000);
+            else
+                % クラスが無い場合のフォールバック (高度zはm単位)
+                rho = 1.225 * exp(-(-z_curr)/8500); 
+            end
+            
+            K_damp = 0.25 * rho * S * b^2 * Cnr;
+            K_ctl  = 0.5  * rho * S * b / d * Cnda;
+            
+            dN_dV = K_damp * r_ref_body + 2 * K_ctl * V_ref * da_ref;
+            N_u = dN_dV * (u_ref / V_ref);
+            N_w = dN_dV * (w_ref / V_ref);
+            
+            N_r = K_damp * V_ref;
+            N_q = (Iyy - Ixx) * p_ref_body;
+            N_phi = 0;
+            S_phi = N_r * (-q_ref_body) + N_q * (r_ref_body) + N_phi;
+            
+            N_da = K_ctl * V_ref^2;
+            
+            if abs(N_da) < 1e-9
+                delta_delta_a = 0;
+            else
+                term_vel = N_u * du + N_w * dw;
+                term_phi = S_phi * dphi;
+                delta_delta_a = - (1 / N_da) * (term_vel + term_phi);
+            end
+            delta_delta_a = max(-0.5, min(0.5, delta_delta_a));
+        end
         
+        % --- ヘルパー ---
+        function idx = find_closest_index(obj, x, y)
+             P = obj.MissionPath;
+             center = obj.LastIndex;
+             range = max(1, center-10) : min(P.num_points, center+obj.WindowSize);
+             d_sq = (P.x(range)-x).^2 + (P.y(range)-y).^2;
+             [~, loc] = min(d_sq);
+             idx = range(loc);
+        end
+        function a = normalize_angle(~, a), a = mod(a + pi, 2*pi) - pi; end
         function [dR, dL] = apply_mixing(~, da, ds)
-            % 操舵ミキシングロジック
-            % da (差動成分): 正なら右ターン(右引き)、負なら左ターン(左引き)
-            % ds (同相成分): ブレーキ(両方引く)
-            
-            da = max(-1, min(1, da)); % -1~1に制限
-            
-            if da > 0
-                dR = da + ds; % 右を引く
-                dL = ds;
-            else
-                dR = ds;
-                dL = abs(da) + ds; % 左を引く
-            end
-            
-            % 物理的限界 (0=全開, 1=全閉)
-            dR = max(0, min(1, dR)); 
-            dL = max(0, min(1, dL));
-        end
-        
-        function a = normalize_angle(~, a)
-            % 角度を -pi ~ pi の範囲に正規化
-            a = mod(a + pi, 2*pi) - pi;
+            da = max(-1, min(1, da));
+            if da>0, dR=da+ds; dL=ds; else, dR=ds; dL=abs(da)+ds; end
+            dR=max(0,min(1,dR)); dL=max(0,min(1,dL));
         end
     end
-end
-
-% ヘルパー関数 (ファイル外またはメソッド外)
-function s = calc_rot_str(lam)
-    if lam > 0, s='CW (Right)'; else, s='CCW (Left)'; end
 end
