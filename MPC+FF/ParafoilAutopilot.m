@@ -41,8 +41,13 @@ classdef ParafoilAutopilot < handle
         % --- 状態管理 ---
         IsReady         % 初期化完了フラグ
         % ★追加: 状態管理用
-        PsiErrIntegral  % ヘディング誤差の積分値 (I制御用)
-        LastTime        % 前回の呼び出し時刻 (dt計算用)
+        PsiErrIntegral=0;  % ヘディング誤差の積分値 (I制御用)
+        LastUpdateTime=-1;        % 前回の呼び出し時刻 (dt計算用)
+        UpdateInterval = 0.05; % 制御周期 (20Hz)
+        
+        % ★追加: ホールド用の前回値 (Zero-Order Hold)
+        LastDeltaR = 0;
+        LastDeltaL = 0;
     end
     
     methods
@@ -77,16 +82,21 @@ classdef ParafoilAutopilot < handle
             obj.Gains.chi_inf      = pi/3;   % 最大90度でコースに戻る
             obj.Gains.k_vf_mission = 0.10;   % Missionは追従精度重視 (高め)
             
-            obj.Gains.kp_psi       = 3;    % 方位ズレ1度に対し、バンクkp_psi度指令
-            obj.Gains.kp_phi       = 0;    % バンクズレ1radに対し、トグル0.5操作
+            obj.Gains.kp_psi       = 0;    % 方位ズレ1度に対し、バンクkp_psi度指令
+            
 
             % ★追加: Iゲイン設定 (デフォルト値)
             % Pゲイン(1.5)の 1/5 ~ 1/10 程度から始めるのが定石
-            obj.Gains.ki_psi = 0.7; 
+            obj.Gains.ki_psi = 3; 
+            % ★追加: Dゲイン (Yaw Damper)
+            % 目安: Pゲインの 1/3 ~ 1/2 程度
+            % 役割: 旋回速度(r)に比例して反対方向に舵を当てる（ダンピング）
+            obj.Gains.kd_psi       = 0.5;
+            obj.Gains.kp_phi       = 0;    % バンクズレ1radに対し、トグル0.5操作
             
             % 変数初期化
             obj.PsiErrIntegral = 0;
-            obj.LastTime = -1;
+            obj.LastUpdateTime = -1;
 
             % 内部変数の初期化
             obj.CurrentMode = 'Loiter';
@@ -213,16 +223,25 @@ classdef ParafoilAutopilot < handle
             if nargin < 6, delta_s_bias = 0; end
             if ~obj.IsReady, error('Autopilot not initialized.'); end
 
-            % --- A. 時間刻み dt の計算 ---
-            if obj.LastTime < 0
-                dt = 0; 
-            else
-                dt = t - obj.LastTime;
+            if (obj.LastUpdateTime >= 0) && (t - obj.LastUpdateTime < obj.UpdateInterval)
+                delta_R = obj.LastDeltaR;
+                delta_L = obj.LastDeltaL;
+                
+                % ログ用のダミー (または前回の値を保存しておく)
+                log_struct.mode = obj.CurrentMode;
+                log_struct.chi_cmd = 0; % 簡易的
+                log_struct.psi_cmd = 0;
+                log_struct.phi_cmd = 0;
+                log_struct.delta_a = delta_R - delta_L;
+                log_struct.psi_err_integ = obj.PsiErrIntegral;
+                return; 
             end
-            obj.LastTime = t;
             
-            % dtが大きすぎる場合(初期化直後など)は積分しない
-            if dt > 0.5, dt = 0; end
+            % --- ここから下は「更新タイミング」に来た時だけ実行される ---
+            
+            % 時間刻みの計算 (固定周期とみなして UpdateInterval を使うのが安全)
+            dt = obj.UpdateInterval;
+
             % 状態展開
             phi=current_state(7); theta=current_state(8); psi=current_state(9);
             pos_ned = current_state(10:12);
@@ -283,12 +302,19 @@ classdef ParafoilAutopilot < handle
             % ★重要: アンチワインドアップ (Anti-Windup)
             % 積分値が溜まりすぎて制御不能になるのを防ぐため、リミットをかける
             % 例: 積分項だけで出せるバンク角を最大 +/- 15度 (0.26rad) に制限
-            integ_limit = 0.26; 
+            integ_limit = deg2rad(20); 
             obj.PsiErrIntegral = max(-integ_limit, min(integ_limit, obj.PsiErrIntegral));
+
+            % ★追加: 角速度 r (Yaw Rate) を取得
+            r = current_state(6);
+
             phi_fb_p = obj.Gains.kp_psi * psi_err;% P項
             phi_fb_i = obj.Gains.ki_psi * obj.PsiErrIntegral;   % I項
-            
-            phi_fb = phi_fb_p + phi_fb_i;
+            % D項: 旋回速度(r)を抑える (Damping)
+            % 符号はマイナス（旋回を止めようとする方向）
+            phi_fb_d = -obj.Gains.kd_psi * r;
+
+            phi_fb = phi_fb_p + phi_fb_i + phi_fb_d;
             
             % 合成とリミッター (パラフォイルは45度以上傾けると危険)
             phi_cmd = max(-0.8, min(0.8, phi_ff + phi_fb));
@@ -316,6 +342,11 @@ classdef ParafoilAutopilot < handle
             % -----------------------------------------------------
             % ログ出力
             % -----------------------------------------------------
+
+            obj.LastUpdateTime = t;
+            obj.LastDeltaR = delta_R;
+            obj.LastDeltaL = delta_L;
+            
             log_struct.mode = obj.CurrentMode;
             log_struct.chi_cmd = chi_cmd;
             log_struct.psi_cmd = psi_cmd;
@@ -324,6 +355,12 @@ classdef ParafoilAutopilot < handle
             log_struct.error = cmd.error;
             log_struct.delta_a = da_total;
             log_struct.psi_err_integ = obj.PsiErrIntegral; % デバッグ用に積分値も出力
+
+            % ログ出力に追加しておくと便利
+            log_struct.psi_err_p = phi_fb_p;
+            log_struct.psi_err_i = phi_fb_i;
+            log_struct.psi_err_d = phi_fb_d;
+            
         end
     end
     
