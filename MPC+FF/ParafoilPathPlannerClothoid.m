@@ -153,47 +153,89 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
         % Dubins積分制御 (Safe Look-ahead Logic)　
         % =========================================================
         function [Data, EndState] = run_dubins_integration(obj, start_curr, start_time, start_kappa, mode, lengths, step, V0, rho0, g_ref, tan_g_str, R, max_dkappa_ds)
+            
             curr = start_curr; current_time = start_time; current_kappa = start_kappa;
+            
+            % --- ★修正1: 曲率(kappa)も保存する配列を作る ---
             dx=[]; dy=[]; dz=[]; dt=[]; dpsi=[];
             dx(1)=curr.x; dy(1)=curr.y; dz(1)=curr.z; dt(1)=current_time; dpsi(1)=curr.yaw;
+            dkappa = [current_kappa]; % 曲率履歴
             
-            est_bank = atan(V0^2 / (g_ref * R));%0.5*理論的な先行距離…(速度*バンク角)/ロールレート
+            % --- ★修正2: 切り替え点を記録する変数を追加 ---
+            seg_end_indices = zeros(1, 3);
+            idx_clothoid_start = 0; % 第1旋回(Loiter)終了 -> クロソイド開始点
+            
+            est_bank = atan(V0^2 / (g_ref * R));
             theoretical_lead = (V0 * est_bank) / deg2rad(obj.MaxRollRate) * obj.LookAheadFactor;
             
-            total_len = sum(lengths); dist_accum = 0; seg_idx = 1; dist_in_seg = 0;%安全装置:セグメント長より長くならないように
+            total_len = sum(lengths); dist_accum = 0; seg_idx = 1; dist_in_seg = 0;
             
             while dist_accum < total_len
                 cur_len = lengths(seg_idx); cur_m = mode{seg_idx};
                 if seg_idx < 3, nxt_m = mode{seg_idx+1}; else, nxt_m = 'F'; end
                 base_k = obj.char2kappa(cur_m, R); next_k = obj.char2kappa(nxt_m, R);
-
-                %L_lead...カーブの手前でクロゾイドの操作を開始するための距離
-                L_lead = min(theoretical_lead, cur_len * 0.45);%セグメント長より長くならないように
-
-
+                
+                L_lead = min(theoretical_lead, cur_len * 0.45);
+                
+                % --- クロソイド判定 ---
                 if (cur_len - dist_in_seg) < L_lead
-                    target_k = next_k;%もうすぐカーブ→次の曲率を目指そう
+                    target_k = next_k;
+                    
+                    % ★修正3: 「第1セグメント」かつ「クロソイドに入った瞬間」を記録
+                    if seg_idx == 1 && idx_clothoid_start == 0
+                        idx_clothoid_start = length(dx);
+                    end
                 else
                     target_k = base_k; 
                 end
                 
+                % --- 積分 ---
                 d_k = target_k - current_kappa;
                 if abs(d_k) > 1e-6
                     fine_step = step / obj.FineStepMultiplier;
                     for k=1:obj.FineStepMultiplier
                         d_k_sub = target_k - current_kappa;
                         current_kappa = current_kappa + sign(d_k_sub) * min(abs(d_k_sub), max_dkappa_ds * fine_step);
-                        %ハンドルを切る速さは上で決まってる→integrate_stepで、実際に機体がどこに進むかを計算する
                          [curr, current_time] = obj.integrate_step(curr, current_kappa, fine_step, V0, rho0, g_ref, tan_g_str, current_time);
                     end
                 else
                      [curr, current_time] = obj.integrate_step(curr, current_kappa, step, V0, rho0, g_ref, tan_g_str, current_time);
                 end
+                
+                % --- データ保存 ---
                 dx(end+1)=curr.x; dy(end+1)=curr.y; dz(end+1)=curr.z; dt(end+1)=current_time; dpsi(end+1)=curr.yaw;
+                
+                % ★修正4: 曲率も保存
+                dkappa(end+1) = current_kappa;
+                
                 dist_accum = dist_accum + step; dist_in_seg = dist_in_seg + step;
-                if dist_in_seg >= cur_len, if seg_idx < 3, seg_idx = seg_idx+1; dist_in_seg=0; else, break; end; end
+                
+                % --- セグメント切り替え判定 ---
+                if dist_in_seg >= cur_len
+                    seg_end_indices(seg_idx) = length(dx);
+                    
+                    if seg_idx < 3
+                        seg_idx = seg_idx+1; dist_in_seg=0; 
+                    else
+                        break; 
+                    end
+                end
             end
-            Data.x = dx; Data.y = dy; Data.z = dz; Data.t = dt; Data.psi = dpsi; EndState = curr;
+            
+            % --- 結果出力 ---
+            Data.x = dx; Data.y = dy; Data.z = dz; Data.t = dt; Data.psi = dpsi; 
+            
+            % ★修正5: 必要な情報を構造体に詰める
+            Data.kappa = dkappa; % Autopilot用
+            
+            % Scheduler用: もし見つからなかったら(短すぎる場合など)セグメント終了点を使う
+            if idx_clothoid_start == 0
+                idx_clothoid_start = seg_end_indices(1);
+            end
+            Data.idx_clothoid_start = idx_clothoid_start; 
+            Data.segment_end_idx = seg_end_indices;
+            
+            EndState = curr;
         end
         %simulate_dubins_sequence...結果を保存せずに、最終形態だけを知りたいときに用いる
         %最終到達点をget

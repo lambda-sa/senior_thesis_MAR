@@ -25,7 +25,7 @@ fprintf('=== Phase A: Path Planning ===\n');
 mission = ParafoilMissionClothoid(excelFileName);
 
 % クロゾイド設定 (ロールレート10deg/s, 先行係数0.5, 助走30m)
-mission.set_clothoid_options(1.2, 0.5, 0.0);
+mission.set_clothoid_options(0.5, 0.5, 0.0);
 
 % シミュレーション実行 (内部で風補正計算が行われる)
 mission.run_wind_simulation(target_pos, L_final, wind_planned);
@@ -99,86 +99,40 @@ scheduler = PlannerAutopilotScheduler(mission, autopilot);
 % =========================================================
 
 % 1. 物理モデル用 (Truth): 「実際の風 (Actual)」
-% -> これで機体が物理的に流されます
-scheduler.WindVector_Truth = [wind_actual; 0]; 
+% (3) 風情報の更新 (Plannerの予測風ではなく、Simulation用の"正解"風を与える)
+% Scheduler作成時にデフォルト値が入っていますが、ここでシミュレーション条件(wind_actual)で上書きします
+scheduler.WindVector_Truth = [wind_actual; 0]; % 物理環境の風
+scheduler.WindVector_Est   = [wind_actual; 0]; % 制御器が知っている風
 
-% 2. 制御用 (Est): 「実際の風 (Actual)」
-% -> これでオートパイロットが「外乱風」を認知し、
-%    計算式 (psi_cmd = chi_cmd - eta) でクラブ角を自動計算します。
-scheduler.WindVector_Est = [wind_actual; 0]; 
-
-fprintf('Setting: Autopilot knows Actual Wind (Crab Angle ON).\n');
-% ここに wind_actual を入れることで「風は分かっている」前提のシミュレーションになる
-scheduler.WindVector_Est   = [wind_actual; 0]; 
-
+fprintf('Setting: Scheduler configured with Dubins-Loiter & Actual Wind.\n');
 fprintf('Simulation Setup: Wind Truth=[%.1f, %.1f], Est=[%.1f, %.1f]\n', ...
     wind_actual(1), wind_actual(2), wind_actual(1), wind_actual(2));
 
-% LoiterからMission(着陸)へ切り替える高度を設定
-% 例: 高度300m (z = -300) を切ったら切り替え
-%scheduler.MissionSwitchAlt = -300;
+% --- ★削除した部分★ ---
+% MissionSwitchAlt の手動計算ロジックは全て削除しました。
+% Scheduler が自動計算した値が使われます。
+fprintf('Mission Switch Altitude is automatically set to: %.1f m (NED)\n', ...
+    scheduler.MissionSwitchAlt);
 
 
-% --- 変更前 (手動設定) ---
-% scheduler.MissionSwitchAlt = -300; 
-
-% --- 変更後 (自動取得) ---
-% Plannerのデータから、Missionフェーズ(entry)の最初の点のZ座標を取得
-if isfield(mission.Planner.ResultData, 'entry') && ~isempty(mission.Planner.ResultData.entry.z)
-    % entryの1点目のZ座標をトリガーにする
-    entry_start_z = mission.Planner.ResultData.entry.z(1);
-    
-    % 念のため、少しだけ余裕を持たせる（例: 計画より5m手前で切り替える）
-    % zは下向き正なので、"手前(高い)" は マイナス方向
-    scheduler.MissionSwitchAlt = entry_start_z - 10.0; 
-    
-    fprintf('Mission Switch Altitude auto-set to: %.1f m\n', -scheduler.MissionSwitchAlt);
-else
-    % データがない場合のフォールバック
-    scheduler.MissionSwitchAlt = -300; 
-end
-
-
-% ★★★ 3-2. 参照データの抽出 ★★★
-t_plan = trajPlanAir.Time;
-phi_plan = trajPlanAir.Euler_RPY(:, 1);   % バンク角
-theta_plan = trajPlanAir.Euler_RPY(:, 2); % ピッチ角 (ここ重要)
-
-% 速度 (V_Air は [Vx, Vy, Vz] なのでノルムを計算)
-V_plan = sqrt(sum(trajPlanAir.V_Air.^2, 2));
-
-% ★★★ 3-3. スケジューラの作成 (VとThetaも渡す) ★★★
-%scheduler = PlannerTrackingScheduler(mapper, t_plan, phi_plan, V_plan, theta_plan, wind_vector_2d);
-
-%scheduler = PlannerTrackingScheduler(mission,mapper);
 % 3-3. 初期条件の抽出 (Plannerの開始状態に合わせる)
-% Plannerの初期状態:
-start_pos_ned = trajPlanGnd.Position(1, :); % [N, E, Alt] (Altは正)
-start_vel_tas = trajPlanAir.V_Air(1, :);    % [Vx, Vy, Vz] (Wind Frame)
-start_euler   = trajPlanAir.Euler_RPY(1, :); % [phi, theta, psi]
-
-% 6DOF状態ベクトル: [u, v, w, p, q, r, phi, theta, psi, x, y, z]
-% ※ 注意: 6DOFの z は "Down" (下向き正) なので、高度の符号反転が必要
-% ※ 注意: u,v,w は機体座標系。start_vel_tas は対気慣性系に近い。
-%   ここでは簡易的に、初期はトリム状態で u=V_tas, v=0, w=0 と仮定して近似するか、
-%   あるいは回転行列で厳密に変換する。
-%   ParafoilDynamics内部で整合性をとるため、ここでは近似値を与え、
-%   最初の数ステップで物理的に落ち着くのを待つのが一般的です。
+start_pos_ned = trajPlanGnd.Position(1, :); 
+start_vel_tas = trajPlanAir.V_Air(1, :);   
+start_euler   = trajPlanAir.Euler_RPY(1, :); 
 
 V_abs = norm(start_vel_tas);
-u_init = V_abs; v_init = 0; w_init = 0; % Body frame approx
+u_init = V_abs; v_init = 0; w_init = 0; 
 x_init = start_pos_ned(1);
 y_init = start_pos_ned(2);
 z_init = -start_pos_ned(3); % Height -> Down
 
-y0 = [u_init; v_init; w_init; ... % Velocity (Body)
-      0; 0; 0; ...                % Angular Rates
-      start_euler(1); start_euler(2); start_euler(3); ... % Euler
-      x_init; y_init; z_init];    % Position (NED)
-
+y0 = [u_init; v_init; w_init; ... 
+      0; 0; 0; ...                
+      start_euler(1); start_euler(2); start_euler(3); ... 
+      x_init; y_init; z_init];
 % 3-4. エンジンの初期化
 dt_6dof = 0.05;
-t_max_6dof = t_plan(end) ; % 計画時間より少し長く
+t_max_6dof = t_plan(end)-200 ; % 計画時間より少し長く
 engine = SimulationEngine(plant, scheduler, dt_6dof, t_max_6dof, y0);
 
 %% --- 4. Phase C: 実行 ---
