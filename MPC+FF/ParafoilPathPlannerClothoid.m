@@ -139,7 +139,9 @@ classdef ParafoilPathPlannerClothoid < ParafoilPathPlanner
             data.final.x = curr.x + df*cos(final_yaw); 
             data.final.y = curr.y + df*sin(final_yaw); 
             data.final.psi = repmat(final_yaw, size(df));
-            
+            % ★★★ この行を追加してください！ ★★★
+            data.final.kappa = zeros(size(df)); 
+            % （解説: Final区間は直線なので、曲率はすべてゼロです）
             zf = zeros(size(df)); zf(1) = curr.z; tf = zeros(size(df)); tf(1) = current_time;
             for k=2:length(df)
                 h_now = max(0, zf(k-1)); V_TAS = V0 * sqrt(rho0 / obj.AtmoModel.get_density(h_now/1000));
