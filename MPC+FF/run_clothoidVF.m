@@ -1,10 +1,13 @@
-% run_full_simulation.m
+% run_clothoidVF.m
 % 軌道計画 -> FF制御 -> 6自由度シミュレーション 統合実行スクリプト
 clear; clc; close all;
 
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
-wind_vector_2d = [0; 0];  % 風速 (North, East) [m/s]
+wind_planned = [0; 0];  % 風速 (North, East) [m/s]
+wind_disturbance = [0;0];  % 予期せぬ外乱（未知の風）
+wind_actual = wind_planned + wind_disturbance; % 実際に吹いている風
+
 target_pos = [0, 600, 1000]; % 目標 [N, E, Alt]
 L_final = 500;
 
@@ -19,13 +22,13 @@ end
 
 %% --- 2. Phase A: 軌道計画 (Mission & Planner) ---
 fprintf('=== Phase A: Path Planning ===\n');
-mission = ParafoilMissionClothoid(excelFileName);
+mission = ParafoilMissionWind(excelFileName);
 
 % クロゾイド設定 (ロールレート10deg/s, 先行係数0.5, 助走30m)
-mission.set_clothoid_options(0.5, 0.5, 0.0);
+%mission.set_clothoid_options(0.5, 0.5, 0.0);
 
 % シミュレーション実行 (内部で風補正計算が行われる)
-mission.run_wind_simulation(target_pos, L_final, wind_vector_2d);
+mission.run_wind_simulation(target_pos, L_final, wind_planned);
 
 % ★重要: 計画された「対気」軌道データを取得
 % 6DOFは空気力を受けて飛ぶため、対気的なバンク角プロファイルが必要です。
@@ -68,48 +71,68 @@ fprintf('\n=== Phase B: 6DOF Simulation Setup (Pure Feedforward) ===\n');
 
 % 3-1. モデルとコントローラのインスタンス化
 plant = ParafoilDynamics(params);
-mapper = ParafoilControlMapper_linear_old(params);
+%mapper = ParafoilControlMapper_linear_old(params);
 
-% ★★★ 3-2. 参照データの抽出 ★★★
-t_plan = trajPlanAir.Time;
-phi_plan = trajPlanAir.Euler_RPY(:, 1);   % バンク角
-theta_plan = trajPlanAir.Euler_RPY(:, 2); % ピッチ角 (ここ重要)
 
-% 速度 (V_Air は [Vx, Vy, Vz] なのでノルムを計算)
-V_plan = sqrt(sum(trajPlanAir.V_Air.^2, 2));
 
-% ★★★ 3-3. スケジューラの作成 (VとThetaも渡す) ★★★
-%scheduler = PlannerTrackingScheduler(mapper, t_plan, phi_plan, V_plan, theta_plan, wind_vector_2d);
 
-scheduler = PlannerTrackingScheduler(mission,mapper);
+% (1) オートパイロットの初期化
+autopilot = ParafoilAutopilot(mission.Params);
+
+% (2) 計画データのインポート
+% Plannerが作った軌道(Entry->Dubins->Final)とLoiter情報をAutopilotに渡す
+autopilot.import_mission_data(mission.Planner);
+
+% (3) ゲインの調整 (必要に応じて)
+%autopilot.Gains.k_vf_loiter = 0.04;  % 円旋回は滑らかに
+%autopilot.Gains.k_vf_mission = 0.12; % 着陸進入は強めに誘導
+
+% (4) スケジューラ(Adapter)の作成
+% ダイナミクスとオートパイロットの仲介役
+scheduler = PlannerAutopilotScheduler(mission, autopilot);
+
+% ★★★ ここを追加: Schedulerが持つ風ベクトルを「実際の風」で上書きする ★★★
+% SchedulerはデフォルトでPlannerの風(wind_planned)を読み込んでしまうため、
+% ここで強制的に wind_actual (NED 3次元) に書き換えます。
+% =========================================================
+% ★★★ Schedulerへの風設定 (クラブ角補正を有効化) ★★★
+% =========================================================
+
+% 1. 物理モデル用 (Truth): 「実際の風 (Actual)」
+% (3) 風情報の更新 (Plannerの予測風ではなく、Simulation用の"正解"風を与える)
+% Scheduler作成時にデフォルト値が入っていますが、ここでシミュレーション条件(wind_actual)で上書きします
+scheduler.WindVector_Truth = [wind_actual; 0]; % 物理環境の風
+scheduler.WindVector_Est   = [wind_actual; 0]; % 制御器が知っている風
+
+fprintf('Setting: Scheduler configured with Dubins-Loiter & Actual Wind.\n');
+fprintf('Simulation Setup: Wind Truth=[%.1f, %.1f], Est=[%.1f, %.1f]\n', ...
+    wind_actual(1), wind_actual(2), wind_actual(1), wind_actual(2));
+
+% --- ★削除した部分★ ---
+% MissionSwitchAlt の手動計算ロジックは全て削除しました。
+% Scheduler が自動計算した値が使われます。
+fprintf('Mission Switch Altitude is automatically set to: %.1f m (NED)\n', ...
+    scheduler.MissionSwitchAlt);
+
+
 % 3-3. 初期条件の抽出 (Plannerの開始状態に合わせる)
-% Plannerの初期状態:
-start_pos_ned = trajPlanGnd.Position(1, :); % [N, E, Alt] (Altは正)
-start_vel_tas = trajPlanAir.V_Air(1, :);    % [Vx, Vy, Vz] (Wind Frame)
-start_euler   = trajPlanAir.Euler_RPY(1, :); % [phi, theta, psi]
-
-% 6DOF状態ベクトル: [u, v, w, p, q, r, phi, theta, psi, x, y, z]
-% ※ 注意: 6DOFの z は "Down" (下向き正) なので、高度の符号反転が必要
-% ※ 注意: u,v,w は機体座標系。start_vel_tas は対気慣性系に近い。
-%   ここでは簡易的に、初期はトリム状態で u=V_tas, v=0, w=0 と仮定して近似するか、
-%   あるいは回転行列で厳密に変換する。
-%   ParafoilDynamics内部で整合性をとるため、ここでは近似値を与え、
-%   最初の数ステップで物理的に落ち着くのを待つのが一般的です。
+start_pos_ned = trajPlanGnd.Position(1, :); 
+start_vel_tas = trajPlanAir.V_Air(1, :);   
+start_euler   = trajPlanAir.Euler_RPY(1, :); 
 
 V_abs = norm(start_vel_tas);
-u_init = V_abs; v_init = 0; w_init = 0; % Body frame approx
+u_init = V_abs; v_init = 0; w_init = 0; 
 x_init = start_pos_ned(1);
 y_init = start_pos_ned(2);
 z_init = -start_pos_ned(3); % Height -> Down
 
-y0 = [u_init; v_init; w_init; ... % Velocity (Body)
-      0; 0; 0; ...                % Angular Rates
-      start_euler(1); start_euler(2); start_euler(3); ... % Euler
-      x_init; y_init; z_init];    % Position (NED)
-
+y0 = [u_init; v_init; w_init; ... 
+      0; 0; 0; ...                
+      start_euler(1); start_euler(2); start_euler(3); ... 
+      x_init; y_init; z_init];
 % 3-4. エンジンの初期化
 dt_6dof = 0.05;
-t_max_6dof = t_plan(end) ; % 計画時間より少し長く
+t_max_6dof = t_plan(end)-200 ; % 計画時間より少し長く
 engine = SimulationEngine(plant, scheduler, dt_6dof, t_max_6dof, y0);
 
 %% --- 4. Phase C: 実行 ---
@@ -136,7 +159,7 @@ plot3(target_pos(2), target_pos(1), target_pos(3), 'rx', 'MarkerSize', 15, 'Line
 grid on; axis equal; view(3);
 xlabel('East [m]'); ylabel('North [m]'); zlabel('Altitude [m]');
 legend('Location', 'best');
-title(sprintf('Trajectory Comparison\nWind: N=%.1f, E=%.1f m/s', wind_vector_2d(1), wind_vector_2d(2)));
+title(sprintf('Trajectory Comparison\nWind: N=%.1f, E=%.1f m/s', wind_planned(1), wind_planned(2)));
 
 % 2. バンク角追従確認 (右上: 2)
 subplot(3, 2, 2);
@@ -213,7 +236,7 @@ end
 % --- 2. 参照軌道 (Planner) の対地速度計算 ---
 % 対気速度 [V_air] を変換し、風ベクトルを加算して対地速度にする
 V_ned_plan = zeros(length(t_plan), 3);
-wind_3d = [wind_vector_2d; 0]; % 風ベクトル [North, East, Down] (Downは通常0)
+wind_3d = [wind_planned; 0]; % 風ベクトル [North, East, Down] (Downは通常0)
 
 for i = 1:length(t_plan)
     % Plannerの姿勢角
@@ -275,3 +298,119 @@ fprintf('  -> Ground velocity plot created.\n');
 
 simData = engine.create_results_table();
 PayloadPlotter.plotResults(simData, engine.ControlScheduler); % [cite: 2848]
+%{
+%% --- Debug: Loiter Vector Field Visualization ---
+if strcmpi(autopilot.CurrentMode, 'Loiter') || ~isempty(autopilot.LoiterParams)
+    fprintf('\n=== Debugging Loiter Guidance ===\n');
+    
+    % 1. Loiterパラメータの取得
+    p = autopilot.LoiterParams;
+    if isempty(p)
+        % もしAutopilot内に残ってなければ、Plannerの結果から再構築
+        if isfield(mission.Planner.ResultData, 'loiter')
+             lx = mission.Planner.ResultData.loiter.x;
+             ly = mission.Planner.ResultData.loiter.y;
+             p.xc = (min(lx)+max(lx))/2; p.yc = (min(ly)+max(ly))/2; 
+             p.R = (max(lx)-min(lx))/2;
+             % 方向はとりあえず CW(1) と仮定して確認
+             p.lambda = 1; 
+        end
+    end
+
+    figure('Name', 'Loiter Guidance Debug', 'Color', 'w', 'Position', [100, 100, 800, 800]);
+    hold on; grid on; axis equal;
+    
+    % 2. 目標円の描画
+    th = 0:0.01:2*pi;
+    cx = p.xc + p.R * cos(th);
+    cy = p.yc + p.R * sin(th);
+    plot(cy, cx, 'k--', 'LineWidth', 1.5, 'DisplayName', 'Target Circle'); % Plotは (East, North)
+    
+    % 3. 軌跡の描画
+    plot(simData.Inertial_Y_Position, simData.Inertial_X_Position, 'b-', 'LineWidth', 1.2, 'DisplayName', 'Trajectory');
+    
+    % 4. ベクトル（矢印）の描画
+    % 全データだと重すぎるので間引く
+    step_idx = 1:50:height(simData); 
+    
+    for i = step_idx
+        % 位置 (NED -> Plot: Y, X)
+        pos_n = simData.Inertial_X_Position(i);
+        pos_e = simData.Inertial_Y_Position(i);
+        
+        % 実際のヘディング (青矢印)
+        psi = simData.Yaw_Angle(i);
+        scale = 40; % 矢印の長さ
+        quiver(pos_e, pos_n, scale*sin(psi), scale*cos(psi), ...
+            'Color', 'b', 'LineWidth', 1, 'MaxHeadSize', 0.5, 'HandleVisibility', 'off');
+        
+        % --- ここで当時の誘導計算を再現 ---
+        % (ログに psi_cmd が残っていればそれを使うのがベストですが、再現計算します)
+        
+        % 1. 基本コース角 (Chi)
+        dx = pos_n - p.xc; dy = pos_e - p.yc;
+        dist = sqrt(dx^2 + dy^2);
+        phi_pos = atan2(dy, dx);
+        tilde_d = (dist - p.R) / p.R;
+        k = autopilot.Gains.k_vf_loiter;
+        lambda = p.lambda;
+        
+        % 収束角
+        correction = (pi/2) + atan(k * tilde_d);
+        chi_cmd = phi_pos + lambda * correction;
+        
+        % 2. 風補正 (Crab)
+        % 風データは Scheduler の Est を使う想定 (定常風と仮定)
+        if exist('wind_actual', 'var')
+            Wx = wind_actual(1); Wy = wind_actual(2);
+        else
+            Wx = 0; Wy = 0;
+        end
+        W_mag = norm([Wx, Wy]);
+        chi_wind = atan2(Wy, Wx);
+        
+        % V_horiz 推定 (ログになければ近似)
+        u=simData.Body_U_Vel(i); v=simData.Body_V_Vel(i); w=simData.Body_W_Vel(i);
+        theta = simData.Pitch_Angle(i);
+        % キネマティクス推定を簡易再現
+        % V_air ~ V_ground - Wind
+        % ここでは簡易的に V_horiz = V_ground_h (風が弱い場合) 
+        % または 前回の議論の V_tas * cos(theta-alpha)
+        V_tas = sqrt(u^2+v^2+w^2);
+        V_horiz = V_tas * cos(theta); % 簡易版
+        
+        if V_horiz > 1
+            W_cross = W_mag * sin(chi_cmd - chi_wind);
+            sin_eta = max(-0.95, min(0.95, W_cross/V_horiz));
+            eta = asin(sin_eta);
+            psi_cmd = chi_cmd - eta;
+        else
+            psi_cmd = chi_cmd;
+        end
+        
+        % 目標ヘディング (緑矢印)
+        quiver(pos_e, pos_n, scale*sin(psi_cmd), scale*cos(psi_cmd), ...
+            'Color', 'g', 'LineWidth', 1.5, 'MaxHeadSize', 0.5, 'HandleVisibility', 'off');
+            
+        % 風向 (赤矢印, 短く)
+        if i == step_idx(1) % 凡例用に1回だけ描画
+             quiver(pos_e, pos_n, scale*0.5*sin(chi_wind), scale*0.5*cos(chi_wind), ...
+            'Color', 'r', 'LineWidth', 1, 'DisplayName', 'Wind Dir');
+        else
+             quiver(pos_e, pos_n, scale*0.5*sin(chi_wind), scale*0.5*cos(chi_wind), ...
+            'Color', 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+        end
+    end
+    
+    % 凡例用ダミープロット
+    plot(nan, nan, 'b-', 'DisplayName', 'Actual Heading');
+    plot(nan, nan, 'g-', 'DisplayName', 'Command Heading');
+    
+    xlabel('East [m]'); ylabel('North [m]');
+    title('Loiter Debug: Blue=Actual, Green=Command, Red=Wind');
+    legend('Location', 'bestoutside');
+    xlim([p.yc-p.R*1.5, p.yc+p.R*1.5]);
+    ylim([p.xc-p.R*1.5, p.xc+p.R*1.5]);
+end
+
+%}

@@ -1,5 +1,5 @@
 
-classdef ParafoilControlMapper_linear_old < handle
+classdef ParafoilControlMapper_linear_FF < handle
     % PARAFOILCONTROLMAPPER
     % 軌道計画の結果(V, theta, phi)からフィードフォワード操作量を計算し、
     % さらに現在の状態誤差に基づいて線形化モデルによる補正(delta_delta_a)を加えるクラス
@@ -10,12 +10,19 @@ classdef ParafoilControlMapper_linear_old < handle
         Params       % 全パラメータ構造体
         Yaw_Factor   % ベースFF用係数
         atmo_model
+
+        is_first = true;
         dt = 0.05;
+
+        % --- 追加: バンク角遅れ補償用 ---
+        tau_phi =10;         % 機体のロール応答時定数 [s] (要調整)
+        %da_ref_old = 0;       % 微分計算用の前回値
+        phi_cmd_old = 0;       % 微分計算用の前回値   
 
     end
     
     methods
-        function obj = ParafoilControlMapper_linear_old(params)
+        function obj = ParafoilControlMapper_linear_FF(params)
             % コンストラクタ
             obj.Params = params;
             obj.atmo_model = AtmoTempPressRho();
@@ -65,7 +72,7 @@ classdef ParafoilControlMapper_linear_old < handle
             g = 9.81; 
             if V_ref < 1.0, V_ref = 1.0; end
             K_dyn = (g / (V_ref^2)) * cos(theta_ref);
-            delta_a = obj.Yaw_Factor * K_dyn * tan(phi_ref);
+            delta_a = obj.Yaw_Factor * K_dyn * sin(phi_ref);
             [delta_R, delta_L] = obj.apply_mixing(delta_a, delta_s_bias);
         end
         
@@ -73,11 +80,31 @@ classdef ParafoilControlMapper_linear_old < handle
         function [delta_R, delta_L, delta_a_total, delta_delta_a] = compute_corrected_input(obj, current_state, ref_state, delta_s_bias)
             if nargin < 4, delta_s_bias = 0; end
             
-            % 1. 参照状態の展開 (u, w を含む)
+           
+            u_curr = current_state(1); w_curr = current_state(3);
+            phi_curr = current_state(7);
+
+            V_ref = ref_state.V;
+            phi_ref = ref_state.phi;
+            theta_ref = ref_state.theta;
+
+            %% 数値微分による phi_cmd の変化率計算
+
+            if obj.is_first
+                dot_phi_cmd = 0;
+                obj.is_first = false;
+            else
+                dot_phi_cmd = (phi_curr - obj.phi_cmd_old) / obj.dt;
+            end
+            obj.phi_cmd_old = phi_curr; % 次回計算用に保存
+            
+            % ★ 物理的な一次遅れ T (tau_phi) を代入して進ませる
+            % この phi_leaded が「遅れがない場合に、今すぐ出すべきバンク指令」になる
+            phi_cmd = phi_ref +obj.tau_phi * dot_phi_cmd;
+
+             %% 1. 参照状態の展開 (u, w を含む)
             if isstruct(ref_state)
-                V_ref = ref_state.V;
-                phi_ref = ref_state.phi;
-                theta_ref = ref_state.theta;
+                
                 
                 % ★ u_ref, w_ref の取得
                 if isfield(ref_state, 'u') && isfield(ref_state, 'w')
@@ -109,7 +136,7 @@ classdef ParafoilControlMapper_linear_old < handle
                 if isfield(ref_state, 'delta_a')
                     da_ref = ref_state.delta_a;
                 else
-                    [~, ~, da_ref] = obj.compute_input_from_reference(phi_ref, V_ref, theta_ref, 0);
+                    [~, ~, da_ref] = obj.compute_input_from_reference(phi_cmd, V_ref, theta_ref, 0);
                 end
             else
                 % 簡易ベクトル入力 [V, theta, phi] の場合 (u, wは近似)
@@ -123,20 +150,16 @@ classdef ParafoilControlMapper_linear_old < handle
                 psi_dot = (g / V_ref) * tan(phi_ref);
                 q_ref = psi_dot * sin(phi_ref) * cos(theta_ref);
                 r_ref = psi_dot * cos(phi_ref) * cos(theta_ref);
-                [~, ~, da_ref] = obj.compute_input_from_reference(phi_ref, V_ref, theta_ref, 0);
+                [~, ~, da_ref] = obj.compute_input_from_reference(phi_cmd, V_ref, theta_ref, 0);
             end
+
+            %% 2. 状態偏差 (Delta)
             
-            % 2. 状態偏差 (Delta)
-            u_curr = current_state(1); w_curr = current_state(3);
-            phi_curr = current_state(7);
             
             du = u_curr - u_ref;
             dw = w_curr - w_ref;
             dphi = phi_curr - phi_ref;
-            %% 合わせる定数
-            %K= 0.029;
-             K = 0;
-
+            
             % 3. モーメント感度係数の計算
             p = obj.Params;
             S = p.S_c; b = p.prop.b;
@@ -147,7 +170,7 @@ classdef ParafoilControlMapper_linear_old < handle
             % N = (1/4 rho S b^2 Cn_r) * V * r  + (1/2 rho S b Cn_da) * V^2 * da
             
             K_damp = 0.25 * rho * S * b^2 * p.C_n_r;       % V*r の係数
-            K_ctl  = 0.5  * rho * S*b /p.d  * p.C_n_delta_a; % V^2*da の係数
+            K_ctl  = 0.5  * rho * S /p.d  * p.C_n_delta_a; % V^2*da の係数
             
             % (A) 速度感度項 dN/du, dN/dw
             % dN/dV = K_damp * r + 2 * K_ctl * V * da
@@ -173,7 +196,7 @@ classdef ParafoilControlMapper_linear_old < handle
                 p_ref = -psi_dot * sin(theta_ref);
             end
             
-            N_q = (Iyy - Ixx) * p_ref;
+            N_q = (Ixx - Iyy) * p_ref;
             
             % N_phi (Gravity term) -> Ixz=0 なので Yaw には直接効かない
             N_phi = 0;
@@ -199,7 +222,7 @@ classdef ParafoilControlMapper_linear_old < handle
             
 
             % 5. 合成
-            delta_a_total = da_ref+ delta_delta_a + K*dphi ;
+            delta_a_total = da_ref+delta_delta_a ;
             
             [delta_R, delta_L] = obj.apply_mixing(delta_a_total, delta_s_bias);
         end
