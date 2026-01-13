@@ -67,7 +67,7 @@ classdef ParafoilAutopilot < handle
             
             % --- ゲイン初期設定 ---
             obj.Gains.k_vf_loiter  = 0.08;
-            obj.Gains.k_vf_mission = 0.15;
+            obj.Gains.k_vf_mission = 0.05;
             obj.Gains.chi_inf      = pi/2;
             
             obj.Gains.K_guidance   = 0.0;    % 方位角FB (レート指令へ加算)
@@ -228,7 +228,8 @@ classdef ParafoilAutopilot < handle
                         
                         % 最大曲率制限 (R_min = 30m)
                         limit_k = 1.0 / 30.0;
-                        kappa = max(-limit_k, min(limit_k, raw_k));
+                        %kappa = max(-limit_k, min(limit_k, raw_k));
+                        kappa= raw_k;
                     end
                 end
                 
@@ -454,6 +455,7 @@ classdef ParafoilAutopilot < handle
                 delta_delta_a = 0;
             else
                 term_vel = N_u * du + N_w * dw;
+                %term_vel = 0;
                 term_phi = S_phi * dphi;
                 delta_delta_a = - (1 / N_da) * (term_vel + term_phi);
             end

@@ -22,10 +22,10 @@ end
 
 %% --- 2. Phase A: 軌道計画 (Mission & Planner) ---
 fprintf('=== Phase A: Path Planning ===\n');
-mission = ParafoilMissionClothoid(excelFileName);
+mission = ParafoilMissionWind(excelFileName);
 
 % クロゾイド設定 (ロールレート10deg/s, 先行係数0.5, 助走30m)
-mission.set_clothoid_options(0.5, 0.5, 0.0);
+%mission.set_clothoid_options(0.5, 0.5, 0.0);
 
 % シミュレーション実行 (内部で風補正計算が行われる)
 mission.run_wind_simulation(target_pos, L_final, wind_planned);

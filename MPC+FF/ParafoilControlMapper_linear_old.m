@@ -191,8 +191,8 @@ classdef ParafoilControlMapper_linear_old < handle
             if abs(N_da) < 1e-9
                 delta_delta_a = 0;
             else
-                %term_vel = N_u * du + N_w * dw;
-                term_vel =0;
+                term_vel = N_u * du + N_w * dw;
+                %term_vel =0;
                 term_phi = S_phi * dphi;
                 delta_delta_a = - (1 / N_da) * (term_vel + term_phi);
             end
