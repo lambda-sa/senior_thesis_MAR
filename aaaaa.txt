@@ -1,1 +1,131 @@
+
 aaaaa
+
+\section{運動方程式の線形化}
+
+本研究では，6自由度非線形運動方程式を任意の参照状態 $\bm{x}$ および入力 $\bm{u}$ の周りで線形化し，以下の状態空間モデルを得る．
+\begin{equation}
+    \dot{\delta \bm{x}} = \bm{A} \delta \bm{x} + \bm{B} \delta \bm{u}
+\end{equation}
+ここで，状態ベクトル $\bm{x}$ および入力ベクトル $\bm{u}$ は以下のように定義される．
+\begin{align}
+    \bm{x} &= [u, v, w, p, q, r, \phi, \theta, \psi, x, y, z]^T \\
+    \bm{u} &= [\delta_R, \delta_L]^T
+\end{align}
+
+\subsection{システム行列 $\bm{A}$ の導出}
+
+風速を0，$I_{xy}=I_{yz}=0$ と仮定し，全速度成分による動圧変化およびジャイロ効果を考慮したヤコビ行列 $\bm{A} \in \mathbb{R}^{12 \times 12}$ は，以下のブロック行列として記述される．
+
+\begin{equation}
+    \bm{A} = \frac{\partial \bm{f}}{\partial \bm{x}} = 
+    \begin{bmatrix}
+        \bm{A}_{vv} & \bm{A}_{v\omega} & \bm{A}_{v\Theta} & \bm{0}_{3 \times 3} \\
+        \bm{A}_{\omega v} & \bm{A}_{\omega \omega} & \bm{0}_{3 \times 3} & \bm{0}_{3 \times 3} \\
+        \bm{0}_{3 \times 3} & \bm{A}_{\Theta \omega} & \bm{A}_{\Theta \Theta} & \bm{0}_{3 \times 3} \\
+        \bm{A}_{pv} & \bm{0}_{3 \times 3} & \bm{A}_{p\Theta} & \bm{0}_{3 \times 3}
+    \end{bmatrix}
+\end{equation}
+
+以下に各ブロック要素の詳細を示す．なお，表記の簡略化のため，質量を $m$，慣性行列を $\bm{I}$，空力および外力を $\bm{F}$，モーメントを $\bm{M}$ とする．
+
+\subsubsection{並進運動に関する項 ($\dot{u}, \dot{v}, \dot{w}$)}
+
+並進速度および角速度に対する感度は，空力微分とコリオリ項から構成される．
+\begin{equation}
+    \bm{A}_{vv} = \frac{1}{m} \frac{\partial \bm{F}}{\partial \bm{v}} - \bm{\Omega}_\times, \quad
+    \bm{A}_{v\omega} = \frac{1}{m} \frac{\partial \bm{F}}{\partial \bm{\omega}} + \bm{V}_\times
+\end{equation}
+ここで，$\bm{\Omega}_\times, \bm{V}_\times$ はそれぞれ角速度ベクトル，速度ベクトルの歪対称行列である．
+\begin{equation}
+    \bm{A}_{vv} = \frac{1}{m}
+    \begin{bmatrix}
+        X_u & X_v & X_w \\
+        Y_u & Y_v & Y_w \\
+        Z_u & Z_v & Z_w
+    \end{bmatrix}
+    -
+    \begin{bmatrix}
+        0 & -r & q \\
+        r & 0 & -p \\
+        -q & p & 0
+    \end{bmatrix}
+\end{equation}
+重力項に由来する姿勢角感度 $\bm{A}_{v\Theta}$ は以下の通りである．
+\begin{equation}
+    \bm{A}_{v\Theta} = g
+    \begin{bmatrix}
+        0 & -\cos\theta & 0 \\
+        \cos\theta\cos\phi & -\sin\theta\sin\phi & 0 \\
+        -\cos\theta\sin\phi & -\sin\theta\cos\phi & 0
+    \end{bmatrix}
+\end{equation}
+
+\subsubsection{回転運動に関する項 ($\dot{p}, \dot{q}, \dot{r}$)}
+
+慣性行列の逆行列を $\bm{I}^{-1}$ とし，ジャイロモーメント項を $\bm{T}_{gyro} = \bm{\omega} \times (\bm{I}\bm{\omega})$ とすると，各項は以下となる．
+\begin{equation}
+    \bm{A}_{\omega v} = \bm{I}^{-1} \frac{\partial \bm{M}}{\partial \bm{v}}, \quad
+    \bm{A}_{\omega \omega} = \bm{I}^{-1} \left( \frac{\partial \bm{M}}{\partial \bm{\omega}} - \frac{\partial \bm{T}_{gyro}}{\partial \bm{\omega}} \right)
+\end{equation}
+ここで，ジャイロ項の偏微分行列 $\bm{G} = \partial \bm{T}_{gyro} / \partial \bm{\omega}$ は非定常状態において以下の成分を持つ．
+\begin{equation}
+    \bm{G} = 
+    \begin{bmatrix}
+        0 & -I_{yy}q + I_{zz}r + I_{xz}p & (I_{yy}-I_{zz})q \\
+        (I_{xx}-I_{zz})r - 2I_{xz}p & 0 & (I_{xx}-I_{zz})p + 2I_{xz}r \\
+        (I_{yy}-I_{xx})q & (I_{xx}-I_{yy})p - I_{xz}r & 0
+    \end{bmatrix}
+\end{equation}
+
+\subsubsection{キネマティクスに関する項}
+
+オイラー角速度の幾何学的関係より，$\bm{A}_{\Theta \omega}$ は座標変換行列そのものとなる．
+\begin{equation}
+    \bm{A}_{\Theta \omega} = 
+    \begin{bmatrix}
+        1 & \sin\phi\tan\theta & \cos\phi\tan\theta \\
+        0 & \cos\phi & -\sin\phi \\
+        0 & \sin\phi\sec\theta & \cos\phi\sec\theta
+    \end{bmatrix}
+\end{equation}
+また，$\bm{A}_{\Theta \Theta}$ は角速度 $\bm{\omega}$ が非ゼロの場合に現れる連成項である．
+\begin{equation}
+    \bm{A}_{\Theta \Theta} = 
+    \begin{bmatrix}
+        (q c_\phi - r s_\phi) t_\theta & (q s_\phi + r c_\phi) \sec^2\theta & 0 \\
+        -(q s_\phi + r c_\phi) & 0 & 0 \\
+        (q c_\phi - r s_\phi) \sec\theta & (q s_\phi + r c_\phi) \sec\theta t_\theta & 0
+    \end{bmatrix}
+\end{equation}
+ただし，$s_\phi=\sin\phi, c_\phi=\cos\phi, t_\theta=\tan\theta$ と略記した．
+
+慣性座標系位置の微分 $\bm{A}_{pv}$ は，機体座標系から慣性座標系への変換行列 $T_{\mathrm{IB}}(\phi, \theta, \psi)^T$ で与えられる．
+
+\subsection{入力行列 $\bm{B}$ の導出}
+
+操舵入力の特異性を回避するため，平滑化パラメータ $k$ を用いたSoftmin関数により，左右ブレーキ操作量 $(\delta_R, \delta_L)$ を非対称操作量 $\delta_a$ および対称操作量 $\delta_s$ へ変換する．
+\begin{equation}
+    \delta_a = \delta_R - \delta_L, \quad \delta_s = -\frac{1}{k} \ln \left( e^{-k\delta_R} + e^{-k\delta_L} \right)
+\end{equation}
+これに伴い，入力行列 $\bm{B} \in \mathbb{R}^{12 \times 2}$ は，物理的な制御微係数行列とSoftmin変換のヤコビ行列 $\bm{T}_{soft}$ の積として導出される．
+
+\begin{equation}
+    \bm{B} = 
+    \begin{bmatrix}
+        \frac{1}{m} \bm{C}_{F\delta} \\
+        \bm{I}^{-1} \bm{C}_{M\delta} \\
+        \bm{0}_{6 \times 2}
+    \end{bmatrix}
+    \bm{T}_{soft}
+\end{equation}
+ここで，$\bm{C}_{F\delta}, \bm{C}_{M\delta}$ は空力係数の操舵微分（次元付き）を含み，$\bm{T}_{soft}$ は現在の操作量に依存する．
+\begin{equation}
+    \bm{T}_{soft} = 
+    \begin{bmatrix}
+        1 & -1 \\
+        \sigma_R & \sigma_L
+    \end{bmatrix}, \quad
+    \sigma_R = \frac{e^{-k\delta_R}}{e^{-k\delta_R} + e^{-k\delta_L}}
+\end{equation}
+これにより，定常滑空状態のみならず，任意の旋回・加減速状態における線形化モデルが得られる．
