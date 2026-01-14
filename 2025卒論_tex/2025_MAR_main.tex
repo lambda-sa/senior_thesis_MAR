@@ -197,7 +197,7 @@ maneuver (straight-line and orbit)\cite{ref_VF}}
 この手法を空中回収に適用する場合，2つの課題が存在する.
 第一に, Fariraの研究では直線及び円軌道の追従が示されているが, 空中回収に適した軌道計画がなされていない点である. 空中回収においては, パラフォイルは動力を持たずに滑空飛行を行うため,
  初期高度と会合高度の差がそのままパラフォイルの持つエネルギーになる. したがって, パラフォイルの高度エネルギーを過不足なく消費するような軌道計画を行う必要がある.
-\\
+
 第二に, VF法での制御パラメータ調整の煩雑さが挙げられる. VF法では, 参照経路に対するパラフォイルの位置ずれを低減するために, 複数の制御パラメータを調整する必要がある. これらのパラメータは, 風速や風向きなどの外乱条件に応じて決定されるべきであるが, 
 Fariらの論文ではその方法が示されていない. したがって, 空中回収においてVF法を適用するためには, ゲインの数を減らせるようVF法の修正が必要である. \cite{ref_VF}
 \subsection{研究目的}
@@ -451,7 +451,7 @@ C_n = C_{nr} \frac{r_c b}{2V_{\mathrm{c}}} + C_{n\delta_a}\delta_a \frac{d}{b} \
 本研究では, Brandenの研究を参考に, 図に示すように3つのPhaseに分けてパラフォイルの軌道を設計した. \cite{ref_Branden}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\linewidth]{画像/plannning_phase_dubins.png}
+  \includegraphics[width=1.0\linewidth]{画像/plannning_phase_dubins.png}
   \caption{Trajectory Planning of MAR.}
   \label{fig:para_traj_plan}
 \end{figure}
@@ -660,7 +660,8 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 % =========================================
 \subsection{クロゾイド曲線適用時の軌道補正手法}
 前節で述べた風補正アルゴリズムでは, Dubins Pathに基づく単純な幾何学的経路長を用いて軌道計画を行っている. しかしこの方法では, 直進区間と旋回区間の接続点でバンク角が瞬時に変化するため, 慣性モーメントや機体の横滑りを無視できない実際のパラフォイルでは追従が難しいと考えられる. 
-そのため, 本システムではThierryらの研究を参考に, Dubins Pathの各旋回区間に対しクロゾイド曲線を適用し, 曲率及びバンク角を滑らかに遷移させた. \cite{ref_CC_Dubins}. \\
+そのため, 本システムではThierryらの研究を参考に, Dubins Pathの各旋回区間に対しクロゾイド曲線を適用し, 曲率及びバンク角を滑らかに遷移させた. \cite{ref_CC_Dubins}. 
+
 クロゾイド曲線とは, 曲率が曲線長に比例して変化する曲線であり, 鉄道や道路の線形設計において, 直線区間と円曲線区間を滑らかに接続するために用いられる. 
 図\ref{fig:cc_dubins_concept}にクロゾイド曲線を用いたDubins Pathの概念図を示す. 
 \begin{figure}[H]
@@ -670,7 +671,7 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
   \label{fig:cc_dubins_concept}
 \end{figure}
 
-クロゾイド曲線による平滑化を適用する場合, Dubins Pathの接点にそのままクロゾイド曲線を接続すると, 物理的な飛行時間および到達位置に誤差が生じる. 
+クロゾイド曲線を導入する場合, Dubins Pathの接点にそのままクロゾイド曲線を接続すると, 物理的な飛行時間および到達位置に誤差が生じる. 
 この誤差を減らすため, クロゾイド曲線への移行を, Dubins Pathの接点から一定距離前で開始するように調整している. 
 %\subsubsection{先行切り替えによる空間的補正 (Look-ahead Compensation)}
 %幾何学的なDubins Pathは, 接点において瞬時に旋回を開始することを前提としている. しかし, 実際のパラフォイルにはロールレート制限（$\dot{\phi}_{\max}$）が存在するため, 接点で操作を開始すると応答遅れにより旋回外側へ逸脱（オーバーシュート）してしまう. 
@@ -707,6 +708,189 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 
 \subsection{誘導則の概要}
 本章では, 軌道計画で作成した参照軌道に対してパラフォイルの6自由度モデルを追従させるための誘導則について述べる. 
+
+誘導では,パラフォイルが参照経路に追従するためのベクトル場を生成する. VF法を基本とし,パラフォイルを定常旋回周りで線形化した. 
+これによりゲインの数を減らし, 所望の経路に追従させるための制御量の理論式を得る. VF法での誘導の概略を図\ref{fig:newVF_concept}に示す. 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{画像/newVF_all_image.png}
+  \caption{Concept of VectorField method.}
+  \label{fig:newVF_concept}
+\end{figure}
+ 具体的には, 参照経路に対するクロスレンジ誤差を基に目標対地コース角 $\chi_{\mathrm{cmd}}$ を生成し, 
+ さらにその時間変化率を計算して, パラフォイルの目標ヨーレートである $r_{\mathrm{cmd}}$ を得る.
+ 最後に, 目標ヨーレートに基づき制御入力 $\delta_a$ を算出する.
+
+% 1. Mission Mode (Revised)
+\subsection{コース角$\chi_{\mathrm{cmd}}$の導出}
+\subsubsection{ロイター前後で共通する理論式の導出}
+本節では, 取得した参照経路に対してパラフォイルが追従するための目標対地コース角 $\chi_{\mathrm{cmd}}$ を求める.
+Fariらの研究では参照経路を直線と円に限定しているが, 本研究では軌道計画の段階でクロゾイド曲線を導入しているため, 一般の曲線に適用できるよう$\chi_{\mathrm{cmd}}$の式を拡張する.\cite{ref_VF}
+手順としては, ロイター前後で共通する理論式を導出した後, 円旋回を繰り返すロイター特有の理論式を求める.
+図\ref{fig:newVF_triangle}に, ベクトル場の幾何学的な構成を示す.   
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{画像/newVF_image.png}
+  \caption{Geometric construction of the vector field.}
+  \label{fig:newVF_triangle}
+\end{figure}
+簡単のため参照経路を直線で表しているが, 実際にはクロゾイド曲線を含む任意の曲線を指す. 
+
+パラフォイルと参照経路を結ぶベクトル場において, 参照経路と平行な成分を$e_{\mathrm{py}}$, 
+垂直な成分を $e_{\mathrm{LOS}}$ とし,これらが結ぶ三角形の偏角を$\chi_\mathrm{VF}$, 参照経路の接線方位角を $\chi_\mathrm{path}$ とする.
+%パラフォイルの現在の対地コース角を $\chi$ とし, 方位誤差を $\tilde{\chi} = \chi - \chi_{\mathrm{path}}$ と定義する.
+このとき $e_{\mathrm{py}}$が長いほどパラフォイルは現在地から遠くの参照経路を目指すことになるため, $e_{\mathrm{LOS}}$は前方注視距離と等しい. 
+また, $\chi_\mathrm{VF}$が大きいほど参照経路に対して垂直に近い角度でに進入することになる. この議論は参照経路の曲線形状を問わず成り立つため, ロイター前後で共通する理論式を導出できる.
+$\chi_\mathrm{path}→\pi/2$のとき, $\chi_\mathrm{path}-\chi_\mathrm{cmd}$→$\chi_{\infty}$ を満たすように, 
+\begin{equation}
+    \chi_{\mathrm{VF}} = \frac{\pi/2}{\chi_{\infty}}(\chi_{\mathrm{path}} - \chi_{\mathrm{cmd}})
+    \label{eq:chi_vf}
+\end{equation}
+とする. 式(\ref{eq:chi_vf})と直角三角形の関係より, $e_{\mathrm{py}}$の逆数を$k_{\mathrm{VF}}$とすると, $\chi_{\mathrm{cmd}}$は
+\begin{equation}
+    \chi_{\mathrm{cmd}} = \chi_{\mathrm{path}} - \chi_{\infty} \frac{2}{\pi} \tan^{-1}(k_{\mathrm{VF}} e_{\mathrm{py}})
+    \label{eq:chi_d_mission}
+\end{equation}
+と書ける. 
+%ここで, $\chi_{\infty} \in (0, \pi/2)$ は最大進入角, $k_{\mathrm{VF}}$ は収束ゲインである. 
+右辺第2項は, 誤差 $e_{\mathrm{py}}$ が大きい場合には $\mp \chi_{\infty}$ となり, 誤差がゼロに収束するにつれて $0$ に漸近する補正項である.
+\subsubsection{ロイター時の理論式}
+ここではロイター時の$\chi_{\mathrm{path}}$及び$e_{\mathrm{py}}$を求める. 
+機体位置から旋回中心への方位角を $\psi_{pos}$, 円の半径を $R_{ref}$, パラフォイルの現在位置と円の中心との距離を$d$とする.
+ $\chi_{\mathrm{path}}$は, 円軌道の接線方向であるため, $sigma_{dir}$を旋回方向を表す符号（反時計回り: $+1$, 時計回り: $-1$）として,
+\begin{equation}
+    \chi_{\mathrm{path}} = \psi_{pos} + \sigma_{dir} \frac{\pi}{2}  
+\end{equation}
+で表される.
+ロイター時には, パラフォイルと円の中心との距離を半径誤差$e_r$を$\chi_{\mathrm{cmd}}$を求める上で用いたいので, 
+\begin{equation}
+    e_y = e_r = d - R_{ref}
+\end{equation}
+とする.
+ 
+以上から, ロイター時には $\chi_{\mathrm{cmd}}$ は, 接線方向 $\psi_{pos} \pm \pi/2$ に対し, 半径誤差に応じた補正を加えたものとして
+\begin{equation}
+    \chi_{\mathrm{cmd}} =  \psi_{pos} + \sigma_{dir} \frac{\pi}{2} 
+             + \chi_{\infty} \frac{2}{\pi} \tan^{-1}(k_{loiter} e_r) 
+    \label{eq:chi_d_loiter}
+\end{equation}
+で表される. %ここで, $\sigma_{dir}$ は旋回方向を表す符号（反時計回り: $+1$, 時計回り: $-1$）である. 
+機体が円の外側 ($e_r > 0$) にある場合は内向きのベクトルが生成され, 内側にある場合は外向きのベクトルが生成される.
+
+\subsubsection{フレネ・セレ標構と空間計量係数}
+経路上の最近点における接線ベクトル, 法線ベクトルによって定義されるフレネ・セレ標構を考える. 
+経路の曲率を $\kappa_{ref}$ (旋回半径の逆数), 経路に対するクロスレンジ誤差（横偏差）を $e_{\mathrm{py}}$ とすると, 機体位置における経路長さに沿った空間の歪み（Metric Coefficient）を表すスケールファクタ $s_f$ は次式で定義される.
+\begin{equation}
+    s_f = \frac{1}{1 - \kappa_{ref} e_{\mathrm{py}}}
+\end{equation}
+
+\subsubsection{目標コースレート $\dot{\chi}_\mathrm{cmd}$ の導出}
+実際の制御器に入力されるのは, 目標コース角の時間変化率（コースレート）$\dot{\chi}_\mathrm{cmd}$ である. 
+式(\ref{eq:chi_d_mission})を時間微分することで, 以下のフィードフォワード則が得られる.
+\begin{equation}
+    \dot{\chi}_\mathrm{cmd} = \dot{\chi}_{path} + \frac{d}{dt} \left( - \chi_{\infty} \frac{2}{\pi} \tan^{-1}(k_{\mathrm{VF}} e_{\mathrm{py}}) \right)
+\end{equation}
+ここで, 経路追従項 $\dot{\chi}_{path}$ は空間計量係数 $s_f$ を考慮して補正される. また, 右辺第2項の微分を実行すると, 最終的な誘導コマンドは次式となる.
+\begin{equation}
+    \dot{\chi}_\mathrm{cmd} = \underbrace{ \kappa_{ref} \, s_f \, V_g \cos \tilde{\chi} }_{\text{経路項}} 
+    \underbrace{ - \frac{2 \chi_{\infty}}{\pi} \frac{k_{\mathrm{VF}} \dot{e}_y}{1 + (k_{\mathrm{VF}} e_{\mathrm{py}})^2} }_{\text{誤差収束項}}
+\end{equation}
+ただし, $\tilde{\chi} = \chi - \chi_{\mathrm{path}}$ は方位誤差, $\dot{e}_y = V_g \sin \tilde{\chi}$ は誤差変化率である.
+
+% =================================================================
+% 2. Loiter Mode (Revised)
+% =================================================================
+%\subsection{Loiterモードにおける定点滞空誘導}
+%Loiterモードでは, 指定された中心座標 $\bm{C}$ および半径 $R_{ref}$ の円軌道上への収束を目指す.
+
+%\subsubsection{目標対地コース角 $\chi_{\mathrm{cmd}}$ の定義}
+
+
+\subsubsection{目標コースレート $\dot{\chi}_\mathrm{cmd}$ の導出}
+Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコースレートを求める.
+まず, 接線方向の変化率（旋回角速度）は幾何学的に次式となる.
+\begin{equation}
+    \dot{\psi}_{tan} = \frac{V_g \sin(\chi - \psi_{pos})}{d}
+\end{equation}
+これに補正項の微分を加えることで, 以下の誘導則が得られる.
+\begin{equation}
+    \dot{\chi}_\mathrm{cmd} = \dot{\psi}_{tan} + \frac{2 \chi_{\infty}}{\pi} \frac{k_{loiter} \dot{e}_r}{1 + (k_{loiter} e_r)^2}
+\end{equation}
+ここで, $\dot{e}_r = V_g \cos(\chi - \psi_{pos})$ である. 
+この $\dot{\chi}_\mathrm{cmd}$ を次節の風補正ロジックへの入力 $\dot{\chi}_{cmd}$ として用いる.
+\subsection{風外乱下におけるキネマティクスと偏流角補正}
+パラフォイルは対気速度が小さく, 風の影響を顕著に受ける. そのため, 慣性系でのコース角 $\chi$ (Ground Track) と, 機体座標系での方位角 $\psi$ (Heading) の乖離（偏流角 $\eta$）を厳密に補償する必要がある.
+
+\subsubsection{偏流角 $\eta$ の算出}
+風速ベクトルを $\bm{w} = [w_n, w_e]^T$, 目標とするコース方位を $\chi_{\mathrm{cmd}}$ とする. 
+風の三角形（Wind Triangle）の幾何学的関係より, 目標コースに乗るために必要な偏流角 $\eta$ は次式で逆算される.
+\begin{equation}
+    \sin \eta = - \frac{\|\bm{w}\|}{V_g} \sin(\chi_{\mathrm{cmd}} - \chi_w)
+\end{equation}
+ここで, $\chi_w$ は風向である. これにより, 機体が確保すべき真の目標方位角は $\psi_{cmd} = \chi_{\mathrm{cmd}} + \eta$ となる.
+
+\subsubsection{偏流角変化率 $\dot{\eta}$ の予測}
+旋回中において, 機首方位の変化に伴い風との相対角が変化するため, 偏流角 $\eta$ も時間的に変動する. 
+目標コースレート $\dot{\chi}_{cmd}$ を実現するために必要な機首レート $\dot{\psi}_{req}$ は, 以下の関係式を満たす必要がある.
+\begin{equation}
+    \dot{\psi}_{req} = \dot{\chi}_{cmd} - \dot{\eta}
+\end{equation}
+ここで, 速度ベクトルの微分関係から, $\dot{\eta}$ は $\dot{\chi}_{cmd}$ を用いて次のように予測できることが導かれる.
+\begin{equation}
+    \dot{\eta} \approx \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_{cmd}
+\end{equation}
+この補正項は, 追い風旋回と向かい風旋回における旋回半径の歪みを補正し, 均一な軌道を描くために不可欠な要素である.
+\subsection{偏流角補正と目標ヨーレートの導出}
+
+前節で算出された目標コースレート $\dot{\chi}_d$ は、対地速度ベクトルが描くべき軌道の曲率を表している。
+しかし、パラフォイルの操舵は機体軸（Body Frame）におけるヨーレート $r$ を直接の操作対象とするため、風の影響による偏流（Drift）と座標変換を考慮して指令値を変換する必要がある。
+
+\subsection{偏流角 $\eta$ の算出}
+対地速度ベクトル $\bm{V}_g$、対気速度ベクトル $\bm{V}_a$、風速ベクトル $\bm{W}$ の間には以下の速度三角形の関係が成り立つ。
+\begin{equation}
+    \bm{V}_g = \bm{V}_a + \bm{W}
+\end{equation}
+機首方位（ヘディング）を $\psi$、対地コース角を $\chi$、風向を $\chi_w$ とすると、正弦定理より以下の関係が導かれる。
+\begin{equation}
+    \frac{\|\bm{W}\|}{\sin(\chi - \psi)} = \frac{V_a}{\sin(\chi_w - \chi)}
+\end{equation}
+ここで、偏流角を $\eta \equiv \chi - \psi$ と定義すると、目標コース角 $\chi_d$ に追従するために必要な偏流角は次式で逆算される。
+\begin{equation}
+    \sin \eta = - \frac{\|\bm{W}\|}{V_a} \sin(\chi_d - \chi_w)
+    \label{eq:crab_angle}
+\end{equation}
+これより、機体が保持すべき真の目標方位角は $\psi_{cmd} = \chi_d - \eta$ となる。
+
+\subsection{偏流角変化率 $\dot{\eta}$ の予測}
+旋回中は機首方位の変化に伴い、風との相対角が刻々と変化するため、偏流角 $\eta$ も時間的に変動する。
+目標コースレート $\dot{\chi}_d$ を維持するために必要な機首レート $\dot{\psi}_{req}$ は、以下の運動学的関係を満たさなければならない。
+\begin{equation}
+    \dot{\psi}_{req} = \dot{\chi}_d - \dot{\eta}
+\end{equation}
+速度三角形の微分関係から $\dot{\eta}$ を導出する。式(\ref{eq:crab_angle})の両辺を時間微分し、$\dot{V}_g \approx 0$ 等の仮定をおいて整理すると、偏流角の変化率はコースレートに依存することが示される。
+\begin{equation}
+    \dot{\eta} \approx \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_d
+    \label{eq:eta_dot}
+\end{equation}
+この項は、特に風速が大きい場合の旋回（追い風から向かい風への転換時など）において、コースレートとヘディングレートの乖離を補正する重要な役割を果たす。
+
+\subsection{機体座標系ヨーレート $r_{cmd}$ への変換}
+最後に、慣性空間での回転速度である $\dot{\psi}_{req}$ を、機体座標系の回転速度 $r_{cmd}$ に変換する。
+オイラー角の運動学的微分方程式（Kinematics）より、ヨーレート $r$ と方位角変化率 $\dot{\psi}$ の関係は次式で表される。
+\begin{equation}
+    \dot{\psi} = \frac{q \sin \phi + r \cos \phi}{\cos \theta}
+\end{equation}
+ここで、定常的な旋回においてはピッチレートの影響 $q \sin \phi$ が小さいと仮定し、上式を $r$ について解くことで、最終的な目標ヨーレート $r_{cmd}$ が得られる。
+\begin{equation}
+    r_{cmd} = \frac{\cos \theta}{\cos \phi} \dot{\psi}_{req} = \frac{\cos \theta}{\cos \phi} \left( \dot{\chi}_d - \dot{\eta} \right)
+    \label{eq:final_r_cmd}
+\end{equation}
+式(\ref{eq:eta_dot})を式(\ref{eq:final_r_cmd})に代入すると、最終的な制御則は以下の形にまとめられる。
+\begin{equation}
+    r_{cmd} = \underbrace{ \frac{\cos \theta}{\cos \phi} }_{\text{座標変換}} \left[ \dot{\chi}_d - \underbrace{ \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_d }_{\text{動的偏流補正}} \right]
+\end{equation}
+本手法により、幾何学的なコース追従要求 $\dot{\chi}_d$ は、風の動的な影響と機体姿勢を厳密に考慮した上で、物理的な操作目標値 $r_{cmd}$ へと変換される。
+
 \subsection{定常旋回を仮定した場合の制御量の導出}
 定常旋回中において, 機体座標系のヨーレート $r$ とバンク角 $\phi$ の間には, 遠心力と揚力の水平成分の釣り合いから以下の運動学的関係が成り立つ. 
 \begin{equation}
@@ -760,48 +944,6 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 
 
 
-
-\subsection{曲率を考慮した一般化ベクトル場誘導}
-前節で述べたベクトル場誘導則を拡張し, 直線だけでなく旋回区間（Dubinsパスやクロソイド曲線）を含む一般化された経路への追従を考える. 
-
-経路上の最近点における曲率を $\kappa_{ref}$ とし, 機体が経路の「内側」（旋回中心側）を飛行する場合と「外側」を飛行する場合の弧長の違いを考慮する. 
-フレネ・セレ標構における経路に沿った空間計量係数（Scale Factor）$s_f$ は, クロスレンジ誤差 $e_y$ を用いて次式で表される.
-\begin{equation}
-    s_f = \frac{1}{1 - \kappa_{ref} e_y}
-\end{equation}
-これを用いると, 経路の接線方向の変化率 $\dot{\chi}_{path}$ は, 機体の対地速度 $V_g$ に依存して次のように補正される.
-\begin{equation}
-    \dot{\chi}_{path} = \kappa_{ref} \, s_f \, V_g \cos(\chi - \psi_{path})
-\end{equation}
-ここで, $\chi$ は現在の対地コース角, $\psi_{path}$ は経路の方位角である. 
-最終的な目標コースレート $\dot{\chi}_{cmd}$ は, この経路項と, 誤差収束項（ベクトル場項）の和として算出される.
-\begin{equation}
-    \dot{\chi}_{cmd} = \dot{\chi}_{path} - \frac{2 \chi^\infty}{\pi} \frac{k_{vf} \dot{e}_y}{1 + (k_{vf} e_y)^2}
-\end{equation}
-この定式化により, 直線 ($\kappa_{ref}=0$) と円弧 ($\kappa_{ref}=const$) が統一的に扱われ, 旋回区間においても幾何学的に厳密な追従が可能となる.
-
-\subsection{風外乱下におけるキネマティクスと偏流角補正}
-パラフォイルは対気速度が小さく, 風の影響を顕著に受ける. そのため, 慣性系でのコース角 $\chi$ (Ground Track) と, 機体座標系での方位角 $\psi$ (Heading) の乖離（偏流角 $\eta$）を厳密に補償する必要がある.
-
-\subsubsection{偏流角 $\eta$ の算出}
-風速ベクトルを $\bm{w} = [w_n, w_e]^T$, 目標とするコース方位を $\chi_{cmd}$ とする. 
-風の三角形（Wind Triangle）の幾何学的関係より, 目標コースに乗るために必要な偏流角 $\eta$ は次式で逆算される.
-\begin{equation}
-    \sin \eta = - \frac{\|\bm{w}\|}{V_g} \sin(\chi_{cmd} - \chi_w)
-\end{equation}
-ここで, $\chi_w$ は風向である. これにより, 機体が確保すべき真の目標方位角は $\psi_{cmd} = \chi_{cmd} + \eta$ となる.
-
-\subsubsection{偏流角変化率 $\dot{\eta}$ の予測}
-旋回中において, 機首方位の変化に伴い風との相対角が変化するため, 偏流角 $\eta$ も時間的に変動する. 
-目標コースレート $\dot{\chi}_{cmd}$ を実現するために必要な機首レート $\dot{\psi}_{req}$ は, 以下の関係式を満たす必要がある.
-\begin{equation}
-    \dot{\psi}_{req} = \dot{\chi}_{cmd} - \dot{\eta}
-\end{equation}
-ここで, 速度ベクトルの微分関係から, $\dot{\eta}$ は $\dot{\chi}_{cmd}$ を用いて次のように予測できることが導かれる.
-\begin{equation}
-    \dot{\eta} \approx \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_{cmd}
-\end{equation}
-この補正項は, 追い風旋回と向かい風旋回における旋回半径の歪みを補正し, 均一な軌道を描くために不可欠な要素である.
 
 \subsection{逆ダイナミクスに基づくフィードフォワード制御}
 算出された要求機首レート $\dot{\psi}_{req}$ および目標バンク角 $\phi_{ref}$ を実現するためのトグル操作量 $\delta_a$ を, 機体運動の逆ダイナミクスを用いて決定する.
