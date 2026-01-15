@@ -152,6 +152,7 @@ VectorField法を用いた\\パラフォイルの空中回収における誘導�
 \clearpage
 
 \section{序論}
+\textbf{記号表は後で追加します}
 \subsection{研究背景}
 %近年, 宇宙開発の分野において, 安全かつ効率的な宇宙飛行士の地球帰還手段の確立が求められている. 特に, 緊急時における迅速な帰還能力は, 宇宙ミッションの成功と宇宙飛行士の安全確保に不可欠である. このような背景から, パラフォイルを用いた宇宙飛行士の地球帰還システムが注目されている. パラフォイルは, 従来のパラシュートに比べて高い制御性と滑空性能を有しており, 精密な着陸地点への誘導が可能である. そのため, パラフォイルを活用した帰還システムは, 宇宙飛行士の安全性向上とミッション成功率の向上に寄与すると期待されている. 本研究では, パラフォイルを用いた宇宙飛行士の地球帰還システムの設計と最適化を目的とし, その性能評価と実用化に向けた課題解決を目指す. 
 
@@ -295,7 +296,7 @@ c_\phi s_\theta c_\psi + s_\phi s_\psi & c_\phi s_\theta s_\psi - s_\phi c_\psi 
 
 回転運動の方程式は
 \begin{equation}
-\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [I_{\mathrm{T}}]^{-1} \left\{ \bm{M}_A + \bm{S}_{CP \cdot B} \times F_\mathrm{A} + \bm{S}_{CS \cdot B} \times F_\mathrm{S} - S_{\omega}^B[I_{\mathrm{T}}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \label{eq:dynamics_rot}
+\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [I_{\mathrm{T}}]^{-1} \left\{ \bm{M}_A  - S_{\omega}^B[I_{\mathrm{T}}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \label{eq:dynamics_rot}
 \end{equation}
 
 ここで, $S_{\omega}^B$ は機体軸における角速度のクロス積行列であり以下に示される. 
@@ -776,24 +777,23 @@ $\chi_\mathrm{path}→\pi/2$のとき, $\chi_\mathrm{path}-\chi_\mathrm{cmd}$→
 \end{equation}
 で表される. %ここで, $\sigma_{dir}$ は旋回方向を表す符号（反時計回り: $+1$, 時計回り: $-1$）である. 
 機体が円の外側 ($e_r > 0$) にある場合は内向きのベクトルが生成され, 内側にある場合は外向きのベクトルが生成される.
+\subsection{機体座標系ヨーレート $r_{cmd}$ の導出}
 
-\subsubsection{フレネ・セレ標構と空間計量係数}
-経路上の最近点における接線ベクトル, 法線ベクトルによって定義されるフレネ・セレ標構を考える. 
-経路の曲率を $\kappa_{ref}$ (旋回半径の逆数), 経路に対するクロスレンジ誤差（横偏差）を $e_{\mathrm{py}}$ とすると, 機体位置における経路長さに沿った空間の歪み（Metric Coefficient）を表すスケールファクタ $s_f$ は次式で定義される.
-\begin{equation}
-    s_f = \frac{1}{1 - \kappa_{ref} e_{\mathrm{py}}}
-\end{equation}
 
 \subsubsection{目標コースレート $\dot{\chi}_\mathrm{cmd}$ の導出}
 実際の制御器に入力されるのは, 目標コース角の時間変化率（コースレート）$\dot{\chi}_\mathrm{cmd}$ である. 
-式(\ref{eq:chi_d_mission})を時間微分することで, 以下のフィードフォワード則が得られる.
+式(\ref{eq:chi_d_mission})を時間微分することで, 
 \begin{equation}
-    \dot{\chi}_\mathrm{cmd} = \dot{\chi}_{path} + \frac{d}{dt} \left( - \chi_{\infty} \frac{2}{\pi} \tan^{-1}(k_{\mathrm{VF}} e_{\mathrm{py}}) \right)
+    \dot{\chi}_\mathrm{cmd} = \dot{\chi}_{\mathrm{path}} + \frac{d}{dt} \left( - \chi_{\infty} \frac{2}{\pi} \tan^{-1}(k_{\mathrm{VF}} e_{\mathrm{py}}) \right)
 \end{equation}
-ここで, 経路追従項 $\dot{\chi}_{path}$ は空間計量係数 $s_f$ を考慮して補正される. また, 右辺第2項の微分を実行すると, 最終的な誘導コマンドは次式となる.
+という関係式を得る. ここで, 経路追従項 $\dot{\chi}_{\mathrm{path}}$ついて
 \begin{equation}
-    \dot{\chi}_\mathrm{cmd} = \underbrace{ \kappa_{ref} \, s_f \, V_g \cos \tilde{\chi} }_{\text{経路項}} 
-    \underbrace{ - \frac{2 \chi_{\infty}}{\pi} \frac{k_{\mathrm{VF}} \dot{e}_y}{1 + (k_{\mathrm{VF}} e_{\mathrm{py}})^2} }_{\text{誤差収束項}}
+    (R_{ref} - e_y)  \cdot  \dot{\chi}_{\mathrm{path}}  = \ V_g \cos (\chi_\mathrm{cmd} - \chi_{\mathrm{path}})
+\end{equation}
+となる. また, 右辺第2項の微分を実行すると, 最終的に
+\begin{equation}
+    \dot{\chi}_\mathrm{cmd} =  \kappa_{ref} \, s_f \, V_g \cos \tilde{\chi} 
+     - \frac{2 \chi_{\infty}}{\pi} \frac{k_{\mathrm{VF}} V_g \sin \tilde{\chi}}{1 + (k_{\mathrm{VF}} e_{\mathrm{py}})^2} 
 \end{equation}
 ただし, $\tilde{\chi} = \chi - \chi_{\mathrm{path}}$ は方位誤差, $\dot{e}_y = V_g \sin \tilde{\chi}$ は誤差変化率である.
 
@@ -818,8 +818,8 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 \end{equation}
 ここで, $\dot{e}_r = V_g \cos(\chi - \psi_{pos})$ である. 
 この $\dot{\chi}_\mathrm{cmd}$ を次節の風補正ロジックへの入力 $\dot{\chi}_{cmd}$ として用いる.
-\subsection{風外乱下におけるキネマティクスと偏流角補正}
-パラフォイルは対気速度が小さく, 風の影響を顕著に受ける. そのため, 慣性系でのコース角 $\chi$ (Ground Track) と, 機体座標系での方位角 $\psi$ (Heading) の乖離（偏流角 $\eta$）を厳密に補償する必要がある.
+%\subsection{風外乱下におけるキネマティクスと偏流角補正}
+%パラフォイルは対気速度が小さく, 風の影響を顕著に受ける. そのため, 慣性系でのコース角 $\chi$ (Ground Track) と, 機体座標系での方位角 $\psi$ (Heading) の乖離（偏流角 $\eta$）を厳密に補償する必要がある.
 
 \subsubsection{偏流角 $\eta$ の算出}
 風速ベクトルを $\bm{w} = [w_n, w_e]^T$, 目標とするコース方位を $\chi_{\mathrm{cmd}}$ とする. 
@@ -842,39 +842,11 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 この補正項は, 追い風旋回と向かい風旋回における旋回半径の歪みを補正し, 均一な軌道を描くために不可欠な要素である.
 \subsection{偏流角補正と目標ヨーレートの導出}
 
-前節で算出された目標コースレート $\dot{\chi}_d$ は、対地速度ベクトルが描くべき軌道の曲率を表している。
+前節で算出された目標コースレート $\dot{\chi}_{\mathrm{cmd}}$ は、対地速度ベクトルが描くべき軌道の曲率を表している。
 しかし、パラフォイルの操舵は機体軸（Body Frame）におけるヨーレート $r$ を直接の操作対象とするため、風の影響による偏流（Drift）と座標変換を考慮して指令値を変換する必要がある。
 
-\subsection{偏流角 $\eta$ の算出}
-対地速度ベクトル $\bm{V}_g$、対気速度ベクトル $\bm{V}_a$、風速ベクトル $\bm{W}$ の間には以下の速度三角形の関係が成り立つ。
-\begin{equation}
-    \bm{V}_g = \bm{V}_a + \bm{W}
-\end{equation}
-機首方位（ヘディング）を $\psi$、対地コース角を $\chi$、風向を $\chi_w$ とすると、正弦定理より以下の関係が導かれる。
-\begin{equation}
-    \frac{\|\bm{W}\|}{\sin(\chi - \psi)} = \frac{V_a}{\sin(\chi_w - \chi)}
-\end{equation}
-ここで、偏流角を $\eta \equiv \chi - \psi$ と定義すると、目標コース角 $\chi_d$ に追従するために必要な偏流角は次式で逆算される。
-\begin{equation}
-    \sin \eta = - \frac{\|\bm{W}\|}{V_a} \sin(\chi_d - \chi_w)
-    \label{eq:crab_angle}
-\end{equation}
-これより、機体が保持すべき真の目標方位角は $\psi_{cmd} = \chi_d - \eta$ となる。
 
-\subsection{偏流角変化率 $\dot{\eta}$ の予測}
-旋回中は機首方位の変化に伴い、風との相対角が刻々と変化するため、偏流角 $\eta$ も時間的に変動する。
-目標コースレート $\dot{\chi}_d$ を維持するために必要な機首レート $\dot{\psi}_{req}$ は、以下の運動学的関係を満たさなければならない。
-\begin{equation}
-    \dot{\psi}_{req} = \dot{\chi}_d - \dot{\eta}
-\end{equation}
-速度三角形の微分関係から $\dot{\eta}$ を導出する。式(\ref{eq:crab_angle})の両辺を時間微分し、$\dot{V}_g \approx 0$ 等の仮定をおいて整理すると、偏流角の変化率はコースレートに依存することが示される。
-\begin{equation}
-    \dot{\eta} \approx \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_d
-    \label{eq:eta_dot}
-\end{equation}
-この項は、特に風速が大きい場合の旋回（追い風から向かい風への転換時など）において、コースレートとヘディングレートの乖離を補正する重要な役割を果たす。
 
-\subsection{機体座標系ヨーレート $r_{cmd}$ への変換}
 最後に、慣性空間での回転速度である $\dot{\psi}_{req}$ を、機体座標系の回転速度 $r_{cmd}$ に変換する。
 オイラー角の運動学的微分方程式（Kinematics）より、ヨーレート $r$ と方位角変化率 $\dot{\psi}$ の関係は次式で表される。
 \begin{equation}
@@ -882,39 +854,34 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 \end{equation}
 ここで、定常的な旋回においてはピッチレートの影響 $q \sin \phi$ が小さいと仮定し、上式を $r$ について解くことで、最終的な目標ヨーレート $r_{cmd}$ が得られる。
 \begin{equation}
-    r_{cmd} = \frac{\cos \theta}{\cos \phi} \dot{\psi}_{req} = \frac{\cos \theta}{\cos \phi} \left( \dot{\chi}_d - \dot{\eta} \right)
+    r_{cmd} = \frac{\cos \theta}{\cos \phi} \dot{\psi}_{req} = \frac{\cos \theta}{\cos \phi} \left( \dot{\chi}_{\mathrm{cmd}} - \dot{\eta} \right)
     \label{eq:final_r_cmd}
 \end{equation}
 式(\ref{eq:eta_dot})を式(\ref{eq:final_r_cmd})に代入すると、最終的な制御則は以下の形にまとめられる。
 \begin{equation}
-    r_{cmd} = \underbrace{ \frac{\cos \theta}{\cos \phi} }_{\text{座標変換}} \left[ \dot{\chi}_d - \underbrace{ \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_d }_{\text{動的偏流補正}} \right]
+    r_{cmd} = \frac{\cos \theta}{\cos \phi}  \left[ \dot{\chi}_{\mathrm{cmd}} -  \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_{\mathrm{cmd}}  \right]
+    \label{eq:ff_r_cmd}
 \end{equation}
-本手法により、幾何学的なコース追従要求 $\dot{\chi}_d$ は、風の動的な影響と機体姿勢を厳密に考慮した上で、物理的な操作目標値 $r_{cmd}$ へと変換される。
+本手法により、幾何学的なコース追従要求 $\dot{\chi}_{\mathrm{cmd}}$ は、風の動的な影響と機体姿勢を厳密に考慮した上で、物理的な操作目標値 $r_{cmd}$ へと変換される。
 
-\subsection{定常旋回を仮定した場合の制御量の導出}
-定常旋回中において, 機体座標系のヨーレート $r$ とバンク角 $\phi$ の間には, 遠心力と揚力の水平成分の釣り合いから以下の運動学的関係が成り立つ. 
-\begin{equation}
-    r = \frac{g}{V} \sin \phi \cos \theta
-    \label{eq:turn_rate}
-\end{equation}
-ここで, $g$ は重力加速度, $V$ は対気速度, $\theta$ はピッチ角である. 
-一方, 定常旋回中は角加速度が発生しないため, \ref{eq:dynamics_rot}で$\dot{r}=0$とすると, 
+\subsection{制御量の導出}
+ここでは制御量$\delta_a$を導出する. 定常旋回中は角加速度が発生しないため, \ref{eq:dynamics_rot}で$\dot{r}=0$とすると, 
 \begin{equation}
     C_{n_{\delta_a}} \delta_a + C_{n_r} \frac{b r}{2V} = 0
     \label{eq:moment_balance}
 \end{equation}
-となる. 
+となる.したがって 
 %\subsubsection{逆ダイナミクスに基づく操作量決定}
-式(\ref{eq:turn_rate})を式(\ref{eq:moment_balance})に代入し, 操作量 $\delta_a$ について整理すると, 目標バンク角 $\phi_{ref}$ を実現するために必要な制御入力$\delta_a$は
+式(\ref{eq:r_cmd})を式(\ref{eq:moment_balance})に代入し, 操作量 $\delta_a$ について整理すると, 目標バンク角 $\phi_{ref}$ を実現するために必要な制御入力$\delta_a$は
 \begin{equation}
-    \delta_a =  - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{g}{V(t)^2} \cos \theta(t) \sin \phi_{ref}(t)
-    \label{eq:ff_law}
+    \delta_a =  - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{1}{V(t)}\frac{\cos \theta}{\cos \phi}    \left( 2- \frac{V_g}{V_a \cos \eta}  \right) \dot{\chi}_{\mathrm{cmd}}  
+    \label{eq:ff_law_VF}
 \end{equation}
 で与えられる. 
 \subsection{定常旋回周りの線形化式を用いた$\delta_a$の補正}
 ヨー方向の回転運動方程式は, 付加慣性 $I_C$ [cite: 241, 255]を考慮すると次式で記述される. 
 \begin{equation}
-    (I_{zz} + I_C) \dot{r} = M_{ext,z} - (\bm{\omega} \times \bm{I}\bm{\omega})_z
+    I_{zz}\dot{r} = M_{ext,z} - (\bm{\omega} \times \bm{I}\bm{\omega})_z
     \label{eq:yaw_dynamics_full}
 \end{equation}
 ここで, 右辺第2項は慣性カップリング項であり, 主としてロールレート $p$ とピッチレート $q$ の干渉を表す. 
@@ -941,40 +908,17 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
     \delta\delta a = -\frac{1}{B_{\delta a}}  -\{ A_u \delta u + A_w \delta w + (A_q r - A_r q) \delta \phi \} 
 \end{equation}
 この補正項を\ref{eq:ff_law} に加えることで, バンク角の変化に対する追従応答が明確になり, 旋回半径の膨らみを抑制する. 
-
-
-
-
-\subsection{逆ダイナミクスに基づくフィードフォワード制御}
-算出された要求機首レート $\dot{\psi}_{req}$ および目標バンク角 $\phi_{ref}$ を実現するためのトグル操作量 $\delta_a$ を, 機体運動の逆ダイナミクスを用いて決定する.
-
-\subsubsection{基準操作量の決定}
-定常旋回状態 ($\dot{r} \approx 0, \beta \approx 0$) におけるモーメントの釣り合い式
+\subsection{定常旋回時の制御量の導出}
+定常旋回中において, 機体座標系のヨーレート $r$ とバンク角 $\phi$ の間には, 遠心力と揚力の水平成分の釣り合いから以下の運動学的関係が成り立つ. 
 \begin{equation}
-    C_{n_{\delta_a}} \delta_a + C_{n_r} \frac{b r}{2V_a} = 0
+    r = \frac{g}{V} \sin \phi \cos \theta
+    \label{eq:turn_rate}
 \end{equation}
-に対し, 旋回運動学 $r = (g/V_a)\sin\phi \cos\theta$ を代入することで, 基準となるフィードフォワード操作量 $\delta_{a, ref}$ を得る.
+ここで, $g$ は重力加速度, $V$ は対気速度, $\theta$ はピッチ角である. 
 \begin{equation}
-    \delta_{a, ref} = - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}} \frac{g}{V_a^2} \cos \theta \sin \phi_{ref}
+    \delta_a =  - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{g}{V(t)^2} \cos \theta(t) \sin \phi_{ref}(t)
+    \label{eq:ff_law}
 \end{equation}
-
-\subsubsection{線形化誤差ダイナミクスによる過渡補正}
-旋回開始時や風速変化時などの過渡状態における追従遅れを補償するため, 線形化モデルに基づく動的補正項 $\Delta \delta_a$ を導入する.
-現在の機体状態 $\bm{x}_{curr}$ と, 目標旋回状態 $\bm{x}_{ref}$ との偏差 $\delta \bm{x} = \bm{x}_{curr} - \bm{x}_{ref}$ に対し, ヨーモーメントの摂動方程式は次式となる.
-\begin{equation}
-    I_{zz} \delta \dot{r} \approx \frac{\partial N}{\partial u} \delta u + \frac{\partial N}{\partial w} \delta w + \frac{\partial N}{\partial r} \delta r + \frac{\partial N}{\partial \delta_a} \Delta \delta_a + \mathcal{C}_{coupling}
-\end{equation}
-ここで, $\mathcal{C}_{coupling}$ はロール・ピッチ運動との慣性カップリング項である. 
-$\delta \dot{r} \to 0$ となるように $\Delta \delta_a$ を逆算すると, 以下の補正則が得られる.
-\begin{equation}
-    \Delta \delta_a = - \frac{1}{N_{\delta_a}} \left( N_u \delta u + N_w \delta w + S_\phi \delta \phi \right)
-\end{equation}
-ここで $S_\phi$ はバンク角変化に伴う連成項係数である. 
-最終的な制御入力は, 基準操作量, 動的補正項, および積分項を含むフィードバック項の和として決定される.
-\begin{equation}
-    \delta_a = \delta_{a, ref} + K_{lin} \Delta \delta_a + K_{p} (\phi_{ref} - \phi)
-\end{equation}
-この制御則により, 空力特性の非線形性を考慮しつつ, 外乱に対してロバストな経路追従が可能となる. 
 
 %ここで, $\frac{\partial \bm{F}_A}{\partial \bm{v}}$ および $\frac{\partial \bm{M}_A}{\partial \bm{v}}$ は, それぞれ式(5)および式(7)における空力微分項（$X_u, \dots, Z_w$ および $M_{x,v}, \dots$ 等）のみを抽出した行列であり, コリオリ項 $\bm{\Omega}_\times$ やジャイロ項 $\bm{G}$ は含まない. 最終的に得られる $\bm{B}_w$ は, 慣性座標系で定義された風の変動が, 座標変換を経て機体軸上の空力・モーメント変化として作用し, 状態微分に影響を与えるメカニズムを表現している. 
 % =========================================
@@ -984,7 +928,7 @@ $\delta \dot{r} \to 0$ となるように $\Delta \delta_a$ を逆算すると, 
 % 第4章 誘導方法 (Guidance Method)
 % =========================================
 \section{解析モデル}
-本解析では
+本解析では\textbf{初期条件などもここに書きます}
 % 表4-1 解析モデルの主要諸元
 \begin{table}[H]
 \centering
@@ -1026,8 +970,10 @@ Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
 \hline
 \end{tabular}
 \end{table}
-\section{結果}
-本章で数値シミュレーションの結果を示す. 
+\section{結果及び考察}
+\subsection{クロゾイド曲線の有効性の検証}
+経路計画において, クロゾイド曲線を用いた場合と用いない場合のシミュレーション結果を比較した.このとき誘導則は, 定常旋回を仮定して導出した式(\ref{eq:ff_law})を用いた. 図\ref{fig:result_nonclothoid_FF}, \ref{fig:result_clothoid_FF}にそれぞれのシミュレーション結果を示す. 
+%クロゾイド曲線を用いない場合, 旋回開始直後
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.6\linewidth]{画像/result_nonclothoid_FF.png}
@@ -1041,6 +987,36 @@ Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
   \caption{Simulation result with clothoid curve smoothing.}
   \label{fig:result_clothoid_FF}
 \end{figure}
+それぞれのXY平面上の飛行軌道を図\ref{fig:result_nonclothoid_FF_xy}, \ref{fig:result_clothoid_FF_xy}に示す.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/result_nonclothoid_FF_xy.png}
+  \caption{Simulation result without clothoid curve smoothing.}
+  \label{fig:result_nonclothoid_FF_xy}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/result_clothoid_FF_xy.png}
+  \caption{Simulation result with clothoid curve smoothing.}
+\label{fig:result_clothoid_FF_xy}
+\end{figure}
+
+\subsection{VF法の有効性の検証}
+クロゾイド曲線を用いた軌道計画に対し, VF法に基づく誘導則を適用したシミュレーション結果を図\ref{fig:result_clothoid_VF}に示す.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/result_VF_1_1_xyz.png}
+  \caption{Simulation result with clothoid curve smoothing.}
+\label{fig:result_clothoid_VF_Xy}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/result_VF_1_1.png}
+  \caption{Simulation result with clothoid curve smoothing.}
+\label{fig:result_clothoid_VF_Xy}
+\end{figure}
+\textbf{外乱はホワイトノイズあたりを使おうと考えています}
 
 \section*{謝辞}
 %\addcontentsline{toc}{section}{謝辞}
@@ -1071,7 +1047,7 @@ Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
 \begin{thebibliography}{1}
 
 \bibitem[Dean他,2005]{ref_mar_past_pre}The Past, Present, and Future of Mid-Air Retrieval
-Dean S. Jorgensen•, Roy A. Haggardt and Glen J. Brown Vertigo, Inc., Lake Elsinore, California 92531, 18th AIM Aerodynamic DeceleratorS ystems Technology Conference and Seminar(2005)
+Dean S. Jorgensen•, Roy A. Haggardt and Glen J. Brown Vertigo, Inc., Lake Elsinore, California 92531, 18th AIM Aerodynamic DeceleratorS ystems Technology Conference and Seminar(2005)\textbf{ページ数後で書きます}
 \bibitem[Mari他,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery
 Mari Gravlee*, Bernard Kutter, Frank Zegler, Brooke Mosley
 United Launch Alliance
