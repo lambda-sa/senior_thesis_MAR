@@ -132,7 +132,7 @@ y0 = [u_init; v_init; w_init; ...
       x_init; y_init; z_init];
 % 3-4. エンジンの初期化
 dt_6dof = 0.05;
-t_max_6dof = t_plan(end) ; % 計画時間より少し長く
+t_max_6dof = t_plan(end)-130 ; % 計画時間より少し長く
 engine = SimulationEngine(plant, scheduler, dt_6dof, t_max_6dof, y0);
 
 %% --- 4. Phase C: 実行 ---
