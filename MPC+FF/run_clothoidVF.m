@@ -5,7 +5,7 @@ clear; clc; close all;
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
 wind_planned = [0; 0];  % 風速 (North, East) [m/s]
-wind_disturbance = [1;1];  % 予期せぬ外乱（未知の風）
+wind_disturbance = [0;0];  % 予期せぬ外乱（未知の風）
 wind_actual = wind_planned + wind_disturbance; % 実際に吹いている風
 
 target_pos = [0, 600, 1000]; % 目標 [N, E, Alt]
@@ -132,7 +132,7 @@ y0 = [u_init; v_init; w_init; ...
       x_init; y_init; z_init];
 % 3-4. エンジンの初期化
 dt_6dof = 0.05;
-t_max_6dof = t_plan(end)-130 ; % 計画時間より少し長く
+t_max_6dof = t_plan(end); % 計画時間より少し長く
 engine = SimulationEngine(plant, scheduler, dt_6dof, t_max_6dof, y0);
 
 %% --- 4. Phase C: 実行 ---
