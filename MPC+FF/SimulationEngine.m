@@ -1,6 +1,11 @@
 classdef SimulationEngine
     % SIMULATIONENGINE 6自由度パラフォイルシミュレーション実行エンジン
     % 修正版: 制御入力のログ記録機能を追加
+
+    properties
+        % ★追加: 目標位置 (NED座標系 [North; East; Down])
+        TargetNED = [];
+    end
     
     properties (SetAccess = private)
         DynamicsModel
@@ -129,9 +134,48 @@ classdef SimulationEngine
                 fprintf('\n!! エラーにより中断 (t=%.2f s) !!\n%s\n', t_vec(last_valid_step), ME.message);
                 %rethrow(ME);
             end
+
+            % --- 一旦データをトリミング (地面到達 or 最大時間まで) ---
+            full_idx = 1:last_valid_step;
+            
+            % =========================================================
+            % ★★★ 追加ロジック: 最接近点 (Goal) の探索とデータ切り詰め ★★★
+            % =========================================================
+            if ~isempty(obj.TargetNED)
+                % 1. 距離履歴の計算
+                % 位置データ [N, E, D]
+                pos_history = y_res(full_idx, 10:12);
+                target_vec = obj.TargetNED'; % [1x3]
+                
+                diff_vec = pos_history - target_vec;
+                dist_history = sqrt(sum(diff_vec.^2, 2));
+                
+                % 2. 最少距離のインデックスを探す
+                [min_dist, idx_min] = min(dist_history);
+                
+                % 3. 表示
+                closest_t = t_vec(idx_min);
+                closest_pos = pos_history(idx_min, :);
+                % 表示用にNEDからAltへ: [N, E, -D]
+                closest_alt = [closest_pos(1), closest_pos(2), -closest_pos(3)];
+                
+                fprintf('\n=== Simulation Goal Reached (Closest Point) ===\n');
+                fprintf('  Time        : %.2f s\n', closest_t);
+                fprintf('  Min Distance: %.2f m\n', min_dist);
+                fprintf('  Coordinate  : N=%.1f, E=%.1f, Alt=%.1f m\n', ...
+                    closest_alt(1), closest_alt(2), closest_alt(3));
+                fprintf('===============================================\n');
+                
+                % 4. データをこのインデックスまでで切り詰める
+                valid_idx = 1:idx_min;
+            else
+                % Target設定がない場合は最後まで使う
+                valid_idx = full_idx;
+                fprintf('Warning: TargetNED not set. Using full duration data.\n');
+            end
             
             % --- 結果のトリミングと保存 ---
-            valid_idx = 1:last_valid_step;
+        
             
             obj.TimeVector = t_vec(valid_idx);
             obj.ResultsMatrix = y_res(valid_idx, :);
