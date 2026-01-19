@@ -8,9 +8,20 @@ classdef ParafoilMission < handle
         AtmoModel     % 大気モデル
         Planner       % 経路計画クラス
         PhysicsParams % 計算された物理パラメータ
+        % ★追加: 手動設定フラグを保持するプロパティ
+        ManualSpeedCorrectionFlag = [];
     end
     
     methods
+        % ★追加: 実行スクリプト等からフラグを設定するための関数
+        function set_speed_correction(obj, enable_flag)
+            obj.ManualSpeedCorrectionFlag = logical(enable_flag);
+            if ~isempty(obj.Planner)
+                obj.Planner.set_speed_correction(obj.ManualSpeedCorrectionFlag);
+            end
+            fprintf('Mission Setting: Bank Speed Correction manually set to %d\n', obj.ManualSpeedCorrectionFlag);
+        end
+
         function obj = ParafoilMission(excelFileName)
             obj.ExcelFileName = excelFileName;
             
@@ -30,6 +41,23 @@ classdef ParafoilMission < handle
             [params, sim_settings] = load_params_from_excel(obj.ExcelFileName);
             obj.Params = params;
             obj.SimSettings = sim_settings;
+            
+            % ---------------------------------------------------------
+            % ★修正: 速度補正フラグの決定ロジック (手動優先 > Excel > デフォルト)
+            % ---------------------------------------------------------
+            if ~isempty(obj.ManualSpeedCorrectionFlag)
+                use_correction = obj.ManualSpeedCorrectionFlag;
+            elseif isfield(sim_settings, 'enable_bank_speed_correction')
+                use_correction = logical(sim_settings.enable_bank_speed_correction);
+            else
+                use_correction = false; 
+            end
+            
+            % Plannerに設定を適用
+            obj.Planner.set_speed_correction(use_correction);
+            % ---------------------------------------------------------
+            
+            % ... (以降の処理は変更なし) ...
             
             % 2. 初期高度の取得
             if isfield(sim_settings, 'h_init')

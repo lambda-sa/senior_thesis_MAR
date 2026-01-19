@@ -14,10 +14,18 @@ classdef ParafoilPathPlanner < handle
         TurnInputRatio = 0.8;
         
         % 風速ベクトル (子クラスと共有)
-        WindVector = [0; 0; 0]; 
+        WindVector = [0; 0; 0];
+        %追加: バンクによる速度補正を行うかどうかのフラグ
+        EnableBankSpeedCorrection = true;
     end
     
     methods
+        % ★追加: フラグ設定用メソッド
+        function set_speed_correction(obj, enable_flag)
+            obj.EnableBankSpeedCorrection = enable_flag;
+            fprintf('Bank Speed Correction: %d\n', enable_flag);
+        end
+
         function obj = ParafoilPathPlanner(atmo_model)
             obj.AtmoModel = atmo_model;
         end
@@ -230,6 +238,7 @@ classdef ParafoilPathPlanner < handle
             
             % 基本滑空角 (バンク0のとき)
             tan_gamma_base = -1.0 / glide_ratio;
+            cos_gamma_base = 1.0 / sqrt(1 + tan_gamma_base^2); % <--- これが必要です
             
             % --- 3. 積分ループ ---
             for i = 1:N-1
@@ -249,11 +258,25 @@ classdef ParafoilPathPlanner < handle
                     dot_psi = 0;
                     phi_curr = 0;
                 else
-                    % 旋回: 固定半径 R を守るためのバンク角を逆算
-                    % phi_curr = atan( V^2 / (g * R) )
-                    % ※ R_fixedには符号が含まれていると想定
-                    phi_curr = atan( V_TAS^2 / (g * R_origin) );
+                    % 旋回: 基準速度 V_G からバンク角を推定
+                    phi_curr = atan( V_G^2 / (g * R_origin) );
                     
+                    % ★修正箇所: フラグによる分岐処理
+                    if obj.EnableBankSpeedCorrection
+                        % --- 補正ON: 論文 Eq 3.18 & Eq 3.22 ---
+                        % 1. 滑空角の悪化 (沈下率増)
+                        tan_gamma_curr = tan_gamma_base / cos(phi_curr);
+                        
+                        % 2. 速度の増速 (荷重倍数効果)
+                        % cos(gamma) を計算して Eq 3.22 に適用
+                        cos_gamma_curr = 1.0 / sqrt(1 + tan_gamma_curr^2);
+                        V_TAS = V_G * sqrt( cos_gamma_curr / (cos_gamma_base * cos(phi_curr)) );
+                    else
+                        % --- 補正OFF ---
+                        % 滑空角のみ悪化させ、速度は基準(V_G)のまま
+                        tan_gamma_curr = tan_gamma_base / cos(phi_curr);
+                        V_TAS = V_G;
+                    end
                     % 旋回率
                     % dot_psi = V / R
                     dot_psi = V_TAS / R_origin;
