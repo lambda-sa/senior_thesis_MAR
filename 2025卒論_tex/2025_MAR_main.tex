@@ -122,7 +122,7 @@
 % --- 題名部分 (ここだけ18pt・太字) ---
 {
 \fontsize{18pt}{27pt}\selectfont
-VectorField法を用いた\\パラフォイルの空中回収における誘導則の研究
+Vector Field 法による\\パラフォイル空中回収に向けた誘導の研究
 \par
 }
 % ------------------------------------
@@ -183,8 +183,8 @@ Deanらは上記の問題点を解決するため, 3GMAR(3rd Generation Mid-Air 
 その一方, 3GMARではパラフォイルが自律制御を行うことは想定されていないため, 風などの外乱やパラフォイルの初期値のずれによりパラフォイルがヘリコプターから離れた方向に移動する可能性がある. したがって空中回収の成功は、ヘリコプターの性能及びパイロットの技術に依存している. \cite{ref_mar_past_pre}
 
 
-\subsubsection{VectorField法を用いたパラフォイルの誘導則}
-空中回収でのパラフォイルの誘導に関しては, FariらがVF(VectorField)法に基づく経路追従手法を提案している. 
+\subsubsection{Vector Field法を用いたパラフォイルの誘導則}
+空中回収でのパラフォイルの誘導に関しては, FariらがVF(Vector Field)法に基づく経路追従手法を提案している. 
 VF法では, パラフォイルが参照経路に追従するためのベクトル場を生成することで, 風の外乱が存在する場合であっても安定した追従が可能となる. 
 図\ref{fig:VF_trajectory}に, 横軸に$x$方向, 縦軸に$y$方向をとった場合の, VF法に基づくパラフォイルの誘導則による軌道例を示す. 
 \begin{figure}[H]
@@ -715,7 +715,7 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.9\linewidth]{画像/newVF_all_image.png}
-  \caption{Concept of VectorField method.}
+  \caption{Concept of Vector Field method.}
   \label{fig:newVF_concept}
 \end{figure}
  具体的には, 参照経路に対するクロスレンジ誤差を基に目標対地コース角 $\chi_{\mathrm{cmd}}$ を生成し, 
@@ -1046,16 +1046,14 @@ Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
 
 \begin{thebibliography}{1}
 
-\bibitem[Dean他,2005]{ref_mar_past_pre}The Past, Present, and Future of Mid-Air Retrieval
-Dean S. Jorgensen•, Roy A. Haggardt and Glen J. Brown Vertigo, Inc., Lake Elsinore, California 92531, 18th AIM Aerodynamic DeceleratorS ystems Technology Conference and Seminar(2005)\textbf{ページ数後で書きます}
-\bibitem[Mari他,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery
-Mari Gravlee*, Bernard Kutter, Frank Zegler, Brooke Mosley
-United Launch Alliance
-Denver, CO
-Roy A. Haggard**
-Vertigo
-Lake Elsinore, CA, AIAA SPACE 2008 Conference \& Exposition % ほんとはand→& 
-9 - 11 September 2008, San Diego, California(2008)
+\bibitem[Dean他,2005]{ref_mar_past_pre}
+Dean S. Jorgensen, Roy A. Haggard, Glen J. Brown,  
+%Vertigo, Inc., Lake Elsinore, California 92531, 
+The Past, Present, and Future of Mid-Air  Retrieval, pp.1-8.
+18th AIM Aerodynamic Decelerator Systems Technology Conference and Seminar(2005)
+%\bibitem[Mari他,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery Mari Gravlee*, Bernard Kutter, Frank Zegler, Brooke Mosley United Launch Alliance Denver, CO Roy A. Haggard** Vertigo Lake Elsinore, CA, AIAA SPACE 2008 Conference \& Exposition % ほんとはand→&  
+%9 - 11 September 2008, San Diego, California(2008)
+\bibitem[Fari他, 2021]{ref_VF}Stefano Farì, Davide Grande, Vector Field-based Guidance Development for Launch Vehicle Re-entry via Actuated Parafoil, International Astronautical Congress, Dubai, United Arab Emirates, 25-29 October 2021, pp. 1-14. (2021)
 \bibitem[NASA,2001]{ref_NASA}The National Aeronautics and Space Administration, The X-38 prototype of the Crew Return Vehicle is suspended under
 its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001, from
 <https://www.nasa.gov/image-detail/amf-ec01-0339-146/>, (参照日2024年1月2日)
@@ -1072,7 +1070,7 @@ Communications. (2023)
 
 
 
-\bibitem[Fari他, 2021]{ref_VF}Stefano Farì, Davide Grande, Vector Field-based Guidance Development for Launch Vehicle Re-entry via Actuated Parafoil, International Astronautical Congress, Dubai, United Arab Emirates, 25-29 October 2021.(2021)
+
 \end{thebibliography}
 
 
