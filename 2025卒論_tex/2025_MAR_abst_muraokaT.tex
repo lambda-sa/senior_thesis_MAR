@@ -1,4 +1,4 @@
-\documentclass[11pt, fleqn]{article}
+\documentclass[10pt, fleqn]{article}
 
 % Packages for images and math
 \usepackage{graphicx}
@@ -19,7 +19,7 @@
 % Title Definition
 \title{\vspace{-10mm}\Large\bfseries Study on Guidance for Parafoil Mid-Air Retrieval using Vector Field Method}
 \author{7522095 Yuta Funaki \\ Ogasawara Laboratory, Department of Mechanical and Aerospace Engineering, \\ Faculty of Science and Technology, Tokyo University of Science}
-\date{February 2026}
+\date{January 2026}
 
 \begin{document}
 
@@ -30,7 +30,7 @@
 
 \subsection{Background and Objective}
 In the field of space development, Mid-Air Retrieval (MAR) using parafoils is gaining attention as a method for recovering observation instruments and sample return capsules. Conventional recovery methods on water or land involve significant impact shock and require time for retrieval. In contrast, aerial recovery using helicopters avoids impact and enables rapid retrieval.
-In particular, Dean et al. proposed the "3GMAR" method, which eliminates the winch and minimizes relative velocity  (Fig.\ref{fig:3gMAR}).
+In particular, Dean et al. proposed the "3GMAR" method, which eliminates the winch and minimizes relative velocity .
 
 However, 3GMAR does not assume autonomous control of the parafoil, leaving the success rate dependent on the pilot's skill. Furthermore, existing guidance laws (such as the Vector Field method) face challenges regarding the energy management (altitude dissipation) specific to MAR and the complexity of parameter tuning.
 
@@ -40,65 +40,29 @@ Therefore, this study aims to improve the success rate of mid-air retrieval with
     \item Construction and evaluation of a guidance law using a modified Vector Field (VF) method that considers parafoil characteristics and simplifies parameter tuning.
 \end{enumerate}
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.8\linewidth]{画像/3GMARの概念図.jpg}
-  \caption{The process of 3GMAR.}
-  \label{fig:3gMAR}
-\end{figure}
 
-% --- 2. Parafoil Model ---
-\section{Parafoil Model}
 
-\subsection{6-DOF Model}
-This study adopts a 6-Degree-of-Freedom (6-DOF) model that combines the canopy and the payload.
-The Inertial Coordinate System $O_I$, Body Coordinate System $O_B$, Canopy Coordinate System $O_C$, and Aerodynamic Coordinate System $O_A$ are defined (Fig.\ref{fig:para_kawa}). The equations of motion for translation and rotation are described as follows:
-
-\begin{equation}
-\begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} = \frac{1}{m}(F_\mathrm{W} + F_\mathrm{A} + F_\mathrm{S}) - S_{\omega}^B \begin{bmatrix} u \\ v \\ w \end{bmatrix} \label{eq:dynamics_trans}
-\end{equation}
-\begin{equation}
-\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [I_{\mathrm{T}}]^{-1} \left\{ \bm{M}_A  - S_{\omega}^B[I_{\mathrm{T}}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \label{eq:dynamics_rot}
-\end{equation}
-
-Here, $F_W$, $F_A$, and $F_S$ represent Gravity, Canopy Aerodynamics, and Payload Aerodynamics, respectively.
-
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.6\linewidth]{画像/舟木_座標系.png}
-  \caption{Coordinate Systems of Parafoil Model.}
-  \label{fig:para_kawa}
-\end{figure}
 
 % --- 3. Trajectory Planning ---
 \section{Trajectory Planning}
 
 \subsection{Three-Phase Trajectory}
-To rendezvous with the helicopter in MAR, the parafoil must arrive at a specific altitude and velocity and perform a "Wind-Up Approach" for stability. In this study, the trajectory is planned in three phases as shown in Fig.\ref{fig:para_traj_plan}.
+To rendezvous with the helicopter in MAR, the parafoil must arrive at a specific altitude and velocity and perform a "Wind-Up Approach" for stability. In this study, the trajectory is planned in three phases in Fig. \ref{fig:para_traj_plan}. 
 
 \begin{description}
     \item[Phase 1 (Loiter):] Dissipate excess altitude by orbiting above the rendezvous point.
     \item[Phase 2 (Dubins Path):] The shortest path to transition from the current position to the wind-up approach line. The turning radius $R$ considers physical constraints dependent on the True Airspeed ($V_{TAS}$).
     \item[Phase 3 (Final Approach):] Fly straight into the wind to approach the rendezvous point.
 \end{description}
-
 \begin{figure}[h]
   \centering
-  \includegraphics[width=0.8\linewidth]{画像/plannning_phase_dubins.png}
+  \includegraphics[width=0.7\linewidth]{画像/plannning_phase_dubins.png}
   \caption{Trajectory Planning Strategy.}
   \label{fig:para_traj_plan}
 \end{figure}
-
 \subsection{Correction using Clothoid Curves}
 In a geometric Dubins Path (connection of straight lines and circular arcs), the bank angle becomes discontinuous at the connection points, making it impossible for an actual aircraft to follow. Therefore, Clothoid curves are introduced into each turning section to continuously vary the curvature, thereby improving tracking performance.
 
-\subsection{Wind Disturbance Correction via Iterative Method}
-In the presence of wind, the aerodynamic target point does not match the ground arrival point. To solve this, the "Iterative Wind Correction" algorithm was implemented.
-\begin{enumerate}
-    \item Generate a path to a tentative aerodynamic target point and calculate the precise flight time $t_{actual}$ via simulation (Dry Run).
-    \item Calculate the total drift amount $\bm{D} = \bm{W} \cdot t_{actual}$.
-    \item Offset the target point upwind ($\bm{T}_{ideal} = \bm{T}_{target} - \bm{D}$) and iterate until convergence.
-\end{enumerate}
 
 % --- 4. Guidance Method ---
 \section{Guidance Method}
@@ -116,7 +80,7 @@ Here, $\chi_{\infty}$ is the maximum approach angle, and $k_{\mathrm{VF}}$ is th
 
 \begin{figure}[h]
   \centering
-  \includegraphics[width=0.6\linewidth]{画像/newVF_image.png}
+  \includegraphics[width=0.5\linewidth]{画像/newVF_image.png}
   \caption{Geometric construction of the vector field.}
   \label{fig:newVF_triangle}
 \end{figure}
@@ -168,17 +132,23 @@ The horizontal error was kept within approximately 20m at maximum, confirming hi
     \begin{minipage}[b]{0.48\linewidth}
         \centering
         \includegraphics[width=\textwidth]{画像/result_VF_1_1_topview.png}
-        \subcaption{Overview}
+        \subcaption{Overview.}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.48\linewidth}
         \centering
-        \includegraphics[width=\textwidth]{画像/result_VF_1_1_horizError.png}
-        \subcaption{Horizontal Error}
+        \includegraphics[width=\textwidth]{画像/result_VF_1_1_frontview.png}
+        \subcaption{Front View. }
     \end{minipage}
     
-    \vspace{0.5cm}
     
+    \vspace{0.5cm}
+    \begin{minipage}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\textwidth]{画像/result_VF_1_1_horizError.png}
+        \subcaption{Horizontal Error.}
+    \end{minipage}
+    \hfill
     \begin{minipage}[b]{0.48\linewidth}
         \centering
         \includegraphics[width=\textwidth]{画像/result_VF_1_1_vertError.png}
@@ -202,7 +172,9 @@ Future work involves the introduction of airspeed control (symmetric brake opera
 \begin{thebibliography}{99}
 \bibitem{dean} Dean S. Jorgensen et al., "The Past, Present, and Future of Mid-Air Retrieval", 18th AIM ADS Conference, 2005.
 \bibitem{vf} Stefano Far\`{i} et al., "Vector Field-based Guidance... for Launch Vehicle Re-entry", IAC 2021.
-\bibitem{nasa} NASA, "The X-38 prototype...", 2001.
+\bibitem{nasa} The National Aeronautics and Space Administration, The X-38 prototype of the Crew Return Vehicle is suspended under
+its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001, from
+<https://www.nasa.gov/image-detail/amf-ec01-0339-146/>.
 \bibitem{kawaguchi} Kota Kawaguchi, "Evaluation of Guidance Performance of Parafoil Retrieval System Using Multiple Wind Information", Master's Thesis, 2023.
 \bibitem{branden} Branden J. L., "In-flight trajectory planning... for autonomous parafoils", Ph.D. Dissertation, 2009.
 \bibitem{clothoid} Thierry F. et al., "From Reeds and Shepp's to Continuous-Curvature Paths", IEEE Trans. Robotics, 2004.
