@@ -1,0 +1,211 @@
+\documentclass[11pt, fleqn]{article}
+
+% Packages for images and math
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amssymb, amsmath}
+\usepackage{bm}
+\usepackage{subcaption}
+\usepackage[a4paper, left=25mm, right=25mm, top=25mm, bottom=25mm]{geometry}
+
+% --- Settings ---
+\setlength{\mathindent}{1em} % Indentation for equations
+\setcounter{secnumdepth}{3}
+
+% Caption customization
+\renewcommand{\figurename}{Fig.}
+\renewcommand{\tablename}{Table}
+
+% Title Definition
+\title{\vspace{-10mm}\Large\bfseries Study on Guidance for Parafoil Mid-Air Retrieval using Vector Field Method}
+\author{7522095 Yuta Funaki \\ Ogasawara Laboratory, Department of Mechanical and Aerospace Engineering, \\ Faculty of Science and Technology, Tokyo University of Science}
+\date{February 2026}
+
+\begin{document}
+
+\maketitle
+
+% --- 1. Introduction ---
+\section{Introduction}
+
+\subsection{Background and Objective}
+In the field of space development, Mid-Air Retrieval (MAR) using parafoils is gaining attention as a method for recovering observation instruments and sample return capsules. Conventional recovery methods on water or land involve significant impact shock and require time for retrieval. In contrast, aerial recovery using helicopters avoids impact and enables rapid retrieval.
+In particular, Dean et al. proposed the "3GMAR" method, which eliminates the winch and minimizes relative velocity  (Fig.\ref{fig:3gMAR}).
+
+However, 3GMAR does not assume autonomous control of the parafoil, leaving the success rate dependent on the pilot's skill. Furthermore, existing guidance laws (such as the Vector Field method) face challenges regarding the energy management (altitude dissipation) specific to MAR and the complexity of parameter tuning.
+
+Therefore, this study aims to improve the success rate of mid-air retrieval with the following two objectives:
+\begin{enumerate}
+    \item Construction of a trajectory planning method that appropriately dissipates altitude energy and achieves a wind-up landing approach.
+    \item Construction and evaluation of a guidance law using a modified Vector Field (VF) method that considers parafoil characteristics and simplifies parameter tuning.
+\end{enumerate}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.8\linewidth]{画像/3GMARの概念図.jpg}
+  \caption{The process of 3GMAR.}
+  \label{fig:3gMAR}
+\end{figure}
+
+% --- 2. Parafoil Model ---
+\section{Parafoil Model}
+
+\subsection{6-DOF Model}
+This study adopts a 6-Degree-of-Freedom (6-DOF) model that combines the canopy and the payload.
+The Inertial Coordinate System $O_I$, Body Coordinate System $O_B$, Canopy Coordinate System $O_C$, and Aerodynamic Coordinate System $O_A$ are defined (Fig.\ref{fig:para_kawa}). The equations of motion for translation and rotation are described as follows:
+
+\begin{equation}
+\begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} = \frac{1}{m}(F_\mathrm{W} + F_\mathrm{A} + F_\mathrm{S}) - S_{\omega}^B \begin{bmatrix} u \\ v \\ w \end{bmatrix} \label{eq:dynamics_trans}
+\end{equation}
+\begin{equation}
+\begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = [I_{\mathrm{T}}]^{-1} \left\{ \bm{M}_A  - S_{\omega}^B[I_{\mathrm{T}}] \begin{bmatrix} p \\ q \\ r \end{bmatrix} \right\} \label{eq:dynamics_rot}
+\end{equation}
+
+Here, $F_W$, $F_A$, and $F_S$ represent Gravity, Canopy Aerodynamics, and Payload Aerodynamics, respectively.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/舟木_座標系.png}
+  \caption{Coordinate Systems of Parafoil Model.}
+  \label{fig:para_kawa}
+\end{figure}
+
+% --- 3. Trajectory Planning ---
+\section{Trajectory Planning}
+
+\subsection{Three-Phase Trajectory}
+To rendezvous with the helicopter in MAR, the parafoil must arrive at a specific altitude and velocity and perform a "Wind-Up Approach" for stability. In this study, the trajectory is planned in three phases as shown in Fig.\ref{fig:para_traj_plan}.
+
+\begin{description}
+    \item[Phase 1 (Loiter):] Dissipate excess altitude by orbiting above the rendezvous point.
+    \item[Phase 2 (Dubins Path):] The shortest path to transition from the current position to the wind-up approach line. The turning radius $R$ considers physical constraints dependent on the True Airspeed ($V_{TAS}$).
+    \item[Phase 3 (Final Approach):] Fly straight into the wind to approach the rendezvous point.
+\end{description}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.8\linewidth]{画像/plannning_phase_dubins.png}
+  \caption{Trajectory Planning Strategy.}
+  \label{fig:para_traj_plan}
+\end{figure}
+
+\subsection{Correction using Clothoid Curves}
+In a geometric Dubins Path (connection of straight lines and circular arcs), the bank angle becomes discontinuous at the connection points, making it impossible for an actual aircraft to follow. Therefore, Clothoid curves are introduced into each turning section to continuously vary the curvature, thereby improving tracking performance.
+
+\subsection{Wind Disturbance Correction via Iterative Method}
+In the presence of wind, the aerodynamic target point does not match the ground arrival point. To solve this, the "Iterative Wind Correction" algorithm was implemented.
+\begin{enumerate}
+    \item Generate a path to a tentative aerodynamic target point and calculate the precise flight time $t_{actual}$ via simulation (Dry Run).
+    \item Calculate the total drift amount $\bm{D} = \bm{W} \cdot t_{actual}$.
+    \item Offset the target point upwind ($\bm{T}_{ideal} = \bm{T}_{target} - \bm{D}$) and iterate until convergence.
+\end{enumerate}
+
+% --- 4. Guidance Method ---
+\section{Guidance Method}
+
+\subsection{Application of Vector Field (VF) Method}
+A VF method is used to generate a target course angle $\chi_{cmd}$ based on the position error (cross-track error $e_{py}$) relative to the reference trajectory (Fig.\ref{fig:newVF_triangle}).
+The target course angle $\chi_{cmd}$ is derived by adding a correction term corresponding to the error to the reference path azimuth $\chi_{path}$.
+
+\begin{equation}
+    \chi_{\mathrm{cmd}} = \chi_{\mathrm{path}} - \chi_{\infty} \frac{2}{\pi} \tan^{-1}(k_{\mathrm{VF}} e_{\mathrm{py}})
+    \label{eq:chi_d_mission}
+\end{equation}
+
+Here, $\chi_{\infty}$ is the maximum approach angle, and $k_{\mathrm{VF}}$ is the gain.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/newVF_image.png}
+  \caption{Geometric construction of the vector field.}
+  \label{fig:newVF_triangle}
+\end{figure}
+
+\subsection{Derivation of Control Input}
+Based on the target course rate $\dot{\chi}_{cmd}$ obtained from the VF method, the required body yaw rate $r_{cmd}$ is calculated considering the drift angle change $\dot{\eta}$ due to wind.
+\begin{equation}
+    r_{cmd} = \frac{\cos \theta}{\cos \phi} \left[ \dot{\chi}_{\mathrm{cmd}} - \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_{\mathrm{cmd}} \right]
+\end{equation}
+Finally, from the moment balance equation linearized around a steady turn, the control input (asymmetric brake $\delta_a$) required to achieve the target bank angle is given by:
+
+\begin{equation}
+    \delta_a = - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}} \frac{1}{V}\frac{\cos \theta}{\cos \phi} \left( 2- \frac{V_g}{V_a \cos \eta} \right) \dot{\chi}_{\mathrm{cmd}}
+    \label{eq:ff_law_VF}
+\end{equation}
+
+Furthermore, feedback terms are added to compensate for inertial coupling and dynamic response delays to improve tracking accuracy.
+
+% --- 5. Results and Discussion ---
+\section{Results and Discussion}
+
+\subsection{Effectiveness of Clothoid Curves}
+A comparison was made between simulations with and without Clothoid curves in trajectory planning.
+In Fig.\ref{fig:result_nonclothoid_FF_xy} (without), overshoot is observed at the start and end of the turn. In contrast, in Fig.\ref{fig:result_clothoid_FF_xy} (with), a smooth trajectory is drawn, and tracking performance to the target path is significantly improved. This is because the bank angle transition remained within the physically feasible range.
+
+\begin{figure}[h]
+  \centering
+  \begin{minipage}[b]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{画像/result_nonclothoid_FF_xy.png}
+    \caption{Without clothoid curve.}
+    \label{fig:result_nonclothoid_FF_xy}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[b]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{画像/result_clothoid_FF_xy.png}
+    \caption{With clothoid curve.}
+    \label{fig:result_clothoid_FF_xy}
+  \end{minipage}
+\end{figure}
+
+\subsection{Evaluation of Guidance Accuracy}
+Fig.\ref{fig:VF_vert_all} shows the simulation results using the proposed method (Trajectory Planning + Modified VF Guidance) under a wind speed condition of $5 \mathrm{m/s}$.
+The horizontal error was kept within approximately 20m at maximum, confirming high path-tracking performance. On the other hand, a maximum error of approximately 40m occurred in the vertical direction. This is thought to be due to changes in ground speed caused by wind affecting the flight duration, resulting in a deviation from the altitude dissipation plan.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\textwidth]{画像/result_VF_1_1_topview.png}
+        \subcaption{Overview}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\textwidth]{画像/result_VF_1_1_horizError.png}
+        \subcaption{Horizontal Error}
+    \end{minipage}
+    
+    \vspace{0.5cm}
+    
+    \begin{minipage}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\textwidth]{画像/result_VF_1_1_vertError.png}
+        \subcaption{Vertical Error}
+    \end{minipage}
+    \caption{Simulation results with Vector Field method under wind condition.}
+    \label{fig:VF_vert_all}
+\end{figure}
+
+
+% --- 6. Conclusion ---
+\section{Conclusion}
+In this study, a trajectory planning method including energy management and a guidance law based on the VF method were constructed for the mid-air retrieval of parafoils.
+\begin{enumerate}
+    \item By applying Clothoid curves to the Dubins Path and combining it with wind correction via an iterative method, physically feasible trajectories robust to wind disturbances were generated.
+    \item It was confirmed that the guidance law using the modified VF method allows path tracking within a horizontal position error of 20m even under the influence of wind.
+\end{enumerate}
+Future work involves the introduction of airspeed control (symmetric brake operation) to reduce vertical errors.
+
+% --- References ---
+\begin{thebibliography}{99}
+\bibitem{dean} Dean S. Jorgensen et al., "The Past, Present, and Future of Mid-Air Retrieval", 18th AIM ADS Conference, 2005.
+\bibitem{vf} Stefano Far\`{i} et al., "Vector Field-based Guidance... for Launch Vehicle Re-entry", IAC 2021.
+\bibitem{nasa} NASA, "The X-38 prototype...", 2001.
+\bibitem{kawaguchi} Kota Kawaguchi, "Evaluation of Guidance Performance of Parafoil Retrieval System Using Multiple Wind Information", Master's Thesis, 2023.
+\bibitem{branden} Branden J. L., "In-flight trajectory planning... for autonomous parafoils", Ph.D. Dissertation, 2009.
+\bibitem{clothoid} Thierry F. et al., "From Reeds and Shepp's to Continuous-Curvature Paths", IEEE Trans. Robotics, 2004.
+\end{thebibliography}
+
+\end{document}

@@ -247,12 +247,12 @@ Fariらの論文ではその方法が示されていない. したがって, 空
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\linewidth]{画像/川口_座標系.jpeg}
-  \caption{Parafoil Model. \cite{ref_kawa}}
+  \includegraphics[width=0.7\linewidth]{画像/舟木_座標系.png}
+  \caption{Parafoil Model.}
   \label{fig:para_kawa}
 \end{figure}
 また, 運動を表現するにあたりペイロードの質量中心に点 $S$ を定義する. 
-このシステムでは, 全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される. 
+このシステムでは, 全システムの質量中心において3つの並進運動（3DoF）と回転運動（3DoF）の合計6自由度でモデル化される. 
 
 \subsubsection{パラフォイルの運動方程式} 
 6自由度のパラフォイルモデル運動方程式は, 全システムの質量中心における3つの慣性位置成分 $[x, y, z]^T$ および3つのオイラー角 $[\phi, \theta, \psi]^T$ により, 
@@ -657,7 +657,7 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 この $\psi_f$ をDubins Pathの終端条件として与えることで, どのような風況であっても安全な着陸経路が生成される. 
 
 % =========================================
-% 第3章 6自由度モデルの説明 (6-DOF Model)
+% 第3章 6自由度モデルの説明 (6-DoF Model)
 % =========================================
 \subsection{クロゾイド曲線適用時の軌道補正手法}
 前節で述べた風補正アルゴリズムでは, Dubins Pathに基づく単純な幾何学的経路長を用いて軌道計画を行っている. しかしこの方法では, 直進区間と旋回区間の接続点でバンク角が瞬時に変化するため, 慣性モーメントや機体の横滑りを無視できない実際のパラフォイルでは追従が難しいと考えられる. 
@@ -1003,21 +1003,53 @@ Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
 \end{figure}
 
 \subsection{VF法の有効性の検証}
-クロゾイド曲線を用いた軌道計画に対し, VF法に基づく誘導則を適用したシミュレーション結果を図\ref{fig:result_clothoid_VF}に示す.
+クロゾイド曲線を用いた軌道計画に対し, VF法に基づく誘導則を適用したシミュレーション結果を図\ref{fig:result_clothoid_VF_xyz}に示す.
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.6\linewidth]{画像/result_VF_1_1_xyz.png}
-  \caption{Simulation result with clothoid curve smoothing.}
-\label{fig:result_clothoid_VF_Xy}
+  \includegraphics[width=0.8\linewidth]{画像/result_VF_1_1_xyz.png}
+  \caption{Simulation result with Vector Field method.}
+\label{fig:result_clothoid_VF_xy}
 \end{figure}
+シミュレーションの結果の2次元プロット及び水平方向, 鉛直方向の誤差を図\ref{fig:VF_vert_all}に示す.
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.6\linewidth]{画像/result_VF_1_1.png}
-  \caption{Simulation result with clothoid curve smoothing.}
-\label{fig:result_clothoid_VF_Xy}
-\end{figure}
-\textbf{外乱はホワイトノイズあたりを使おうと考えています}
+	\centering
+	% 左上の図
+	\begin{subfigure}{0.45\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_topview.png}
+			\caption{Overview.}
+			\label{fig:VF_vert_overview}
+	\end{subfigure}
+	% 右上の図
+	\begin{subfigure}{0.5\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_frontview.png}
+			\caption{Frontview.}
+			\label{fig:VF_vert_frontview}
+	\end{subfigure}
+	
+	\vspace{0.5cm} % 上下の間隔調整
 
+	% 左下の図
+	\begin{subfigure}{0.49\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_horizError.png}
+			\caption{Horizontal error.}
+			\label{fig:VF_vert_horizError}
+	\end{subfigure}
+	% 右下の図
+	\begin{subfigure}{0.49\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_vertError.png}
+			\caption{Vertical error.}
+			\label{fig:VF_vert_vertError}
+	\end{subfigure}
+	
+	\caption{2D trajectory plots and error with Vector Field method.}
+	\label{fig:VF_vert_all}
+\end{figure}
+
+図\ref{fig:VF_vert_all}より, 水平方向の最大の誤差は19.65 mである一方, 鉛直方向の誤差は最大で38.76 mに達していることが分かる.
 \section*{謝辞}
 %\addcontentsline{toc}{section}{謝辞}
 本研究を進めるにあたり，多くの方々より温かいご支援を賜りましたことに，心より感謝申し上げ
