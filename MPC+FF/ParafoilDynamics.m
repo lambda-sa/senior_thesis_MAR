@@ -170,6 +170,53 @@ classdef ParafoilDynamics
             % get_derivatives と同じ計算を実行
             attitude_dot_mat = RotationMatrices.get_attitude_dot_matrix(phi, theta);
             eul_rates = attitude_dot_mat * omega_B; % [phi_dot; theta_dot; psi_dot]
+       end
+
+       % ★追加: 厳密な空力状態量（迎角・横滑り角・対気速度）を取得するメソッド
+        function [alpha, beta, V_A] = get_aerodynamic_state(obj, y, wind_I, GAMMA)
+            % 引数:
+            %   y: 状態ベクトル (12x1) [u; v; w; p; q; r; phi; theta; psi; x; y; z]
+            %   wind_I: 慣性座標系の風速ベクトル [Wx; Wy; Wz]
+            %   GAMMA: キャノピー取り付け角 (rad)
+
+            % 1. 状態量の展開
+            u=y(1); v=y(2); w=y(3); p=y(4); q=y(5); r=y(6);
+            phi=y(7); theta=y(8); psi=y(9);
+            
+            % 2. ベクトル定義
+            V_cg_B = [u; v; w];   % 機体重心の速度 (Body)
+            omega_B = [p; q; r];  % 角速度 (Body)
+            
+            % 3. 座標変換行列
+            T_IB = RotationMatrices.get_inertial_to_body_matrix(phi, theta, psi);
+            T_BC = RotationMatrices.get_T_BC(GAMMA);
+            
+            % 風速の変換 (Inertial -> Body)
+            V_wind_B = T_IB * wind_I;
+            
+            % 4. キャノピー空力中心の速度ベクトルを計算
+            % (get_derivatives 内の privateメソッドを再利用)
+            V_canopy_C = obj.calculate_canopy_velocity_C(V_cg_B, omega_B, V_wind_B, T_BC);
+            
+            u_c = V_canopy_C(1); 
+            v_c = V_canopy_C(2); 
+            w_c = V_canopy_C(3);
+            
+            % 5. 対気速度・迎角・横滑り角の算出
+            V_A = norm(V_canopy_C);
+            
+            if V_A < 1e-6
+                alpha = 0;
+                beta = 0;
+            else
+                % 厳密な迎角 alpha (Eq 2.12に相当) 
+                alpha = atan2(w_c, u_c);
+                
+                % 横滑り角 beta (Eq 2.13に相当) [cite: 137]
+                arg_beta = v_c / V_A;
+                arg_beta = max(-1, min(1, arg_beta)); % 誤差保護
+                beta = asin(arg_beta);
+            end
         end
 
     end

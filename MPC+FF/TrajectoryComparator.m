@@ -1,33 +1,25 @@
-classdef TrajectoryComparator
-    % TRAJECTORYCOMPARATOR 参照軌道と実行軌道を比較・可視化するクラス
-    %
-    % [仕様]
-    % - Tab 1: Single large 3D plot
-    % - Tab 2: 2x2 Grid (Top View, Side View, Horiz Error, Vert Error)
-    % - Tab 3: Dynamics (Bank, Alt, Control)
-    % - Layout: TiledLayout (Tight spacing)
-    % - Colors: Blue (6DoF) & Orange (Ideal)
-    % - Phase Lines: Uses "Planned Transition Times"
-    % - Style: Arial, TeX, White Background, No Grid/Title
+classdef TrajectoryComparator < handle
+    % TRAJECTORYCOMPARATOR (Base Class)
+    % 論文用CUD配色・スタイル適用版
+    % Green(Plan) / Blue(No Wind) / Red(Wind)
     
     properties
-        SimData         % 6DOFシミュレーション結果 (table)
-        TrajPlanGnd     % 計画軌道 (Ground: table)
-        TrajPlanAir     % 計画軌道 (Air: table - バンク角参照用)
-        TargetPos       % 目標位置 [N, E, Alt]
-        WindPlanned     % 計画風速 [N, E]
-        
-        % 計画上のフェーズ遷移時刻リスト
+        SimData         % 6DOFシミュレーション結果 (No Wind)
+        TrajPlanGnd     % 計画軌道 (Ground)
+        TrajPlanAir     % 計画軌道 (Air)
+        TargetPos       % 目標位置
+        WindPlanned     % 計画風速
         PlanTransitionTimes = [] 
         
-        % カラーパレット
+        Handles = struct(); 
+        
+        % ★CUD推奨配色定義 (RGB 0-1正規化)
         Colors = struct( ...
-            'Blue',   [0.1216, 0.4667, 0.7059], ... % 6DoF (Actual)
-            'Orange', [1.0000, 0.4980, 0.0549], ... % Ideal (Plan)
-            'Red',    [0.8392, 0.1529, 0.1569], ... % Target / Control R
-            'Green',  [0.1725, 0.6275, 0.1725], ... % Control L
-            'Gray',   [0.4980, 0.4980, 0.4980], ... % Control a
-            'Phase',  [0.5000, 0.5000, 0.5000]  ... % Phase Lines (Dark Gray)
+            'Plan',    [3, 175, 122] / 255, ...   % #03AF7A (Ideal: Green)
+            'NoWind',  [0, 90, 255] / 255, ...    % #005AFF (No Wind: Blue)
+            'Wind',    [255, 75, 0] / 255, ...    % #FF4B00 (Wind: Red)
+            'Target',  [0.6, 0.2, 0.2], ...       % Marker (Dark Red)
+            'Phase',   [0.4, 0.4, 0.4]  ...       % Phase Lines (Dark Gray)
         );
     end
     
@@ -44,183 +36,193 @@ classdef TrajectoryComparator
         end
         
         function plotAll(obj)
-            % ウィンドウ作成
             fig = figure('Name', 'Simulation Analysis', 'Color', 'w', ...
-                'Position', [50, 50, 1200, 1000]); % 正方形に近い比率に変更
+                'Position', [50, 50, 1200, 1000]);
+            obj.Handles.Figure = fig;
             
-            % タブグループ
             tabGroup = uitabgroup(fig);
             
-            % --- Tab 1: 3D View (Single Plot) ---
             t1 = uitab(tabGroup, 'Title', '3D View', 'BackgroundColor', 'w');
             obj.plotTab1_3D(t1);
             
-            % --- Tab 2: Analysis (2x2: Top/Side/Horiz/Vert) ---
             t2 = uitab(tabGroup, 'Title', 'Analysis (2x2)', 'BackgroundColor', 'w');
             obj.plotTab2_Analysis(t2);
             
-            % --- Tab 3: Dynamics (Controls etc.) ---
             t3 = uitab(tabGroup, 'Title', 'Dynamics', 'BackgroundColor', 'w');
             obj.plotTab3_Dynamics(t3);
         end
+    end
+    
+    methods (Access = protected)
         
-        %% --- Tab 1: 3D View (Single) ---
+        %% --- Tab 1: 3D View ---
         function plotTab1_3D(obj, parentTab)
             bgPanel = uipanel('Parent', parentTab, 'BackgroundColor', 'w', 'BorderType', 'none');
-            
-            % 1x1 全画面レイアウト
             t = tiledlayout(bgPanel, 1, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
-            
-            simD = obj.SimData;
-            planG = obj.TrajPlanGnd;
-            tgt = obj.TargetPos;
-            C = obj.Colors;
-            
             ax = nexttile(t);
+            obj.Handles.Ax3D = ax; 
+            
+            simD = obj.SimData; planG = obj.TrajPlanGnd; tgt = obj.TargetPos; C = obj.Colors;
+            
+            % 計画 (緑・点線)
             plot3(ax, planG.Position(:,1), planG.Position(:,2), planG.Position(:,3), ...
-                  '--', 'Color', C.Orange, 'LineWidth', 1.5, 'DisplayName', 'Ideal Trajectory');
+                  ':', 'Color', C.Plan, 'LineWidth', 2.0, 'DisplayName', 'Refference');
             hold(ax, 'on');
+            % 無風 (青・実線)
             plot3(ax, simD.Inertial_X_Position, simD.Inertial_Y_Position, -simD.Inertial_Z_Position, ...
-                  '-', 'Color', C.Blue, 'LineWidth', 1.5, 'DisplayName', '6DoF Simulation');
+                  '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', 'Without wind');
+            % ターゲット
             plot3(ax, tgt(1), tgt(2), tgt(3), ...
-                  '^', 'Color', C.Red, 'MarkerSize', 8, 'MarkerFaceColor', C.Red, 'DisplayName', 'Target');
+                  '^', 'Color', C.Target, 'MarkerSize', 8, 'MarkerFaceColor', C.Target, 'DisplayName', 'Target');
             
             view(ax, 3); axis(ax, 'equal');
-            xlabel(ax, 'North: {\itx} [m]'); ylabel(ax, 'East: {\ity} [m]'); zlabel(ax, 'Altitude: {\itz} [m]');
-            legend(ax, 'show'); 
-            obj.applyStyle(ax);
+            xlabel(ax, 'x [m]'); ylabel(ax, 'y [m]'); zlabel(ax, 'Altitude [m]');
+            legend(ax, 'show'); obj.applyStyle(ax);
         end
         
-        %% --- Tab 2: Analysis (2x2 Grid) ---
+        %% --- Tab 2: Analysis (Errors) ---
         function plotTab2_Analysis(obj, parentTab)
             bgPanel = uipanel('Parent', parentTab, 'BackgroundColor', 'w', 'BorderType', 'none');
-            
-            % 2行2列レイアウト
             t = tiledlayout(bgPanel, 2, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
             
-            simD = obj.SimData;
-            planG = obj.TrajPlanGnd;
-            tgt = obj.TargetPos;
-            C = obj.Colors;
-            
-            % 誤差計算
-            ref_pts = planG.Position; 
-            act_pts = [simD.Inertial_X_Position, simD.Inertial_Y_Position, -simD.Inertial_Z_Position];
-            n_act = size(act_pts, 1);
-            err_vec = zeros(n_act, 3); 
-            for i = 1:n_act
-                [~, idx] = min(sum((ref_pts - act_pts(i, :)).^2, 2));
-                err_vec(i, :) = act_pts(i, :) - ref_pts(idx, :); 
-            end
-            horiz_err = sqrt(err_vec(:,1).^2 + err_vec(:,2).^2);
-            vert_err = abs(err_vec(:,3));
+            simD = obj.SimData; planG = obj.TrajPlanGnd; tgt = obj.TargetPos; C = obj.Colors;
+            [horiz_err, vert_err] = obj.calcErrors(simD);
 
-            % 1. Top View (左上)
-            ax1 = nexttile(t);
-            plot(ax1, planG.Position(:,1), planG.Position(:,2), '--', 'Color', C.Orange, 'LineWidth', 1.5, 'DisplayName', 'Ideal Trajectory');
+            % 1. Top View
+            ax1 = nexttile(t); obj.Handles.AxTop = ax1;
+            plot(ax1, planG.Position(:,1), planG.Position(:,2), ':', 'Color', C.Plan, 'LineWidth', 2.0, 'DisplayName', 'Refference');
             hold(ax1, 'on');
-            plot(ax1, simD.Inertial_X_Position, simD.Inertial_Y_Position, '-', 'Color', C.Blue, 'LineWidth', 1.5, 'DisplayName', '6DoF Simulation');
-            plot(ax1, tgt(1), tgt(2), '^', 'Color', C.Red, 'MarkerSize', 8, 'MarkerFaceColor', C.Red, 'DisplayName', 'Target');
-            axis(ax1, 'equal');
-            xlabel(ax1, 'North: {\itx} [m]'); ylabel(ax1, 'East: {\ity} [m]');
+            plot(ax1, simD.Inertial_X_Position, simD.Inertial_Y_Position, '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', 'Without wind');
+            plot(ax1, tgt(1), tgt(2), '^', 'Color', C.Target, 'MarkerSize', 8, 'MarkerFaceColor', C.Target, 'DisplayName', 'Target');
+            axis(ax1, 'equal'); xlabel(ax1, 'x [m]'); ylabel(ax1, 'y [m]');
             legend(ax1, 'show'); obj.applyStyle(ax1);
             
-            % 2. Side View (右上)
-            ax2 = nexttile(t);
-            plot(ax2, planG.Position(:,1), planG.Position(:,3), '--', 'Color', C.Orange, 'LineWidth', 1.5, 'DisplayName', 'Ideal Trajectory');
+            % 2. Side View
+            ax2 = nexttile(t); obj.Handles.AxSide = ax2;
+            plot(ax2, planG.Position(:,1), planG.Position(:,3), ':', 'Color', C.Plan, 'LineWidth', 2.0, 'DisplayName', 'Refference');
             hold(ax2, 'on');
-            plot(ax2, simD.Inertial_X_Position, -simD.Inertial_Z_Position, '-', 'Color', C.Blue, 'LineWidth', 1.5, 'DisplayName', '6DoF Simulation');
-            plot(ax2, tgt(1), tgt(3), '^', 'Color', C.Red, 'MarkerSize', 8, 'MarkerFaceColor', C.Red, 'DisplayName', 'Target');
-            xlabel(ax2, 'North: {\itx} [m]'); ylabel(ax2, 'Altitude: {\itz} [m]');
+            plot(ax2, simD.Inertial_X_Position, -simD.Inertial_Z_Position, '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', 'Without wind');
+            plot(ax2, tgt(1), tgt(3), '^', 'Color', C.Target, 'MarkerSize', 8, 'MarkerFaceColor', C.Target, 'DisplayName', 'Target');
+            xlabel(ax2, 'x [m]'); ylabel(ax2, 'Altitude [m]');
             legend(ax2, 'show'); obj.applyStyle(ax2);
             
-            % 3. Horizontal Error (左下)
-            ax3 = nexttile(t);
-            plot(ax3, simD.Time, horiz_err, '-', 'Color', C.Blue, 'LineWidth', 1.5, 'DisplayName', 'Horiz. Error');
-            xlabel(ax3, 'Time: {\itt} [s]'); ylabel(ax3, 'Horiz. Error [m]');
-            legend(ax3, 'show'); obj.addPhaseLines(ax3); obj.applyStyle(ax3);
+            % 3. Horizontal Error
+            ax3 = nexttile(t); obj.Handles.AxErrH = ax3;
+            plot(ax3, simD.Time, horiz_err, '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', 'Without wind');
+            xlabel(ax3, 'Time [s]'); ylabel(ax3, 'Horizontal error [m]'); 
+            legend(ax3, 'show'); 
+            obj.addPhaseLines(ax3); obj.applyStyle(ax3);
+            obj.adjustAxesLimits(ax3, horiz_err);
             
-            % 4. Vertical Error (右下)
-            ax4 = nexttile(t);
-            plot(ax4, simD.Time, vert_err, '-', 'Color', C.Blue, 'LineWidth', 1.5, 'DisplayName', 'Vert. Error');
-            xlabel(ax4, 'Time: {\itt} [s]'); ylabel(ax4, 'Vert. Error [m]');
-            legend(ax4, 'show'); obj.addPhaseLines(ax4); obj.applyStyle(ax4);
+            % 4. Vertical Error
+            ax4 = nexttile(t); obj.Handles.AxErrV = ax4;
+            plot(ax4, simD.Time, vert_err, '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', 'Without wind');
+            xlabel(ax4, 'Time [s]'); ylabel(ax4, 'Vertical error [m]'); 
+            legend(ax4, 'show'); 
+            obj.addPhaseLines(ax4); obj.applyStyle(ax4);
+            obj.adjustAxesLimits(ax4, vert_err);
         end
         
-        %% --- Tab 3: Dynamics (Bank, Alt, Control) ---
+        %% --- Tab 3: Dynamics ---
         function plotTab3_Dynamics(obj, parentTab)
             bgPanel = uipanel('Parent', parentTab, 'BackgroundColor', 'w', 'BorderType', 'none');
             t = tiledlayout(bgPanel, 3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
             
-            simD = obj.SimData;
-            planA = obj.TrajPlanAir;
-            planG = obj.TrajPlanGnd;
-            C = obj.Colors;
-            t_plan = planA.Time;
-            t_max = max(t_plan(end), simD.Time(end));
+            simD = obj.SimData; planA = obj.TrajPlanAir; planG = obj.TrajPlanGnd; C = obj.Colors;
+            t_plan = planA.Time; t_max = max(t_plan(end), simD.Time(end));
             
-            % Bank Angle
-            ax1 = nexttile(t);
-            plot(ax1, t_plan, -rad2deg(planA.Euler_RPY(:, 1)), '--', 'Color', C.Orange, 'LineWidth', 1.5, 'DisplayName', 'Ideal Trajectory');
+            % Bank
+            ax1 = nexttile(t); obj.Handles.AxBank = ax1;
+            plot(ax1, t_plan, -rad2deg(planA.Euler_RPY(:, 1)), ':', 'Color', C.Plan, 'LineWidth', 2.0, 'DisplayName', 'Refference');
             hold(ax1, 'on');
-            plot(ax1, simD.Time, simD.Roll_Angle, '-', 'Color', C.Blue, 'LineWidth', 1.5, 'DisplayName', '6DoF Simulation');
-            xlabel(ax1, 'Time: {\itt} [s]'); ylabel(ax1, 'Bank Angle: {\it\phi} [deg]');
+            plot(ax1, simD.Time, simD.Roll_Angle, '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', 'Without wind');
+            xlabel(ax1, 'Time [s]'); ylabel(ax1, 'Bank angle [deg]');
             xlim(ax1, [0, t_max]);
             legend(ax1, 'show'); obj.addPhaseLines(ax1); obj.applyStyle(ax1);
             
-            % Altitude (Time Series)
-            ax2 = nexttile(t);
-            plot(ax2, t_plan, planG.Position(:, 3), '--', 'Color', C.Orange, 'LineWidth', 1.5, 'DisplayName', 'Ideal Trajectory');
+            % Alt
+            ax2 = nexttile(t); obj.Handles.AxAlt = ax2;
+            plot(ax2, t_plan, planG.Position(:, 3), ':', 'Color', C.Plan, 'LineWidth', 2.0, 'DisplayName', 'Refference');
             hold(ax2, 'on');
-            plot(ax2, simD.Time, -simD.Inertial_Z_Position, '-', 'Color', C.Blue, 'LineWidth', 1.5, 'DisplayName', '6DoF Simulation');
-            xlabel(ax2, 'Time: {\itt} [s]'); ylabel(ax2, 'Altitude: {\itz} [m]');
+            plot(ax2, simD.Time, -simD.Inertial_Z_Position, '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', 'Without wind');
+            xlabel(ax2, 'Time [s]'); ylabel(ax2, 'Altitude [m]');
             xlim(ax2, [0, t_max]);
             legend(ax2, 'show'); obj.addPhaseLines(ax2); obj.applyStyle(ax2);
             
-            % Control Input
-            ax3 = nexttile(t);
-            plot(ax3, simD.Time, simD.delta_R, '-', 'Color', C.Red,   'LineWidth', 1.0, 'DisplayName', 'Right: \delta_{\itR}');
-            hold(ax3, 'on');
-            plot(ax3, simD.Time, simD.delta_L, '-', 'Color', C.Green, 'LineWidth', 1.0, 'DisplayName', 'Left: \delta_{\itL}');
-            plot(ax3, simD.Time, simD.delta_a, '--', 'Color', C.Gray, 'LineWidth', 1.0, 'DisplayName', 'Net: \delta_{\ita}');
-            xlabel(ax3, 'Time: {\itt} [s]'); ylabel(ax3, 'Control Input (\delta)');
+            % Control
+            ax3 = nexttile(t); obj.Handles.AxCtrl = ax3;
+            obj.plotControlInputs(ax3);
             xlim(ax3, [0, t_max]);
-            legend(ax3, 'show'); obj.addPhaseLines(ax3); obj.applyStyle(ax3);
+            obj.addPhaseLines(ax3); obj.applyStyle(ax3);
         end
-    end
-    
-    methods (Access = private)
-        % Phase Lines
-        function addPhaseLines(obj, ax)
-            times = obj.PlanTransitionTimes;
-            if isempty(times), return; end
-            y_lim = get(ax, 'YLim');
+        
+        % ★制御入力描画 (Base: No Wind Only)
+        % 定義: δa = δL - δR (非対称), δs = min(δL, δR) (対称)
+        function plotControlInputs(obj, ax)
+            simD = obj.SimData; C = obj.Colors;
+            
+            delta_a = simD.delta_L - simD.delta_R;
+            delta_s = min(simD.delta_L, simD.delta_R);
+            
+            % δa: 実線
+            plot(ax, simD.Time, delta_a, '-', 'Color', C.NoWind, 'LineWidth', 1.5, 'DisplayName', '\delta_{\ita} (without wind)');
             hold(ax, 'on');
-            for k = 1:length(times)
-                t_switch = times(k);
-                curr_xlim = get(ax, 'XLim');
-                if t_switch < curr_xlim(1) || t_switch > curr_xlim(2), continue; end
-                line(ax, [t_switch, t_switch], y_lim, ...
-                    'Color', obj.Colors.Phase, 'LineStyle', ':', 'LineWidth', 1.2, 'HandleVisibility', 'off');
+            % δs: 点線 (太め)
+            plot(ax, simD.Time, delta_s, ':', 'Color', C.NoWind, 'LineWidth', 2.0, 'DisplayName', '\delta_{\its} (without wind)');
+            
+            xlabel(ax, 'Time [s]'); ylabel(ax, 'Control input [m]');
+            legend(ax, 'show');
+        end
+
+        % --- Helpers ---
+        function [horiz_err, vert_err] = calcErrors(obj, simD)
+            ref_pts = obj.TrajPlanGnd.Position;
+            act_pts = [simD.Inertial_X_Position, simD.Inertial_Y_Position, -simD.Inertial_Z_Position];
+            n_act = size(act_pts, 1);
+            err_vec = zeros(n_act, 3);
+            for i = 1:n_act
+                [~, idx] = min(sum((ref_pts - act_pts(i, :)).^2, 2));
+                err_vec(i, :) = act_pts(i, :) - ref_pts(idx, :);
+            end
+            horiz_err = sqrt(err_vec(:,1).^2 + err_vec(:,2).^2);
+            vert_err = abs(err_vec(:,3));
+        end
+
+        function adjustAxesLimits(~, axes_list, data_array)
+            max_val = max(data_array, [], 'all');
+            if max_val > 0
+                common_ylim = [0, max_val * 1.1];
+                for i = 1:length(axes_list)
+                    set(axes_list(i), 'YLim', common_ylim);
+                end
             end
         end
 
-        % Style Application
+        % ★xlineでフェーズ線を上下端まで描画
+        function addPhaseLines(obj, ax)
+            times = obj.PlanTransitionTimes;
+            if isempty(times), return; end
+            
+            for k = 1:length(times)
+                t = times(k);
+                xl = get(ax, 'XLim');
+                if t > xl(1) && t < xl(2)
+                    xline(ax, t, ':', 'Color', obj.Colors.Phase, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+                end
+            end
+        end
+        
         function applyStyle(~, ax)
-            set(ax, 'FontName', 'Arial', 'FontSize', 14); % 2x2で見やすいようフォントサイズ調整(18->14)
+            set(ax, 'FontName', 'Arial', 'FontSize', 14); 
             set(ax, 'TickLabelInterpreter', 'tex');
             set(ax.XLabel, 'Interpreter', 'tex', 'FontName', 'Arial', 'Color', 'k');
             set(ax.YLabel, 'Interpreter', 'tex', 'FontName', 'Arial', 'Color', 'k');
             if isprop(ax, 'ZLabel'), set(ax.ZLabel, 'Interpreter', 'tex', 'FontName', 'Arial', 'Color', 'k'); end
-            title(ax, '');
-            grid(ax, 'off');
-            set(ax, 'Color', 'w'); set(ax, 'XColor', 'k'); set(ax, 'YColor', 'k'); set(ax, 'ZColor', 'k');
-            set(ax, 'LineWidth', 1.0); set(ax, 'TickDir', 'in'); set(ax, 'TickLength', [0.015 0.025]); set(ax, 'Box', 'on');
+            title(ax, ''); grid(ax, 'off');
+            set(ax, 'Color', 'w', 'XColor','k', 'YColor','k', 'ZColor','k');
+            set(ax, 'LineWidth', 1.0, 'TickDir', 'in', 'TickLength', [0.015 0.025], 'Box', 'on');
             lgd = legend(ax); 
-            if ~isempty(lgd)
-                set(lgd, 'Interpreter', 'tex', 'FontName', 'Arial', 'FontSize', 12, ...
-                    'Location', 'best', 'Box', 'off', 'TextColor', 'k');
-            end
+            if ~isempty(lgd), set(lgd, 'Interpreter', 'tex', 'FontName', 'Arial', 'FontSize', 12, 'Location', 'best', 'Box', 'off', 'TextColor', 'k'); end
         end
     end
 end

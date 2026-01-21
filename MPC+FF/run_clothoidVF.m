@@ -19,6 +19,22 @@ else
     params = ParafoilParams(); 
     sim_settings = struct('X_initial', 0, 'Y_initial', 50, 'h_init', 1000, 't_max', 60, 'psi_initial_deg', 0);
 end
+% --- 6-DOFモデル用のパラメータ整形 ---
+params.I_total_body = [
+    params.I_xx,    0,          params.I_xz;
+    0,              params.I_yy, 0;
+    params.I_xz,    0,          params.I_zz
+];
+
+prop = struct();
+prop.TotalMass = params.m_total;
+prop.b = params.b;
+prop.c = params.c;
+prop.d = params.d;
+prop.r_total_cm_to_canopy_origin_B = [params.Rcg_x; 0; params.Rcg_z];
+prop.r_total_cm_to_payload_cm_B   = [params.Rpg_x; 0; params.Rpg_z];
+prop.r_canopy_origin_to_ac_B      = [0; 0; 0]; 
+params.prop = prop;
 
 %% --- 2. Phase A: 軌道計画 (Mission & Planner) ---
 fprintf('=== Phase A: Path Planning ===\n');
@@ -40,137 +56,27 @@ phi_plan = trajPlanAir.Euler_RPY(:, 1); % 目標バンク角
 
 fprintf('  -> Planning Complete. Final Time: %.2f s\n', t_plan(end));
 
-%% --- 3. Phase B: 6DOFシミュレーション準備 ---
-fprintf('\n=== Phase B: 6DOF Simulation Setup ===\n');
-%% --- 2. モデル & 初期条件の準備 ---
-fprintf('=== Initializing Models ===\n');
+%% --- 3. Phase B & C: シミュレーション実行 (2ケース) ---
+fprintf('\n=== Starting Comparison Simulation ===\n');
 
+% --- Case 1: 無風 (No Disturbance) ---
+% Truth: 計画風速, Est: 計画風速
+fprintf('Running Case 1: No Disturbance...\n');
+simData_NoWind = run_simulation_task(mission, params, trajPlanAir, target_pos, ...
+                                     wind_planned, wind_planned);
 
+% --- Case 2: 外乱あり (With Disturbance) ---
+% Truth: 実際の風(外乱込み), Est: 計画風速(外乱を知らない)
+wind_actual = wind_planned + wind_disturbance;
+fprintf('Running Case 2: With Disturbance (Wind=[%.1f, %.1f])...\n', wind_actual(1), wind_actual(2));
+simData_Wind = run_simulation_task(mission, params, trajPlanAir, target_pos, ...
+                                   wind_actual, wind_planned);
 
-% --- 6-DOFモデル用のパラメータ整形 ---
-params.I_total_body = [
-    params.I_xx,    0,          params.I_xz;
-    0,              params.I_yy, 0;
-    params.I_xz,    0,          params.I_zz
-];
+%% --- 4. Phase D: 結果の比較・可視化 ---
+fprintf('\n=== Phase D: Visualization ===\n');
 
-prop = struct();
-prop.TotalMass = params.m_total;
-prop.b = params.b;
-prop.c = params.c;
-prop.d = params.d;
-prop.r_total_cm_to_canopy_origin_B = [params.Rcg_x; 0; params.Rcg_z];
-prop.r_total_cm_to_payload_cm_B   = [params.Rpg_x; 0; params.Rpg_z];
-prop.r_canopy_origin_to_ac_B      = [0; 0; 0]; 
-params.prop = prop;
-
-% (A) 6-DOF Dynamics Model
-
-%% --- 3. Phase B: 6DOFシミュレーション準備 ---
-fprintf('\n=== Phase B: 6DOF Simulation Setup (Pure Feedforward) ===\n');
-
-% 3-1. モデルとコントローラのインスタンス化
-plant = ParafoilDynamics(params);
-%mapper = ParafoilControlMapper_linear_old(params);
-
-
-
-
-% (1) オートパイロットの初期化
-autopilot = ParafoilAutopilot(mission.Params);
-
-% (2) 計画データのインポート
-% Plannerが作った軌道(Entry->Dubins->Final)とLoiter情報をAutopilotに渡す
-autopilot.import_mission_data(mission.Planner);
-
-% (3) ゲインの調整 (必要に応じて)
-%autopilot.Gains.k_vf_loiter = 0.04;  % 円旋回は滑らかに
-%autopilot.Gains.k_vf_mission = 0.12; % 着陸進入は強めに誘導
-
-% (4) スケジューラ(Adapter)の作成
-% ダイナミクスとオートパイロットの仲介役
-scheduler = PlannerAutopilotScheduler(mission, autopilot);
-
-% ★★★ ここを追加: Schedulerが持つ風ベクトルを「実際の風」で上書きする ★★★
-% SchedulerはデフォルトでPlannerの風(wind_planned)を読み込んでしまうため、
-% ここで強制的に wind_actual (NED 3次元) に書き換えます。
-% =========================================================
-% ★★★ Schedulerへの風設定 (クラブ角補正を有効化) ★★★
-% =========================================================
-
-% 1. 物理モデル用 (Truth): 「実際の風 (Actual)」
-% (3) 風情報の更新 (Plannerの予測風ではなく、Simulation用の"正解"風を与える)
-% Scheduler作成時にデフォルト値が入っていますが、ここでシミュレーション条件(wind_actual)で上書きします
-scheduler.WindVector_Truth = [wind_actual; 0]; % 物理環境の風
-scheduler.WindVector_Est   = [wind_actual; 0]; % 制御器が知っている風
-
-fprintf('Setting: Scheduler configured with Dubins-Loiter & Actual Wind.\n');
-fprintf('Simulation Setup: Wind Truth=[%.1f, %.1f], Est=[%.1f, %.1f]\n', ...
-    wind_actual(1), wind_actual(2), wind_actual(1), wind_actual(2));
-
-% --- ★削除した部分★ ---
-% MissionSwitchAlt の手動計算ロジックは全て削除しました。
-% Scheduler が自動計算した値が使われます。
-fprintf('Mission Switch Altitude is automatically set to: %.1f m (NED)\n', ...
-    scheduler.MissionSwitchAlt);
-
-
-% 3-3. 初期条件の抽出 (Plannerの開始状態に合わせる)
-start_pos_ned = trajPlanGnd.Position(1, :); 
-start_vel_tas = trajPlanAir.V_Air(1, :);   
-start_euler   = trajPlanAir.Euler_RPY(1, :); 
-
-V_abs = norm(start_vel_tas);
-u_init = V_abs; v_init = 0; w_init = 0; 
-x_init = start_pos_ned(1);
-y_init = start_pos_ned(2);
-z_init = -start_pos_ned(3); % Height -> Down
-
-y0 = [u_init; v_init; w_init; ... 
-      0; 0; 0; ...                
-      start_euler(1); start_euler(2); start_euler(3); ... 
-      x_init; y_init; z_init];
-% 3-4. エンジンの初期化
-dt_6dof = 0.05;
-t_max_6dof = t_plan(end); % 計画時間より少し長く
-engine = SimulationEngine(plant, scheduler, dt_6dof, t_max_6dof, y0);
-
-%% --- 4. Phase C: 実行 ---
-fprintf('\n=== Phase C: Running 6DOF Simulation ===\n');
-% =========================================================
-% ★追加: 会合点(Target)への接近停止条件
-% =========================================================
-% target_pos は [North, East, Altitude] なので NED (Down) に変換
-target_pos_ned = [target_pos(1); target_pos(2); -target_pos(3)];
-
-engine.TargetNED = target_pos_ned;  % 目標座標 [N; E; D]
-%engine.StopThreshold = 50.0;       % 停止距離 [m]
-
-%fprintf('Termination Condition: Stop if distance to target < %.1f m\n', engine.StopThreshold);
-
-% 実行
-engine = engine.run();
-
-% 結果テーブル取得
-simData = engine.create_results_table();
-% ゴール地点（最接近点）の座標を取得（プロット用）
-final_pos_ned = [simData.Inertial_X_Position(end), simData.Inertial_Y_Position(end), simData.Inertial_Z_Position(end)];
-final_pos_alt = [final_pos_ned(1), final_pos_ned(2), -final_pos_ned(3)];
-
-%% --- 5. Phase D: 結果の比較・可視化 ---
-fprintf('\n=== Phase D: Verification ===\n');
-simData = engine.create_results_table();
-PayloadPlotter.plotResults(simData, engine.ControlScheduler); % [cite: 2848]
-
-
-% =========================================================
-% ★設定: フェーズ区切りの縦線を表示するかどうかのフラグ
-% =========================================================
-SHOW_PHASE_LINES = false;  % true: 表示する, false: 表示しない
-
-% 1. Plannerからフェーズ遷移時刻を抽出 (ログ表示用に計算は常に行う)
+% (1) フェーズ遷移時刻の抽出
 plan_trans_times = [];
-
 % データソースの取得
 if isprop(mission.Planner, 'ResultDataWind') && ~isempty(mission.Planner.ResultDataWind)
     pd = mission.Planner.ResultDataWind;
@@ -193,8 +99,11 @@ if ~isempty(pd)
         if isfield(pd.dubins, 'segment_end_idx')
             seg_idxs = pd.dubins.segment_end_idx;
             valid_idxs = seg_idxs(seg_idxs > 0 & seg_idxs < length(pd.dubins.t));
+            
             if ~isempty(valid_idxs)
                 internal_times = pd.dubins.t(valid_idxs);
+                
+                % ★ここをご提示のコード（安全版）にします
                 plan_trans_times = [plan_trans_times, internal_times(:)'];
             end
         end
@@ -202,19 +111,76 @@ if ~isempty(pd)
     
     plan_trans_times = unique(plan_trans_times);
 end
-
 fprintf('Planned Transition Times: %s s\n', mat2str(plan_trans_times, 2));
 
-% 2. 比較クラスへの引数をフラグで切り替え
-if SHOW_PHASE_LINES
-    times_arg = plan_trans_times; % 時刻リストを渡す
-else
-    times_arg = [];               % 空配列を渡す（線は引かれない）
-end
-% 2. 比較クラスのインスタンス化
-comparator = TrajectoryComparator(simData, trajPlanGnd, trajPlanAir, target_pos, wind_planned, plan_trans_times);
+% (2) 比較クラスのインスタンス化 (WindTrajectoryComparatorを使用)
+comparator = WindTrajectoryComparator(...
+    simData_NoWind, ...   % Case 1 (青)
+    simData_Wind, ...     % Case 2 (マゼンタ)
+    trajPlanGnd, ...
+    trajPlanAir, ...
+    target_pos, ...
+    plan_trans_times);
 
-% 3. 描画
+% (3) 描画
 comparator.plotAll();
 
-fprintf('Done.\n')
+fprintf('Comparison Done.\n');
+
+
+%% ========================================================
+%  共通シミュレーション実行関数 (提示コードのPhase B/Cを移植)
+% =========================================================
+function simData = run_simulation_task(mission, params, trajPlanAir, target_pos, wind_truth, wind_est)
+    
+    % 1. モデルとコントローラのインスタンス化
+    % (paramsはメインスクリプトで整形済みなのでそのまま渡す)
+    plant = ParafoilDynamics(params);
+    
+    autopilot = ParafoilAutopilot(mission.Params);
+    autopilot.import_mission_data(mission.Planner);
+
+    % 2. 計算された L/D を取得
+    trim_ld = mission.PhysicsParams.glide_ratio;
+    autopilot.set_longitudinal_control(true);
+
+    % ★ここでPlannerの計算値を渡す
+    autopilot.set_nominal_glide_ratio(trim_ld);
+    % 2. スケジューラの作成
+    scheduler = PlannerAutopilotScheduler(mission, autopilot);
+    
+    % ★重要: 風の設定 (Truth vs Est)
+    scheduler.WindVector_Truth = [wind_truth; 0]; % 物理環境
+    scheduler.WindVector_Est   = [wind_est; 0];   % 制御器の認識
+    
+    % 3. 初期条件の抽出 (Plannerの開始状態に合わせる)
+    start_pos_ned = trajPlanAir.Position(1, :); 
+    start_vel_tas = trajPlanAir.V_Air(1, :);   
+    start_euler   = trajPlanAir.Euler_RPY(1, :); 
+    
+    % 初期状態ベクトルの作成
+    y0 = [start_vel_tas(1); start_vel_tas(2); start_vel_tas(3); ... % uvw
+          0; 0; 0; ...                                               % pqr
+          start_euler(1); start_euler(2); start_euler(3); ...        % phi, theta, psi
+          start_pos_ned(1); start_pos_ned(2); -start_pos_ned(3)];    % N, E, D (Alt->Down変換)
+      
+    % ※念のため trajPlanAir の第3成分が高度(正)なら Down(負)にする
+    if start_pos_ned(3) > 0
+        y0(12) = -start_pos_ned(3);
+    end
+
+    % 4. エンジンの初期化
+    dt_6dof = 0.05;
+    t_max_6dof = trajPlanAir.Time(end) + 10; % マージン
+    engine = SimulationEngine(plant, scheduler, dt_6dof, t_max_6dof, y0);
+    
+    % ターゲット設定 (NED)
+    target_pos_ned = [target_pos(1); target_pos(2); -target_pos(3)];
+    engine.TargetNED = target_pos_ned;
+    
+    % 5. 実行
+    engine = engine.run();
+    
+    % 6. 結果テーブル取得
+    simData = engine.create_results_table();
+end

@@ -32,15 +32,32 @@ classdef ParafoilAutopilot < handle
         LastDeltaR = 0;     
         LastDeltaL = 0;     
         IsReady = false;    
+        % ★追加: 縦制御のON/OFFフラグ
+        EnableLongitudinalControl = true;
+        % ★追加: Plannerで計算された基準滑空比 (トリムL/D)
+        NominalGlideRatio = 3.0; % 初期値 (適当な値、あとで上書きされる)
+        % ★追加: 物理モデルのインスタンス (厳密な迎角取得用)
+        Dynamics
     end
     
     methods
+        % ★★★ ここに追加してください (public methods) ★★★
+        function set_longitudinal_control(obj, enable_flag)
+            obj.EnableLongitudinalControl = logical(enable_flag);
+            fprintf('Autopilot: Longitudinal Control set to %d\n', obj.EnableLongitudinalControl);
+        end
+        % ★★★ ここまで ★★★
+
         % =========================================================
         % コンストラクタ
         % =========================================================
-        function obj = ParafoilAutopilot(params, linearizer)
+        function obj = ParafoilAutopilot(params,dynamics_instance, linearizer)
             obj.Params = params;
-            if nargin > 1, obj.Linearizer = linearizer; end
+            % ★追加: Dynamicsを受け取る
+            if nargin > 1
+                obj.Dynamics = dynamics_instance;
+            end
+            if nargin > 2, obj.Linearizer = linearizer; end
             
             try
                 obj.AtmoModel = AtmoTempPressRho();
@@ -123,6 +140,12 @@ classdef ParafoilAutopilot < handle
                 end
             end
         end
+
+        % ★追加: 基準滑空比をセットするメソッド
+        function set_nominal_glide_ratio(obj, val)
+            obj.NominalGlideRatio = val;
+            fprintf('Autopilot: Nominal L/D set to %.2f\n', val);
+        end
         
         % =========================================================
         % ★★★ メイン更新ループ (Update) ★★★
@@ -151,6 +174,7 @@ classdef ParafoilAutopilot < handle
             Vg_n = Vel_ned(1);
             Vg_e = Vel_ned(2) ;
             Vg_horiz = sqrt(Vg_n^2 + Vg_e^2);
+            %Vg_vert = Vel_ned(3);
             chi_curr = atan2(Vg_e, Vg_n);
             
             r_req = 0; cmd_chi = 0; cmd_psi = 0; % 初期化
@@ -261,6 +285,28 @@ classdef ParafoilAutopilot < handle
             
             % ミキシング
             da_total = da_ref + dda_term + da_fb;
+
+            % 2. 縦方向制御 (delta_s)
+            %delta_s = 0;
+            G_req = obj.NominalGlideRatio; % デフォルトは基準値にしておく
+
+            G_air = G_req * (V_horiz / Vg_horiz);
+                    
+            % (C) 旋回補正: 対気G -> 機体要求 CL/CD
+            % 旋回中は沈みやすいので、同じパスに乗るには (1/cos) 倍の性能が必要
+            safe_cos = max(0.1, abs(cos(phi)));
+            Target_CL_CD = G_air / safe_cos;
+
+            % (E) 解析解で delta_s 計算 (風情報も渡す)
+            delta_s = obj.calc_longitudinal_control(current_state, Target_CL_CD, da_total, wind_vec);
+                    
+                    
+            
+            % --- 3. 優先順位付きミキシング (修正) ---
+            % 横操作で使った残りを上限とする
+            max_ds = 1.0 - abs(da_total);
+            %delta_s = max(0.0, min(max_ds, delta_s));
+            
             [delta_R, delta_L] = obj.apply_mixing(da_total, 0);
             
             % 更新
@@ -273,6 +319,8 @@ classdef ParafoilAutopilot < handle
             log_struct.phi_ref = phi_ref;
             log_struct.da_total= da_total;
             log_struct.mode    = obj.CurrentMode;
+            log_struct.G_ground = G_req;
+            log_struct.Target_CL_CD = Target_CL_CD;
         end
     end
     
@@ -402,6 +450,57 @@ classdef ParafoilAutopilot < handle
                 delta_delta_a = - (1 / N_da) * (term_vel + term_phi);
             end
             delta_delta_a = max(-0.5, min(0.5, delta_delta_a));
+        end
+        
+        % ★完全新規追加
+        function ds = calc_longitudinal_control(obj, state, target_CL_CD, da_cmd, wind_vec)
+            % 引数: target_CL_CD は補正済みの目標揚抗比
+            
+            % 1. 厳密な迎角の取得 (Dynamicsを利用)
+            if ~isempty(obj.Dynamics)
+                if isfield(obj.Params, 'ang_psi_rigging')
+                    GAMMA = obj.Params.ang_psi_rigging;
+                else
+                    GAMMA = 0;
+                end
+                
+                % ★Dynamicsのメソッド呼び出し
+                [alpha, ~, ~] = obj.Dynamics.get_aerodynamic_state(state, wind_vec, GAMMA);
+            else
+                % フォールバック (簡易計算)
+                u=state(1); w=state(3);
+                alpha = atan2(w, u);
+            end
+            
+            p = obj.Params;
+    
+            % ベース空力係数 (A, E) の計算
+            % ★ポイント: 旋回操作 da_cmd による抗力増・揚力変化を「ベース」に含める
+            A = p.C_L_0 + p.C_L_alpha * alpha + p.C_L_delta_a * abs(da_cmd);
+            
+            % 抗力係数 (2乗則モデルなどを適用)
+            if isfield(p, 'C_D_alpha_sq')
+                CD_alpha_term = p.C_D_alpha_sq * alpha^2;
+            else
+                CD_alpha_term = p.C_D_alpha * alpha^2;
+            end
+            E = p.C_D_0 + CD_alpha_term + p.C_D_delta_a * abs(da_cmd);
+    
+            % 制御感度 (B, F)
+            B = p.C_L_delta_s;
+            F = p.C_D_delta_s;
+            target_G =target_CL_CD;
+            % 解析解: ds = (A - G*E) / (G*F - B)
+            numerator = A - target_G * E;
+            denominator = target_G * F - B;
+    
+            if abs(denominator) < 1e-6
+                ds = 0;
+            else
+                ds = numerator / denominator;
+            end
+            
+            ds = max(0.0, ds);
         end
         
         function a = normalize_angle(~, a)

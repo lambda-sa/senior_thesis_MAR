@@ -5,7 +5,7 @@ clear; clc; close all;
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
 wind_vector_2d = [0; 0];  % 風速 (North, East) [m/s]
-target_pos = [0, 600, 1000]; % 目標 [N, E, Alt]
+target_pos = [0, 600, 2743]; % 目標 [N, E, Alt]
 L_final = 500;
 
 % パラメータ読み込みとモデル構築
@@ -19,10 +19,10 @@ end
 
 %% --- 2. Phase A: 軌道計画 (Mission & Planner) ---
 fprintf('=== Phase A: Path Planning ===\n');
-mission = ParafoilMissionClothoid(excelFileName);
+mission = ParafoilMissionWind(excelFileName);
 
 % クロゾイド設定 (ロールレート10deg/s, 先行係数0.5, 助走30m)
-mission.set_clothoid_options(0.5, 0.5, 0.0);
+%mission.set_clothoid_options(0.5, 0.5, 0.0);
 
 % シミュレーション実行 (内部で風補正計算が行われる)
 mission.run_wind_simulation(target_pos, L_final, wind_vector_2d);
@@ -275,3 +275,57 @@ fprintf('  -> Ground velocity plot created.\n');
 
 simData = engine.create_results_table();
 PayloadPlotter.plotResults(simData, engine.ControlScheduler); % [cite: 2848]
+
+%% --- 4. Phase D: 結果の比較・可視化 ---
+fprintf('\n=== Phase D: Visualization ===\n');
+
+% (1) フェーズ遷移時刻の抽出
+plan_trans_times = [];
+% データソースの取得
+if isprop(mission.Planner, 'ResultDataWind') && ~isempty(mission.Planner.ResultDataWind)
+    pd = mission.Planner.ResultDataWind;
+else
+    pd = mission.Planner.ResultData;
+end
+
+if ~isempty(pd)
+    % (A) 基本フェーズ (Runup, Entry, Loiter)
+    if isfield(pd, 'runup') && ~isempty(pd.runup.t), plan_trans_times(end+1) = pd.runup.t(end); end
+    if isfield(pd, 'entry') && ~isempty(pd.entry.t), plan_trans_times(end+1) = pd.entry.t(end); end
+    if isfield(pd, 'loiter') && ~isempty(pd.loiter.t), plan_trans_times(end+1) = pd.loiter.t(end); end
+    
+    % (B) Dubins区間 & 内部セグメント
+    if isfield(pd, 'dubins') && ~isempty(pd.dubins.t)
+        % Dubins終了 (=Final開始)
+        plan_trans_times(end+1) = pd.dubins.t(end);
+        
+        % Dubins内部の切り替わり (Turn->Straight等)
+        if isfield(pd.dubins, 'segment_end_idx')
+            seg_idxs = pd.dubins.segment_end_idx;
+            valid_idxs = seg_idxs(seg_idxs > 0 & seg_idxs < length(pd.dubins.t));
+            
+            if ~isempty(valid_idxs)
+                internal_times = pd.dubins.t(valid_idxs);
+                
+                % ★ここをご提示のコード（安全版）にします
+                plan_trans_times = [plan_trans_times, internal_times(:)'];
+            end
+        end
+    end
+    
+    plan_trans_times = unique(plan_trans_times);
+end
+fprintf('Planned Transition Times: %s s\n', mat2str(plan_trans_times, 2));
+
+% (2) 比較クラスのインスタンス化 (WindTrajectoryComparatorを使用)
+comparator = TrajectoryComparator(...
+    simData,...     % Case 2 (マゼンタ)
+    trajPlanGnd, ...
+    trajPlanAir, ...
+    target_pos, ...
+    plan_trans_times);
+
+% (3) 描画
+comparator.plotAll();
+
+fprintf('Comparison Done.\n');
