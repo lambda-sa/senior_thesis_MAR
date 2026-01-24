@@ -4,7 +4,7 @@ clear; clc; close all;
 
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
-wind_vector_2d = [0; 0];  % 風速 (North, East) [m/s]
+wind_vector_2d = [1; 1];  % 風速 (North, East) [m/s]
 target_pos = [0, 600, 2743]; % 目標 [N, E, Alt]
 L_final = 500;
 
@@ -19,10 +19,10 @@ end
 
 %% --- 2. Phase A: 軌道計画 (Mission & Planner) ---
 fprintf('=== Phase A: Path Planning ===\n');
-mission = ParafoilMissionWind(excelFileName);
+mission = ParafoilMissionClothoid(excelFileName);
 
 % クロゾイド設定 (ロールレート10deg/s, 先行係数0.5, 助走30m)
-%mission.set_clothoid_options(0.5, 0.5, 0.0);
+mission.set_clothoid_options(0.5, 0.5, 0.0);
 
 % シミュレーション実行 (内部で風補正計算が行われる)
 mission.run_wind_simulation(target_pos, L_final, wind_vector_2d);
