@@ -3,8 +3,8 @@
 clear; clc; close all;
 
 %% --- 1. 共通設定 ---
-excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
-wind_planned = [0;0];  % 風速 (North, East) [m/s]
+excelFileName = 'parafoil_parameters_ref_replan.xlsx'; % パラメータファイル
+wind_planned = [0; 0];  % 風速 (North, East) [m/s]
 wind_disturbance = [1;1];  % 予期せぬ外乱（未知の風）
 wind_actual = wind_planned + wind_disturbance; % 実際に吹いている風
 
@@ -63,14 +63,14 @@ fprintf('\n=== Starting Comparison Simulation ===\n');
 % Truth: 計画風速, Est: 計画風速
 fprintf('Running Case 1: No Disturbance...\n');
 simData_NoWind = run_simulation_task(mission, params, trajPlanAir, target_pos, ...
-                                     wind_planned, wind_disturbance);
+                                     wind_planned, wind_planned);
 
 % --- Case 2: 外乱あり (With Disturbance) ---
 % Truth: 実際の風(外乱込み), Est: 計画風速(外乱を知らない)
 wind_actual = wind_planned + wind_disturbance;
 fprintf('Running Case 2: With Disturbance (Wind=[%.1f, %.1f])...\n', wind_actual(1), wind_actual(2));
 simData_Wind = run_simulation_task(mission, params, trajPlanAir, target_pos, ...
-                                   wind_actual, wind_disturbance);
+                                   wind_actual, wind_planned);
 
 %% --- 4. Phase D: 結果の比較・可視化 ---
 fprintf('\n=== Phase D: Visualization ===\n');
@@ -128,115 +128,59 @@ comparator.plotAll();
 fprintf('Comparison Done.\n');
 
 
-function simData = run_simulation_task(mission, params, trajPlanAir, target_pos, wind_truth, wind_disturbance)
-    % =========================================================
-    % 相対運動シミュレーション (Moving Frame Approach)
-    % =========================================================
+%% ========================================================
+%  共通シミュレーション実行関数 (提示コードのPhase B/Cを移植)
+% =========================================================
+function simData = run_simulation_task(mission, params, trajPlanAir, target_pos, wind_truth, wind_est)
     
-    % 1. シミュレーション空間の風 = 外乱のみ
-    wind_sim_env = wind_disturbance; 
-    
-    % 2. Plant & Autopilot 設定
+    % 1. モデルとコントローラのインスタンス化
+    % (paramsはメインスクリプトで整形済みなのでそのまま渡す)
     plant = ParafoilDynamics(params);
-    if isprop(plant, 'WindVector')
-        plant.WindVector = [wind_sim_env(1); wind_sim_env(2); 0];
-    end
     
     autopilot = ParafoilAutopilot(mission.Params);
     autopilot.import_mission_data(mission.Planner);
-    
+
+    % 2. 計算された L/D を取得
     trim_ld = mission.PhysicsParams.glide_ratio;
     autopilot.set_longitudinal_control(true);
+
+    % ★ここでPlannerの計算値を渡す
     autopilot.set_nominal_glide_ratio(trim_ld);
-    
-    % 3. Scheduler 設定
+    % 2. スケジューラの作成
     scheduler = PlannerAutopilotScheduler(mission, autopilot);
-    scheduler.WindVector_Truth = [wind_sim_env; 0]; 
-    scheduler.WindVector_Est   = [0; 0];            
     
-    % 4. 初期条件
+    % ★重要: 風の設定 (Truth vs Est)
+    scheduler.WindVector_Truth = [wind_truth; 0]; % 物理環境
+    scheduler.WindVector_Est   = [wind_est; 0];   % 制御器の認識
+    
+    % 3. 初期条件の抽出 (Plannerの開始状態に合わせる)
     start_pos_ned = trajPlanAir.Position(1, :); 
     start_vel_tas = trajPlanAir.V_Air(1, :);   
     start_euler   = trajPlanAir.Euler_RPY(1, :); 
     
-    y0 = [start_vel_tas(1); start_vel_tas(2); start_vel_tas(3); ...
-          0; 0; 0; ...
-          start_euler(1); start_euler(2); start_euler(3); ...
-          start_pos_ned(1); start_pos_ned(2); -start_pos_ned(3)];
+    % 初期状態ベクトルの作成
+    y0 = [start_vel_tas(1); start_vel_tas(2); start_vel_tas(3); ... % uvw
+          0; 0; 0; ...                                               % pqr
+          start_euler(1); start_euler(2); start_euler(3); ...        % phi, theta, psi
+          start_pos_ned(1); start_pos_ned(2); -start_pos_ned(3)];    % N, E, D (Alt->Down変換)
       
-    % 5. エンジン設定
+    % ※念のため trajPlanAir の第3成分が高度(正)なら Down(負)にする
+    if start_pos_ned(3) > 0
+        y0(12) = -start_pos_ned(3);
+    end
+
+    % 4. エンジンの初期化
     dt_6dof = 0.05;
-    t_max_6dof = trajPlanAir.Time(end) + 30; % ターゲット通過を見越して長めに
+    t_max_6dof = trajPlanAir.Time(end) + 10; % マージン
     engine = SimulationEngine(plant, scheduler, dt_6dof, t_max_6dof, y0);
     
-    % ★重要: エンジン内部の自動停止機能はOFFにする
-    % (理由: エンジン内は対気座標なので、地上の固定ターゲットとの距離が正しく測れないため)
-    engine.TargetNED = []; 
+    % ターゲット設定 (NED)
+    target_pos_ned = [target_pos(1); target_pos(2); -target_pos(3)];
+    engine.TargetNED = target_pos_ned;
     
-    % 6. 実行 (最後まで計算させる)
+    % 5. 実行
     engine = engine.run();
-    raw_simData = engine.create_results_table();
     
-    % =========================================================
-    % 7. 後処理: 「地上のターゲット」との距離判定 & トリミング
-    % =========================================================
-    
-    % (A) 計画風成分の計算
-    wind_planned = wind_truth - wind_disturbance;
-    
-    % (B) 生データ(対気)を対地座標に変換するための準備
-    time_vec = raw_simData.Time;
-    pos_air_N = raw_simData.Inertial_X_Position;
-    pos_air_E = raw_simData.Inertial_Y_Position;
-    pos_D     = raw_simData.Inertial_Z_Position;
-    
-    drift_N = wind_planned(1) * time_vec;
-    drift_E = wind_planned(2) * time_vec;
-    
-    % (C) 対地位置の計算
-    pos_gnd_N = pos_air_N + drift_N;
-    pos_gnd_E = pos_air_E + drift_E;
-    
-    % (D) 「地上のターゲット」との距離を計算
-    % target_pos = [North, East, Alt] -> NED=[N, E, -Alt]
-    tg_N = target_pos(1);
-    tg_E = target_pos(2);
-    tg_D = -target_pos(3); 
-    
-    dist_sq = (pos_gnd_N - tg_N).^2 + ...
-              (pos_gnd_E - tg_E).^2 + ...
-              (pos_D     - tg_D).^2;
-          
-    dist_history = sqrt(dist_sq);
-    
-    % (E) 最接近点を探す
-    [min_dist, idx_min] = min(dist_history);
-    
-    % (F) データを最接近点でカット (Trim)
-    simData = raw_simData(1:idx_min, :);
-    
-    % (G) テーブル内の値を「対地座標系」に更新して確定させる
-    simData.Inertial_X_Position = pos_gnd_N(1:idx_min);
-    simData.Inertial_Y_Position = pos_gnd_E(1:idx_min);
-    
-    % 速度も対地速度に直す
-    simData.Inertial_Vx = simData.Inertial_Vx + wind_planned(1);
-    simData.Inertial_Vy = simData.Inertial_Vy + wind_planned(2);
-    
-    % 風速ログも全風速に直す
-    if ismember('Wind_X', simData.Properties.VariableNames)
-        simData.Wind_X = simData.Wind_X + wind_planned(1);
-        simData.Wind_Y = simData.Wind_Y + wind_planned(2);
-    end
-    
-    % 結果表示
-    closest_t = simData.Time(end);
-    fprintf('\n=== Ground Target Reached (Trimmed) ===\n');
-    fprintf('  Time        : %.2f s\n', closest_t);
-    fprintf('  Min Distance: %.2f m\n', min_dist);
-    fprintf('  Ground Pos  : N=%.1f, E=%.1f, Alt=%.1f m\n', ...
-        simData.Inertial_X_Position(end), ...
-        simData.Inertial_Y_Position(end), ...
-        -simData.Inertial_Z_Position(end));
-    fprintf('=======================================\n');
+    % 6. 結果テーブル取得
+    simData = engine.create_results_table();
 end
