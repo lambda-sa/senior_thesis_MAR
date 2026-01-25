@@ -122,7 +122,7 @@
 % --- 題名部分 (ここだけ18pt・太字) ---
 {
 \fontsize{18pt}{27pt}\selectfont
-VectorField法を用いた\\パラフォイルの空中回収における誘導則の研究
+Vector Field 法による\\パラフォイル空中回収に向けた誘導の研究
 \par
 }
 % ------------------------------------
@@ -163,8 +163,8 @@ VectorField法を用いた\\パラフォイルの空中回収における誘導�
 \subsubsection{3GMAR(3rd Generation Mid-Air Retrieval )の手順}
 空中回収において, ヘリコプターとパラフォイルが安定した会合を行うため, 会合時の衝撃荷重及び相対速度の低減及び空中回収に適したパラフォイルの種類の研究が行われてきた. 
 従来の空中回収では, 会合時の衝撃荷重を低減するため、ヘリコプターにウィンチを搭載していた. ウインチの機械的な定格荷重によって, 回収可能な質量はヘリコプターの懸吊可能な質量の25\%程度に制限されていた. 
-また, NASAのGenesisミッション等で見られた第2世代の課題として, 捕獲後にパラフォイルが再膨張して揚力を発生させ, ヘリコプターに対して危険なピッチングモーメントを与える「再飛行（Re-flight）」現象があった
-Deanらは上記の問題点を解決するため, 3GMAR(3rd Generation Mid-Air Retrieval )という空中回収の方式を提案した. 3GMARの手順を図\ref{fig:para_real}に示す. 
+また, NASAのGenesisミッション等で見られた第2世代の課題として, 捕獲後にパラフォイルが再膨張して揚力を発生させ, ヘリコプターに対して危険なピッチングモーメントを与える「再飛行（Re-flight）」現象が挙げられる. 
+上記の問題点を解決するため, 3GMAR(3rd Generation Mid-Air Retrieval )という空中回収の方式が提案された. \cite{ref_mar_past_pre} 3GMARの手順を図\ref{fig:para_real}に示す. 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.8\linewidth]{画像/3GMARの概念図.jpg}
@@ -183,8 +183,8 @@ Deanらは上記の問題点を解決するため, 3GMAR(3rd Generation Mid-Air 
 その一方, 3GMARではパラフォイルが自律制御を行うことは想定されていないため, 風などの外乱やパラフォイルの初期値のずれによりパラフォイルがヘリコプターから離れた方向に移動する可能性がある. したがって空中回収の成功は、ヘリコプターの性能及びパイロットの技術に依存している. \cite{ref_mar_past_pre}
 
 
-\subsubsection{VectorField法を用いたパラフォイルの誘導則}
-空中回収でのパラフォイルの誘導に関しては, FariらがVF(VectorField)法に基づく経路追従手法を提案している. 
+\subsubsection{Vector Field法を用いたパラフォイルの誘導則}
+空中回収でのパラフォイルの誘導に関しては, VF法(Vector Field法)に基づく経路追従手法を提案している. 
 VF法では, パラフォイルが参照経路に追従するためのベクトル場を生成することで, 風の外乱が存在する場合であっても安定した追従が可能となる. 
 図\ref{fig:VF_trajectory}に, 横軸に$x$方向, 縦軸に$y$方向をとった場合の, VF法に基づくパラフォイルの誘導則による軌道例を示す. 
 \begin{figure}[H]
@@ -195,12 +195,12 @@ maneuver (straight-line and orbit)\cite{ref_VF}}
   \label{fig:VF_trajectory}
 \end{figure}
 
-この手法を空中回収に適用する場合，2つの課題が存在する.
+この手法を空中回収に適用する場合, 2つの課題が存在する.
 第一に, Fariraの研究では直線及び円軌道の追従が示されているが, 空中回収に適した軌道計画がなされていない点である. 空中回収においては, パラフォイルは動力を持たずに滑空飛行を行うため,
  初期高度と会合高度の差がそのままパラフォイルの持つエネルギーになる. したがって, パラフォイルの高度エネルギーを過不足なく消費するような軌道計画を行う必要がある.
 
 第二に, VF法での制御パラメータ調整の煩雑さが挙げられる. VF法では, 参照経路に対するパラフォイルの位置ずれを低減するために, 複数の制御パラメータを調整する必要がある. これらのパラメータは, 風速や風向きなどの外乱条件に応じて決定されるべきであるが, 
-Fariらの論文ではその方法が示されていない. したがって, 空中回収においてVF法を適用するためには, ゲインの数を減らせるようVF法の修正が必要である. \cite{ref_VF}
+その方法が示されていない. したがって, 空中回収においてVF法を適用するためには, ゲインの数を減らせるようVF法の修正が必要である. \cite{ref_VF}
 \subsection{研究目的}
 空中回収の成功率を向上させるためには, ヘリコプターが回収しやすいよう, パラフォイルが自律的に適切な会合点へ到達するための軌道を設計し, 風の影響下でもその軌道に追従する誘導則が必要である.
 
@@ -221,7 +221,8 @@ Fariらの論文ではその方法が示されていない. したがって, 空
   \label{fig:para_real}
 \end{figure}
 パラフォイルはキャノピー, ペイロード, そしてテザーから構成されている. パラフォイルのキャノピーは, 翼型断面を有し, 揚力を発生させることで滑空飛行を実現する. ペイロードは, パラフォイルに吊り下げられた物体であり, テザーはキャノピーとペイロードを接続する. 
-パラフォイルは前進時にキャノピーが空気を取り込み, 空気流のせきとめ圧（ラム圧）でセルを膨らませて翼形状を保持する.パラフォイルは減速や降下に用いられるパラシュートと比べてアスペクト比が大きく, 端面が翼型形状であるため滑空飛行が可能となる. \\
+パラフォイルは前進時にキャノピーが空気を取り込み, 空気流のせきとめ圧（ラム圧）でセルを膨らませて翼形状を保持する.パラフォイルは減速や降下に用いられるパラシュートと比べてアスペクト比が大きく, 端面が翼型形状であるため滑空飛行が可能となる. 
+
 パラフォイルの制御は, 主にテザーの端部を引くことで行われ、テザーの片端を引く非対称制御とテザーの両端を引く対称制御の2通りの制御方法を使い分ける. 非対称制御では, 例としてテザーの右側を引くとキャノピーの右後部が下がることでバンク角が発生し、向心力が働くことで左旋回が可能となる. 対称制御では, 両端のテザーを引くことでキャノピーの後縁が下がり揚抗比が変化することで前進速度を制御できる. 
 %パワポの図を編集して貼り付けたい
 
@@ -235,26 +236,33 @@ Fariらの論文ではその方法が示されていない. したがって, 空
 
 \subsubsection{座標系とモデルの定義}
 本モデルでは, ペイロードは剛体として扱うが, キャノピーは入射角 $\Gamma$（キャノピーとペイロードの相対角）を通して, システムに対してキャノピー上の回転中心を中心に回転できるものとする. 
-本モデルは以下の4つの座標系を持つ. 
+本モデルは以下の3つの座標系を持つ. 
 
 \begin{itemize}
     \item 慣性座標系 ($\mathrm{O_I}-\mathrm{X_I} \mathrm{Y_I} \mathrm{Z_I}$): 原点 $\mathrm{O_I}$ は地上の任意の点, $\mathrm{X_I}$ 軸は北, $\mathrm{Y_I}$ 軸は東, $\mathrm{Z_I}$ 軸は下方向とする. 
     \item 機体座標系 ($\mathrm{O_B}-\mathrm{X_B} \mathrm{Y_B} \mathrm{Z_B}$): 原点 $\mathrm{O_B}$ は全システムの質量中心, $\mathrm{X_B}$ 軸は機体正面, $\mathrm{X_B}-\mathrm{Y_B}$ 面はシステム対称面とする. 
-    \item キャノピー座標系 ($\mathrm{O_C}-\mathrm{X_C} \mathrm{Y_C} \mathrm{Z_C}$): 原点 $\mathrm{O_C}$ はキャノピーの回転中心位置, $\mathrm{X_C}$ 軸はキャノピー正面, $\mathrm{X_C}-\mathrm{Z_C}$ 面はキャノピー対称面とする. 
+    %\item キャノピー座標系 ($\mathrm{O_C}-\mathrm{X_C} \mathrm{Y_C} \mathrm{Z_C}$): 原点 $\mathrm{O_C}$ はキャノピーの回転中心位置, $\mathrm{X_C}$ 軸はキャノピー正面, $\mathrm{X_C}-\mathrm{Z_C}$ 面はキャノピー対称面とする. 
     \item 空力座標系 ($\mathrm{O_A}-\mathrm{X_A} \mathrm{Y_A} \mathrm{Z_A}$): 原点 $\mathrm{O_A}$ はキャノピーの空力中心位置（前縁から $0.25\bar{c}$）, $\mathrm{X_A}$ 軸はキャノピー正面, $\mathrm{X_A}-\mathrm{Z_A}$ 面はキャノピー対称面とする. 
 \end{itemize}
 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\linewidth]{画像/川口_座標系.jpeg}
-  \caption{Parafoil Model. \cite{ref_kawa}}
+  \includegraphics[width=0.7\linewidth]{画像/舟木_座標系.png}
+  \caption{Parafoil Model.}
   \label{fig:para_kawa}
 \end{figure}
 また, 運動を表現するにあたりペイロードの質量中心に点 $S$ を定義する. 
-このシステムでは, 全システムの質量中心において3つの並進運動（3DOF）と回転運動（3DOF）の合計6自由度でモデル化される. 
+このシステムでは, 全システムの質量中心において3つの並進運動（3DoF）と回転運動（3DoF）の合計6自由度でモデル化される. 
+図\ref{fig:para_pqr}機体座標系から見た時の角速度を示す. 
+ \begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\linewidth]{画像/para_pqr.png}
+  \caption{Parafoil Eular angle.}
+  \label{fig:para_pqr}
+\end{figure}
 
-\subsubsection{パラフォイルの運動方程式} 
+\subsubsection{パラフォイルの運動方程式}
 6自由度のパラフォイルモデル運動方程式は, 全システムの質量中心における3つの慣性位置成分 $[x, y, z]^T$ および3つのオイラー角 $[\phi, \theta, \psi]^T$ により, 
 
 \begin{equation}
@@ -311,7 +319,7 @@ r & 0 & -p \\
 また, $ [I_{\mathrm{T}}] $ は全システムの慣性モーメントであり, キャノピー・ペイロードの慣性モーメントを平行軸の定理%（$I = I_{cg} + md^2$）
 を用いて足し合わせたものである. 
 
-キャノピーやペイロードで生じた力を全システム質量中心で表すために, 距離ベクトル $\bm{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される. $\bm{S}_{a \cdot b}^A$ はクロス積行列であり, 座標系 $A$ において点 $a$ から点 $b$ までの距離を表す. 
+%キャノピーやペイロードで生じた力を全システム質量中心で表すために, 距離ベクトル $\bm{r} = [r_x, r_y, r_z]^T$ を用いて外積で表現される. $\bm{S}_{a \cdot b}^A$ はクロス積行列であり, 座標系 $A$ において点 $a$ から点 $b$ までの距離を表す. 
 
 \begin{equation}
 \bm{S}_{a \cdot b}^A \times \bm{F} = \begin{bmatrix}
@@ -330,10 +338,10 @@ F_\mathrm{W} = [T_{\mathrm{IB}}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \lab
 \end{equation}
 
 \subsubsection{キャノピーの空力}
-キャノピーの空力項を定義する前に, キャノピー座標系における空力速度 $[u_{\mathrm{c}}, v_{\mathrm{c}}, w_c]^T$ 及び角速度 $[p_{\mathrm{c}}, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する. 
+キャノピーの空力項を定義する前に, キャノピー座標系における空力速度 $[u_{\mathrm{A}}, v_{\mathrm{A}}, w_{\mathrm{A}}]^T$ 及び角速度 $[p_{\mathrm{c}}, q_c, r_c]^T$ をキャノピーの入射角 $\Gamma$ と大気風を考慮して定義する. 
 
 \begin{equation}
-\begin{bmatrix} u_{\mathrm{c}} \\ v_{\mathrm{c}} \\ w_{\mathrm{c}} \end{bmatrix} = [T_{\mathrm{BC}}] \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + S_{\omega}^B \begin{bmatrix} \Delta x_c \\ \Delta y_c \\ \Delta z_c \end{bmatrix} + [T_{\mathrm{BC}}]^T \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix} \right) - [T_{\mathrm{IB}}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:canopy_vel}
+\begin{bmatrix} u_{\mathrm{A}} \\ v_{\mathrm{A}} \\ w_{\mathrm{A}} \end{bmatrix} = [T_{\mathrm{BC}}] \left( \begin{bmatrix} u \\ v \\ w \end{bmatrix} + S_{\omega}^B \begin{bmatrix} \Delta x_c \\ \Delta y_c \\ \Delta z_c \end{bmatrix} + [T_{\mathrm{BC}}]^T \begin{bmatrix} \Delta x_p \\ \Delta y_p \\ \Delta z_p \end{bmatrix} \right) - [T_{\mathrm{IB}}] \begin{bmatrix} V_{WX} \\ V_{WY} \\ V_{WZ} \end{bmatrix} \label{eq:canopy_vel}
 \end{equation}
 
 \begin{equation}
@@ -351,19 +359,19 @@ F_\mathrm{W} = [T_{\mathrm{IB}}] \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} \lab
 \end{bmatrix} \label{eq:matrix_tbc}
 \end{equation}
 
-キャノピー座標系における空力角は以下で定義される. キャノピーの合成空力速度は $V_{\mathrm{c}} = \sqrt{u_{\mathrm{c}}^2 + v_{\mathrm{c}}^2 + w_{\mathrm{c}}^2}$ である. 
+キャノピー座標系における空力角は以下で定義される. キャノピーの合成空力速度は $v_{\mathrm{A}} = \sqrt{u_{\mathrm{A}}^2 + v_{\mathrm{A}}^2 + w_{\mathrm{A}}^2}$ である. 
 
 \begin{equation}
-\alpha = \tan^{-1} \left( \frac{w_{\mathrm{c}}}{u_{\mathrm{c}}} \right) \label{eq:alpha}
+\alpha = \tan^{-1} \left( \frac{w_{\mathrm{A}}}{u_{\mathrm{A}}} \right) \label{eq:alpha}
 \end{equation}
 \begin{equation}
-\beta = \sin^{-1} \left( \frac{v_{\mathrm{c}}}{V_{\mathrm{c}}} \right) \label{eq:beta}
+\beta = \sin^{-1} \left( \frac{v_{\mathrm{A}}}{v_{\mathrm{A}}} \right) \label{eq:beta}
 \end{equation}
 
 キャノピーに生じる空力項 $F_\mathrm{A}$ は, キャノピーの空力座標系の原点に作用し, 式(\ref{eq:force_aero})〜式(\ref{eq:coeff_cl})で表される. 
 
 \begin{equation}
-F_\mathrm{A} = \frac{1}{2} \rho V_{\mathrm{c}}^2 S_C [T_{\mathrm{BC}}]^T [\bm{T}_{AC}] \begin{bmatrix} -C_D \\ C_Y \beta \\ -C_L \end{bmatrix} \label{eq:force_aero}
+F_\mathrm{A} = \frac{1}{2} \rho v_{\mathrm{A}}^2 S_C [T_{\mathrm{BC}}]^T [\bm{T}_{AC}] \begin{bmatrix} -C_D \\ C_Y \beta \\ -C_L \end{bmatrix} \label{eq:force_aero}
 \end{equation}
 
 \begin{equation}
@@ -398,19 +406,19 @@ F_\mathrm{S} = -\frac{1}{2} \rho V_S S_S C_{DS} \begin{bmatrix} u_S \\ v_S \\ w_
 式(\ref{eq:dynamics_rot})の角運動量は, 質量中心に生じるモーメント $\bm{M}_A$, キャノピーとペイロードに生じる空力モーメント（キャノピー $\bm{S}_{CP \cdot B} \times F_\mathrm{A}$, ペイロード $\bm{S}_{CS \cdot B} \times F_\mathrm{S}$）によって定義される. 質量中心に生じるモーメント $\bm{M}_A$ は式(\ref{eq:moment_aero})で表される. 
 
 \begin{equation}
-\bm{M}_A = \frac{1}{2} \rho V_{\mathrm{c}}^2 S_C [T_{\mathrm{BC}}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
+\bm{M}_A = \frac{1}{2} \rho v_{\mathrm{A}}^2 S_C [T_{\mathrm{BC}}]^T \begin{bmatrix} b \cdot C_l \\ c \cdot C_m \\ b \cdot C_n \end{bmatrix} \label{eq:moment_aero}
 \end{equation}
 
 \begin{equation}
-C_l = C_{l\phi}\phi + C_{lp} \frac{p_{\mathrm{c}} b}{2V_{\mathrm{c}}} + C_{l\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_roll}
+C_l = C_{l\phi}\phi + C_{lp} \frac{p_{\mathrm{c}} b}{2V_{\mathrm{A}}} + C_{l\delta_a} \frac{\delta_a}{d} \label{eq:coeff_roll}
 \end{equation}
 
 \begin{equation}
-C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_{\mathrm{c}}} \label{eq:coeff_pitch}
+C_m = C_{m0} + C_{m\alpha}\alpha + C_{mq} \frac{q_c c}{2V_{\mathrm{A}}} \label{eq:coeff_pitch}
 \end{equation}
 
 \begin{equation}
-C_n = C_{nr} \frac{r_c b}{2V_{\mathrm{c}}} + C_{n\delta_a}\delta_a \frac{d}{b} \label{eq:coeff_yaw}
+C_n = C_{nr} \frac{r_c b}{2v_{\mathrm{A}}} + C_{n\delta_a}\frac{\delta_a}{d} \label{eq:coeff_yaw}
 \end{equation}
 ここで $d$ はブレーキラインの作用点間距離, $b$ はスパンである. 
 
@@ -482,15 +490,15 @@ Phase3では, パラフォイルを会合点に向けて風上方向に直進さ
 
 揚抗比 $L/D$ は一定であり, 飛行経路角 $\gamma$ は以下のように表される. 
 \begin{equation}
-    \frac{L}{D}= \frac{V \cos \gamma}{V \sin \gamma}= \frac{1}{\tan \gamma } 
+    \frac{L}{D}\cos\phi= \frac{V \cos \gamma}{V \sin \gamma}= \frac{1}{\tan \gamma } 
 \end{equation}
 
 
-$d\tau = -\dot{h} dt = -V \sin \gamma dt$ より, 高度微分形式の運動方程式が得られる. 
-\begin{equation}
-    x' = \frac{dx}{d\tau} = \frac{L}{D}\cos \psi, \quad y' = \frac{dy}{d\tau} =  \frac{L}{D}\sin \psi, \quad \psi' =  \frac{L}{D}\frac{1}{r}
-\end{equation}
-
+$d\tau = -\dot{h} dt = -V \sin \gamma dt$ より, 
+\begin{eqnarray}
+     \frac{dx}{d\tau} &= \frac{L}{D}\cos\phi \cos \psi\\ \frac{dy}{d\tau} &=  \frac{L}{D}\cos\phi\sin \psi\\ \frac{dx}{d\tau} &=  \frac{L}{D}\cos\phi\frac{1}{r}
+\end{eqnarray}
+と表される. 
 \subsection{Dubins Pathの解析的解法}
 \subsubsection{Dubins Pathの概要}
 ここではPhase2の軌道計画に用いられるDubins Pathについて説明する. 
@@ -657,7 +665,7 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 この $\psi_f$ をDubins Pathの終端条件として与えることで, どのような風況であっても安全な着陸経路が生成される. 
 
 % =========================================
-% 第3章 6自由度モデルの説明 (6-DOF Model)
+% 第3章 6自由度モデルの説明 (6-DoF Model)
 % =========================================
 \subsection{クロゾイド曲線適用時の軌道補正手法}
 前節で述べた風補正アルゴリズムでは, Dubins Pathに基づく単純な幾何学的経路長を用いて軌道計画を行っている. しかしこの方法では, 直進区間と旋回区間の接続点でバンク角が瞬時に変化するため, 慣性モーメントや機体の横滑りを無視できない実際のパラフォイルでは追従が難しいと考えられる. 
@@ -703,7 +711,17 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 \end{enumerate}
 
 %この「計画(Plan) $\to$ 試行(Dry Run) $\to$ 補正(Correct)」のプロセスを収束するまで繰り返すことで, 物理的な遅れと風の影響の双方を考慮した, 極めて精度の高い誘導軌道が生成される. 
-
+\subsection{定常旋回時の制御量の導出}
+定常旋回中において, 機体座標系のヨーレート $r$ とバンク角 $\phi$ の間には, 遠心力と揚力の水平成分の釣り合いから以下の運動学的関係が成り立つ. 
+\begin{equation}
+    r = \frac{g}{V} \sin \phi \cos \theta
+    \label{eq:turn_rate}
+\end{equation}
+ここで, $g$ は重力加速度, $V$ は対気速度, $\theta$ はピッチ角である. 
+\begin{equation}
+    \delta_a =  - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{g}{V(t)^2} \cos \theta(t) \sin \phi_{ref}(t)
+    \label{eq:ff_law}
+\end{equation}
 \section{誘導方法}
 
 
@@ -715,7 +733,7 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.9\linewidth]{画像/newVF_all_image.png}
-  \caption{Concept of VectorField method.}
+  \caption{Concept of Vector Field method.}
   \label{fig:newVF_concept}
 \end{figure}
  具体的には, 参照経路に対するクロスレンジ誤差を基に目標対地コース角 $\chi_{\mathrm{cmd}}$ を生成し, 
@@ -827,19 +845,27 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 \begin{equation}
     \sin \eta = - \frac{\|\bm{w}\|}{V_g} \sin(\chi_{\mathrm{cmd}} - \chi_w)
 \end{equation}
-ここで, $\chi_w$ は風向である. これにより, 機体が確保すべき真の目標方位角は $\psi_{cmd} = \chi_{\mathrm{cmd}} + \eta$ となる.
+ここで, $\chi_w$ は風向である. これにより, 機体が確保すべき真の目標方位角は
+\begin{equation}
+  \psi_{cmd} = \chi_{\mathrm{cmd}} + \eta  \label{eq:psi_eta}
+\end{equation}
+となる.
 
 \subsubsection{偏流角変化率 $\dot{\eta}$ の予測}
 旋回中において, 機首方位の変化に伴い風との相対角が変化するため, 偏流角 $\eta$ も時間的に変動する. 
-目標コースレート $\dot{\chi}_{cmd}$ を実現するために必要な機首レート $\dot{\psi}_{req}$ は, 以下の関係式を満たす必要がある.
+目標コースレート $\dot{\chi}_{cmd}$ を実現するために必要な機首レート $\dot{\psi}_{req}$ は, 式(\ref{eq:psi_eta})を時間微分することで
 \begin{equation}
-    \dot{\psi}_{req} = \dot{\chi}_{cmd} - \dot{\eta}
+    \dot{\psi}_{req} = \dot{\chi}_{cmd} + \dot{\eta}
 \end{equation}
-ここで, 速度ベクトルの微分関係から, $\dot{\eta}$ は $\dot{\chi}_{cmd}$ を用いて次のように予測できることが導かれる.
+パラフォイルが風がある中で旋回する際に,$\dot{V_g}$が無視できるほど小さいと仮定すると, $\dot{\psi}_{req}$は
 \begin{equation}
-    \dot{\eta} \approx \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_{cmd}
+    \dot{\psi}_{req} = \frac{V_g}{V_a \cos \eta}\dot{\chi}_{cmd}   \label{eq:psi_req}
 \end{equation}
-この補正項は, 追い風旋回と向かい風旋回における旋回半径の歪みを補正し, 均一な軌道を描くために不可欠な要素である.
+ここで, 速度ベクトルの微分関係から, $\dot{\eta}$ は $\dot{\chi}_{cmd}$ を用いて
+\begin{equation}
+    \dot{\eta} \approx \left( \frac{V_g}{V_a \cos \eta} - 1 \right) \dot{\chi}_{cmd} \label{eq:eta_dot}
+\end{equation}
+と導かれる. この補正項は, 追い風旋回と向かい風旋回における旋回半径の歪みを補正し, 均一な軌道を描くために不可欠な要素である.
 \subsection{偏流角補正と目標ヨーレートの導出}
 
 前節で算出された目標コースレート $\dot{\chi}_{\mathrm{cmd}}$ は、対地速度ベクトルが描くべき軌道の曲率を表している。
@@ -879,12 +905,12 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 \end{equation}
 で与えられる. 
 \subsection{定常旋回周りの線形化式を用いた$\delta_a$の補正}
-ヨー方向の回転運動方程式は, 付加慣性 $I_C$ [cite: 241, 255]を考慮すると次式で記述される. 
+ヨー方向の回転運動方程式は 
 \begin{equation}
     I_{zz}\dot{r} = M_{ext,z} - (\bm{\omega} \times \bm{I}\bm{\omega})_z
     \label{eq:yaw_dynamics_full}
 \end{equation}
-ここで, 右辺第2項は慣性カップリング項であり, 主としてロールレート $p$ とピッチレート $q$ の干渉を表す. 
+で記述される.ここで, 右辺第2項は慣性カップリング項であり, 主としてロールレート $p$ とピッチレート $q$ の干渉を表す. 
 
 \subsubsection{微小摂動による線形化}
 定常旋回状態からの各状態量の微小変化を $\delta u, \delta w, \delta \phi, \delta r$ とすると, モーメントの変化量 $\delta M_{ext,z}$ および慣性項の変化は以下のように近似できる. 
@@ -894,31 +920,22 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 \begin{equation}
     \delta (\bm{\omega} \times \bm{I}\bm{\omega})_z \approx A_q \delta q \approx A_q r \delta \phi
 \end{equation}
-ここで, 各係数は機体諸元および飛行状態から解析的に決定される. 
-\begin{itemize}
-    \item $B_{\delta a} = \frac{1}{2} \rho V^2 S \frac{b}{d} C_{n_{\delta a}}$ 
-    \item $A_r = \frac{1}{4} \rho V S b^2 C_{n_r}$ 
-    \item $A_q = (I_{yy} - I_{xx}) p$ 
-    \item $A_u, A_w$ 
-\end{itemize}
-
+ここで, 各係数は機体諸元および飛行状態から解析的に決定され,  
+\begin{eqnarray}
+    B_{\delta a} &= \frac{1}{2} \rho V^2 S \frac{b}{d} C_{n_{\delta a}}\\
+    A_r &= \frac{1}{4} \rho V S b^2 C_{n_r}\\
+    A_q &= (I_{yy} - I_{xx}) p\\
+    A_u &= \frac{1}{4} \rho  b r u C_{n_r} + \rho u C_{n_{\delta a}}\frac{\delta_a}{d}  \\
+    A_w &= \frac{1}{4} \rho  b r w C_{n_r}
+\end{eqnarray}
+で表される. 
 \subsubsection{応答性改善のための動的補正則}
-以上の関係を式(\ref{eq:yaw_dynamics_full})に代入し, 修正操作量 $\delta\delta a$ について解くと, 最終的な補正則は次式となる. 
+以上の関係を式(\ref{eq:yaw_dynamics_full})に代入し, 修正操作量 $\delta\delta a$ について解くと, 最終的な補正項$\Delta\delta a$は
 \begin{equation}
-    \delta\delta a = -\frac{1}{B_{\delta a}}  -\{ A_u \delta u + A_w \delta w + (A_q r - A_r q) \delta \phi \} 
+    \Delta\delta a = -\frac{1}{B_{\delta a}}  \{ A_u \delta u + A_w \delta w + (A_q r - A_r q) \delta \phi \} 
+    \label{eq:del_del_a}
 \end{equation}
-この補正項を\ref{eq:ff_law} に加えることで, バンク角の変化に対する追従応答が明確になり, 旋回半径の膨らみを抑制する. 
-\subsection{定常旋回時の制御量の導出}
-定常旋回中において, 機体座標系のヨーレート $r$ とバンク角 $\phi$ の間には, 遠心力と揚力の水平成分の釣り合いから以下の運動学的関係が成り立つ. 
-\begin{equation}
-    r = \frac{g}{V} \sin \phi \cos \theta
-    \label{eq:turn_rate}
-\end{equation}
-ここで, $g$ は重力加速度, $V$ は対気速度, $\theta$ はピッチ角である. 
-\begin{equation}
-    \delta_a =  - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{g}{V(t)^2} \cos \theta(t) \sin \phi_{ref}(t)
-    \label{eq:ff_law}
-\end{equation}
+で求められる. この補正項を式(\ref{eq:ff_law_VF}) に加えることで, バンク角の変化に対する追従応答が明確になり, 旋回半径の膨らみを抑制する. 
 
 %ここで, $\frac{\partial \bm{F}_A}{\partial \bm{v}}$ および $\frac{\partial \bm{M}_A}{\partial \bm{v}}$ は, それぞれ式(5)および式(7)における空力微分項（$X_u, \dots, Z_w$ および $M_{x,v}, \dots$ 等）のみを抽出した行列であり, コリオリ項 $\bm{\Omega}_\times$ やジャイロ項 $\bm{G}$ は含まない. 最終的に得られる $\bm{B}_w$ は, 慣性座標系で定義された風の変動が, 座標変換を経て機体軸上の空力・モーメント変化として作用し, 状態微分に影響を与えるメカニズムを表現している. 
 % =========================================
@@ -928,51 +945,83 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 % 第4章 誘導方法 (Guidance Method)
 % =========================================
 \section{解析モデル}
-本解析では\textbf{初期条件などもここに書きます}
-% 表4-1 解析モデルの主要諸元
+本解析では, 空中回収の投下試験を参考にパラフォイルの初期条件および会合時の条件を決定した. \cite{ref_mar_past_pre}
 \begin{table}[H]
 \centering
-\caption{Major Characteristic of analysis model}
-\label{tab:4-1}
-\begin{tabular}{ll}
+\caption{Initial condition}
+\label{tab:5-1}
+\renewcommand{\arraystretch}{1.5} % 写真のような行間のゆとりを持たせる
+% --- 罫線全体の太さを 1.0pt に変更 ---
+\setlength{\arrayrulewidth}{0.1pt}
+\begin{tabular}{l|c}
 \hline\hline
-Item & Value \\
-\hline
-Length [m] & 10.980 \\
-Diameter [m] & 5.200 \\
-Weight [kg] & 5161.735 \\
-Center of the gravity [m] (from nose) & 5.784 \\
-Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
-\quad $I_{xx}$ & 12105.974 \\
-\quad $I_{yy}$ & 26769.869 \\
-\quad $I_{zz}$ & 26769.869 \\
-\hline
+Initial Coordinate [m] $(x_I, y_I, H)$ & (0.0, 0.0, 3660)  \\ \hline
+
+Angular Velocity [rad/s] $(p, q, r)$ & (0.0, 0.0, 0.0)  \\ \hline
+Euler Angle [degrees]$(\phi, \theta, \psi)$ & (0.0, 0.0, 0.0)  \\ \hline
+Landing Target [m] $(x_I, y_I, H)$ & (10.0, 200.0, 2673.0)  \\ 
 \end{tabular}
+\end{table}
+表\ref{tab:geometric_params}に幾何学的パラメータ, 表\ref{tab:aerodynamic_params}に空力パラメータ, 表\ref{tab:estimated_coeffs}に推定モデル係数を示す.
+\begin{table}[H]
+\centering
+\caption{Geometric parameters of the parafoil system.}
+\label{tab:geometric_params}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} lr}
+\hline\hline
+Parameter & Value \\ \hline
+Mass of canopy [kg] & 0.5 \\
+Mass of payload [kg] & 4.0 \\
+R [m] & 1.9 \\
+$d$ [m] & 0.1 \\
+$b$ [m] (Span) & 3.0 \\
+$c$ [m] (Chord) & 1.0 \\
+Rigging angle [degrees] & 7.0 \\
+
+\end{tabular*}
+\end{table}
+\begin{table}[H]
+\centering
+\caption{Aerodynamic parameters of the parafoil system.}
+\label{tab:aerodynamic_params}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} lr}
+\hline\hline
+Parameter & Value \\ \hline
+$C_{L0}$ & 0.5 \\
+$C_{L\alpha}$ & 1.7190 \\
+$C_{L\delta_{a}}$ & 0.0001 \\
+$C_{D0}$ & 0.2 \\
+$C_{D\alpha^{2}}$ & 0.7 \\
+$C_{D\delta_{a}}$ & 0.0001 \\
+$C_{m0}$ & 0.1397 \\
+$C_{m\alpha}$ & -1.4308 \\
+$C_{mq}$ & -0.2251 \\ \hline
+\end{tabular*}
+\end{table}
+\begin{table}[H]
+\centering
+\caption{The estimated model coefficients.}
+\label{tab:estimated_coeffs}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} lr}
+\hline\hline
+Parameter & Value \\ \hline
+$C_{l\phi}$ & -0.04 \\
+$C_{lp}$ & -0.08 \\
+$C_{l\delta_{a}}$ & -0.00001 \\
+$C_{nr}$ & -0.012 \\
+$C_{n\delta_{a}}$ & -0.00008 \\
+$\delta_{bias}$ & -0.0003 \\ \hline
+\end{tabular*}
 \end{table}
 
-% 表4-2 キャノピーモデルの主要諸元
-\begin{table}[H]
-\centering
-\caption{Major Characteristic of canopy model}
-\label{tab:4-2}
-\begin{tabular}{ll}
-\hline\hline
-Item & Value \\
-\hline
-Wingspan [m] & 26.00 \\
-Chord length [m] & 13.00 \\
-Thickness [m] & 1.00 \\
-Weight [kg] & 299.836 \\
-Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
-\quad $I_{xx}$ & 20136.448 \\
-\quad $I_{yy}$ & 5091.410 \\
-\quad $I_{zz}$ & 23490.422 \\
-\hline
-\end{tabular}
-\end{table}
+ヘリコプターがパラフォイルを捕獲する際の条件を示す. 3GMARでは, ヘリコプターはパラフォイルと水平方向及び鉛直方向に15m離れた状態で協調飛行を行うので, 
+設定した会合点と6DoFシミュレーションでの会合点の相対距離の大きさを$d_{\mathrm{err}}$とすると, 安定した会合を行うためには$d_{\mathrm{err}}$が15m付近に収まる必要がある.
 \section{結果及び考察}
 \subsection{クロゾイド曲線の有効性の検証}
-経路計画において, クロゾイド曲線を用いた場合と用いない場合のシミュレーション結果を比較した.このとき誘導則は, 定常旋回を仮定して導出した式(\ref{eq:ff_law})を用いた. 図\ref{fig:result_nonclothoid_FF}, \ref{fig:result_clothoid_FF}にそれぞれのシミュレーション結果を示す. 
+軌道計画において, クロゾイド曲線を用いた場合と用いない場合のシミュレーション結果を比較した.このとき誘導則は, 定常旋回を仮定して導出した式(\ref{eq:ff_law})を用いた. 図\ref{fig:result_nonclothoid_FF}, \ref{fig:result_clothoid_FF}にそれぞれのシミュレーション結果を示す. 
 %クロゾイド曲線を用いない場合, 旋回開始直後
 \begin{figure}[H]
   \centering
@@ -1001,41 +1050,186 @@ Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
   \caption{Simulation result with clothoid curve smoothing.}
 \label{fig:result_clothoid_FF_xy}
 \end{figure}
+図\ref{fig:result_nonclothoid_FF_xy}より, クロゾイド曲線を用いない場合, Phase2に移行した直後に大きなオーバーシュートが発生し, 参照経路から大きく逸脱していることが分かる. 
+このことは, 6DoFシミュレーションにおいて, 旋回と直進を切り替える際に操舵入力が急激に変化した際, パラフォイルの慣性により操舵応答が遅れ, 目標バンク角に追従できないことが原因であると考えられる.　
+一方, 図\ref{fig:result_clothoid_FF_xy}より, クロゾイド曲線を用いた場合, 旋回開始直後のオーバーシュートが抑制され,
+クロゾイド曲線を導入していない場合と比較して参照軌道に対して良好な追従性が得られていることが分かる. 
+しかし, クロゾイド曲線の導入を導入した場合でも, Phase2にて直進から円旋回に移行してからは参照軌道と実際の軌道で偏差が発生し, 
+ファイナルアプロ―チ区間では偏差が増加する傾向にある. これは, 定常旋回を仮定した誘導則が, 参照軌道の誤差を能動的に補正する機能を持たないことが原因だと考えられる. 
+\subsection{VF法に基づく誘導則の適用}
+本解析では,軌道計画時に考慮していない風$V_{\mathrm{wind}}$が吹いた場合, VF法によって軌道を維持できるか検証することを目的とした. 無風の条件で軌道計画を行い, 6DoFシミュレーションではパラフォイルが$V_{\mathrm{wind}}=[0, 01][\mathrm{m/s}], [1, 1][\mathrm{m/s}]$を受けるという条件で解析を行った. 
 
-\subsection{VF法の有効性の検証}
-クロゾイド曲線を用いた軌道計画に対し, VF法に基づく誘導則を適用したシミュレーション結果を図\ref{fig:result_clothoid_VF}に示す.
+クロゾイド曲線を用いた軌道計画に対し, VF法に基づく誘導則を適用したシミュレーション結果を図\ref{fig:result_clothoid_VF_xyz}に示す. 
+ここで, 図の凡例はRefferenceが参照軌道, Without windが無風での6DoFシミュレーションでのパラフォイルの飛行軌道, With windが風が吹いたときの6DoFシミュレーションでのパラフォイルの飛行軌道, Targetが会合点を表す.
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.6\linewidth]{画像/result_VF_1_1_xyz.png}
-  \caption{Simulation result with clothoid curve smoothing.}
-\label{fig:result_clothoid_VF_Xy}
+  \includegraphics[width=0.8\linewidth]{画像/result_VF_1_1_xyz.png}
+  \caption{Simulation result with Vector Field method.}
+\label{fig:result_clothoid_VF_xyz}
 \end{figure}
+シミュレーションの結果の2次元プロット及び水平方向, 鉛直方向の誤差を図\ref{fig:VF_traj_2D}に示す.
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.6\linewidth]{画像/result_VF_1_1.png}
-  \caption{Simulation result with clothoid curve smoothing.}
-\label{fig:result_clothoid_VF_Xy}
+	\centering
+	% 左上の図
+	\begin{subfigure}{0.45\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_topview.png}
+			\caption{Overview.}
+			\label{fig:VF_vert_overview}
+	\end{subfigure}
+	% 右上の図
+	\begin{subfigure}{0.5\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_frontview.png}
+			\caption{Frontview.}
+			\label{fig:VF_vert_frontview}
+	\end{subfigure}
+	
+	
+	\caption{2D trajectory plots and error with Vector Field method.}
+	\label{fig:VF_traj_2D}
 \end{figure}
-\textbf{外乱はホワイトノイズあたりを使おうと考えています}
+無風の場合に$d_{\mathrm{err}}=61.75$m, 風がある場合に$d_{\mathrm{err}}=58.65$mであった.
+図\ref{fig:VF_vert_overview}より, VF法に基づく誘導則を適用した場合, 風が吹いている場合でも参照軌道に対して水平方向には良好な追従性が得られていることが分かる.
+その一方, 図\ref{fig:VF_vert_frontview}より, 鉛直方向には参照軌道からの乖離が見られる. %これは, VF法が水平方向の誘導のみを対象としており, 鉛直方向の操舵を考慮していないことが原因であると考えられる.\\
+鉛直方向の誤差の原因を調べるため, 参照軌道と6DoFシミュレーションの水平位置のずれ及び鉛直位置のずれの時間変化を比較した. 
+シミュレーションの結果の水平方向, 鉛直方向の誤差の時間変化を図\ref{fig:VF_traj_2D}に示す.
 
+
+\begin{figure}[H]
+	\centering
+	
+	% 左下の図
+	\begin{subfigure}{0.49\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_horizError.png}
+			\caption{Horizontal error.}
+			\label{fig:VF_vert_horizError}
+	\end{subfigure}
+	% 右下の図
+	\begin{subfigure}{0.49\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_vertError.png}
+			\caption{Vertical error.}
+			\label{fig:VF_vert_vertError}
+	\end{subfigure}
+    
+	\caption{2D trajectory plots and error with Vector Field method.}
+	\label{fig:VF_vert_all}
+\end{figure}
+このとき, 図\ref{fig:VF_vert_all}の縦線は,軌道計画においてあるPhaseからその次のPhaseに移行した時刻を表す. 時刻の速いほうからPhase1での旋回, Phase2の旋回, 同Phaseの直進, 旋回, Phase3での直進への移行を示している.
+
+図\ref{fig:VF_vert_horizError}より, 水平方向の誤差について考察する.風の有無にかかわらず, phase2での直進に入るまでは誤差は10m前後であるが, 直進時は20m/s近くでほぼ一定の値を示す. 風があるとき,$V_{\mathrm{wind}}$の風向は45°であり, 
+直進時はパラフォイルの進行方向に対してほとんど真横を向いている.旋回から直進に移行する際に偏流角$\eta$の変化は大きくなるが,式(\ref{eq:eta_dot})では, $\dot{\eta}$ の式を近似的に求めているので, 直進時における偏流角の変化を十分に補正できていないと考えられる. 
+また, 式(\ref{eq:ff_law_VF})及び式(\ref{eq:del_del_a})において, 定常偏差の積分に対する補正項が存在しないため, 直進時における偏流角の変化に対して十分に追従できていないことも原因であると考えられる.
+
+次に,鉛直方向の誤差について考察する. 図\ref{fig:VF_vert_vertError}より, 鉛直方向の誤差は旋回中に周期的に変動し, Phase2での直進区間で一定になった後, 会合点にたどり着くまで減少するという傾向が確認された. これは水平方向の誤差と同様に, 旋回運動時にパラフォイルに対する風向が時間とともに変化する
+ことが原因だと考えられる. 水平方向の対地速度は向かい風ほど減少し, 追い風ほど増加するため, 旋回中に対地速度が周期的に変動する.本解析では鉛直方向に風は受けないので, 風の有無が降下速度に影響を与えないが, 対地速度が変化することで, 降下角が変化し, 鉛直方向の誤差が発生すると考えられる.
+$d_{\mathrm{err}}$が15m前後であれば安定した会合が可能になるため, 本解析では安定した会合が難しいといえる. 
+%これは, 風がある場合, 旋回中にパラフォイルの対地速度ベクトルが風に対して向かい風になったり追い風になったりすることで,
+\subsection{軌道の再計画による誘導性能の変化}
+本解析では, 風がある場合に軌道の再計画を行い, 6DoFシミュレーションを実施した. 
+再計画は,   シミュレーション開始から30秒後に行い, その時点でのパラフォイルの位置と速度を初期条件として, 目標地点は変えずに新たな参照軌道を生成した.
+再計画後の軌道を用いて, VF法に基づく誘導則を適用したシミュレーション結果を図\ref{fig:result_clothoid_VF_xyz_replan}に示す.
+ \begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{画像/result_VF_1_1_xyz_replan.png}
+  \caption{Simulation result with Vector Field method and trajectory replanning.}
+  \label{fig:result_clothoid_VF_xyz_replan}
+\end{figure}
+図\ref{fig:VF_traj_2D_replan}に再計画後のシミュレーションの結果の2次元プロットを示す.
+\begin{figure}[H]
+	\centering
+	% 左上の図
+	\begin{subfigure}{0.45\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_topview_replan.png}
+			\caption{Overview.}
+			\label{fig:VF_vert_overview_replan}
+	\end{subfigure}
+	% 右上の図
+	\begin{subfigure}{0.5\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_frontview_replan.png}
+			\caption{Frontview.}
+			\label{fig:VF_vert_frontview_replan}
+	\end{subfigure}
+
+
+	\caption{2D trajectory plots and error with Vector Field method and trajectory replanning.}
+	\label{fig:VF_traj_2D_replan}
+\end{figure}
+このときは$d_{\mathrm{err}}=4.50$mであった.
+図\ref{fig:VF_vert_all_replan}に再計画後のシミュレーションの結果の水平及び鉛直方向の誤差の時間変化を示す.
+\begin{figure}[H]
+	\centering
+	
+	% 左下の図
+	\begin{subfigure}{0.49\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_horizError_replan.png}
+			\caption{Horizontal error.}
+			\label{fig:VF_vert_horizError_replan}
+	\end{subfigure}
+	% 右下の図
+	\begin{subfigure}{0.49\textwidth}
+			\centering
+			\includegraphics[width=\textwidth]{画像/result_VF_1_1_vertError_replan.png}
+			\caption{Vertical error.}
+			\label{fig:VF_vert_vertError_replan}
+	\end{subfigure}
+
+	\caption{2D trajectory plots and error with Vector Field method and trajectory replanning.}
+	\label{fig:VF_vert_all_replan}
+\end{figure}
+
+図\ref{fig:VF_vert_horizError_replan}より, 再計画時には水平方向の誤差はPhase2の直進時に50mまで増加したが, それ以降は20m前後まで減少する傾向を示した. 
+横風が吹いているときに水平方向の誤差が大きくなるのは, VF法によるパラフォイルの誘導は計画風から見た座標系で行われるため, 慣性系からみた座標系では定常偏差が風によって引き伸ばされたことが原因だと考えられる. 
+このことは, ファイナルアプローチではパラフォイルが風上方向に進むため, 偏流角が小さくなり, 式(\ref{eq:eta_dot})に基づく偏流角の補正が有効に働いたことが要因であると考えられる.
+
+図\ref{fig:VF_vert_vertError_replan}より, 鉛直方向の誤差は再計画前に40m近くまで増加していたが, 再計画後は20m以下に抑制されていることが分かる. $d_{\mathrm{err}}=4.50$mまで減少しており, ヘリコプターの会合条件を満たしていることからも, 
+軌道の再計画により,対地速度と対気速度の変化が参照軌道に反映され, ファイナルアプローチでの参照軌道に対する追従性能が向上したといえる. 
+
+軌道の再計画を行った場合でも, 風がある場合における水平方向及び鉛直方向の誤差は完全には解消されなかった. これは, VF法の導出過程での誤差や, 積分項の不足に加えて, クロゾイド曲線を導入する際の計算誤差が原因だと考えられる. 
+%クロゾイド曲線で補間を行う際に
+\section{結論及び展望}
+\subsection{結論}
+本研究では, 
+空中回収に適した軌道計画手法の構築及び,VF法の修正によるパラフォイルの誘導則の評価を目的とした. 
+その結論として以下の知見が得られた. 
+\begin{enumerate}
+    \item クロゾイド曲線を緩和曲線として導入することで, 操舵量の急激な変化を抑制してパラフォイルの追従性能を向上させられる. 
+    その一方, Dubins Path単体の場合と比べて計算誤差が大きいので, 参照軌道と会合点の誤差が生じる. 
+    \item VF法を修正し, 軌道の再計画を行うことで, ゲインチューニングの手間を大幅に減らしたうえで, 空中回収を目的に計画された軌道に会合点との誤差が4.50mになるまで追従させられる.
+    その一方, VF法には積分項が存在しないため, 定常偏差を抑える働きが弱い.
+\end{enumerate}
+\subsection{展望}
+今後の展望としては以下の内容が挙げられる. 
+\begin{enumerate}
+    \item 直線と円旋回を補間する緩和曲線について, クロゾイド曲線以外も検討すること. 
+    \item VF法で定常偏差を抑制する方法を検討すること. 
+    \item 実際の風速のデータを用いて誘導及び軌道計画を行うこと. 
+    \item 軌道計画に用いたデータとシミュレーション時の風に違いがある時に, 実際の風を推定する方法を導入すること. 
+    \item ヘリコプターの運動モデルを構築し, パラフォイルと協調した軌道計画及び誘導を行うこと. 
+\end{enumerate}
 \section*{謝辞}
 %\addcontentsline{toc}{section}{謝辞}
-本研究を進めるにあたり，多くの方々より温かいご支援を賜りましたことに，心より感謝申し上げ
-ます．指導教員である小笠原宏教授には，ご多忙の中，本研究に対しご指導ご鞭撻を賜りましたこと，深く感謝申し上げます. 
+本研究を進めるにあたり, 多くの方々より温かいご支援を賜りましたことに, 心より感謝申し上げ
+ます．指導教員である小笠原宏教授には, ご多忙の中, 本研究に対しご指導ご鞭撻を賜りましたこと, 深く感謝申し上げます. 
 
-また，小笠原研究室の先輩方には，研究で悩んでいる時などに様々なご助言及びご支援をいただきました
-．特に，同じ空力パラフォイル班の先輩の後藤颯太氏, 田代健人氏, 渡辺哉仁氏には, 研究の進め方や
+また, 小笠原研究室の先輩方には, 研究で悩んでいる時などに様々なご助言及びご支援をいただきました
+．特に, 同じ空力パラフォイル班の先輩の後藤颯太氏, 田代健人氏, 渡辺哉仁氏には, 研究の進め方や
 パラフォイルの特性など, 多岐にわたるご指導をいただき, 研究を有意義なものにできました． 
-システム班の小松大祐氏, 徳永雄介氏には，解析手法や論文の書き方などについて
+システム班の小松大祐氏, 徳永雄介氏には, 解析手法や論文の書き方などについて
 ご指導をいただきました．心より感謝申し上げます．
 
-研究室の同期である足立栞音氏，清岡建伍氏，志満津樹氏，田中颯氏，中野誠氏，山川直樹氏とは，
-日々切磋琢磨し，時に励まし合い時に議論を重ねながら共に成長することができました．この時間がなければ，研究をやり遂げることはできなかったと感じております．
+研究室の同期である足立栞音氏, 清岡建伍氏, 志満津樹氏, 田中颯氏, 中野誠氏, 山川直樹氏とは, 
+日々切磋琢磨し, 時に励まし合い時に議論を重ねながら共に成長することができました．この時間がなければ, 研究をやり遂げることはできなかったと感じております．
 
 所属しているアカペラサークルの仲間たちには, 大会と研究の両立を様々な局面で支えてくださった上, 研究の合間に一息つける時間を
 提供してくださったことに感謝申し上げます．
 
-最後に，暖かな家庭を築いてくださった上, 故郷を離れて一人で暮らしているときにも心配の言葉をかけてくださった両親へ
+最後に, 暖かな家庭を築いてくださった上, 故郷を離れて一人で暮らしているときにも心配の言葉をかけてくださった両親へ
 心より感謝申し上げ, 謝辞とさせて頂きます．
 \vspace{2\baselineskip}
 
@@ -1046,33 +1240,31 @@ Moment of Inertia [kg$\cdot$m$^2$] (at center of gravity) & \\
 
 \begin{thebibliography}{1}
 
-\bibitem[Dean他,2005]{ref_mar_past_pre}The Past, Present, and Future of Mid-Air Retrieval
-Dean S. Jorgensen•, Roy A. Haggardt and Glen J. Brown Vertigo, Inc., Lake Elsinore, California 92531, 18th AIM Aerodynamic DeceleratorS ystems Technology Conference and Seminar(2005)\textbf{ページ数後で書きます}
-\bibitem[Mari他,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery
-Mari Gravlee*, Bernard Kutter, Frank Zegler, Brooke Mosley
-United Launch Alliance
-Denver, CO
-Roy A. Haggard**
-Vertigo
-Lake Elsinore, CA, AIAA SPACE 2008 Conference \& Exposition % ほんとはand→& 
-9 - 11 September 2008, San Diego, California(2008)
-\bibitem[NASA,2001]{ref_NASA}The National Aeronautics and Space Administration, The X-38 prototype of the Crew Return Vehicle is suspended under
+\bibitem[Dean et al., 2005]{ref_mar_past_pre}
+Dean S. Jorgensen, Roy A. Haggard, Glen J. Brown,  
+%Vertigo, Inc., Lake Elsinore, California 92531, 
+The Past, Present, and Future of Mid-Air  Retrieval, 
+18th AIM Aerodynamic Decelerator Systems Technology Conference and Seminar(2005), pp.1-8. 
+%\bibitem[Mari他,2008]{ref_mar_atlas} Partial Rocket Reuse Using Mid-Air Recovery Mari Gravlee*, Bernard Kutter, Frank Zegler, Brooke Mosley United Launch Alliance Denver, CO Roy A. Haggard** Vertigo Lake Elsinore, CA, AIAA SPACE 2008 Conference \& Exposition % ほんとはand→&  
+%9 - 11 September 2008, San Diego, California(2008)
+\bibitem[Fari, Grande, 2021]{ref_VF}Stefano Farì, Davide Grande, Vector Field-based Guidance Development for Launch Vehicle Re-entry via Actuated Parafoil, International Astronautical Congress, Dubai, United Arab Emirates, 25-29 October 2021, pp. 1-14. (2021)
+\bibitem[NASA, 2001]{ref_NASA}The National Aeronautics and Space Administration, The X-38 prototype of the Crew Return Vehicle is suspended under
 its giant 7,500-square-foot parafoil during its eighth free flight on Thursday, December 13, 2001, from
-<https://www.nasa.gov/image-detail/amf-ec01-0339-146/>, (参照日2024年1月2日)
+<https://www.nasa.gov/image-detail/amf-ec01-0339-146/>. (参照日2024年1月2日)
 
-\bibitem[川口,2023]{ref_kawa}川口康太, 複数の風情報を用いたパラフォイル回収システムの誘導性能評価, (2023年), 修士論文
+\bibitem[川口, 2023]{ref_kawa}川口康太, 複数の風情報を用いたパラフォイル回収システムの誘導性能評価, (2023), 修士論文, pp. 6-13, p.30
 
-\bibitem[Ligan他, 2023]{ref_refmodel}Ligan Zhao, Jin Tao, Hao Sun, Qinglin Sun, Dynamic modelling of parafoil system based on aerodynamic coefficients identification, Automatika
+\bibitem[Ligan et al., 2023]{ref_refmodel}Ligan Zhao, Jin Tao, Hao Sun, Qinglin Sun, Dynamic modelling of parafoil system based on aerodynamic coefficients identification, Automatika
 Journal for Control, Measurement, Electronics, Computing and
-Communications. (2023)
+Communications. (2023), p.p.291-296. 
 
-\bibitem[Branden,2009]{ref_Branden}Branden J. LacyBranden James Rademacher, In-flight trajectory planning and guidance for autonomous parafoils, Ph.D. Dissertation, University of Minnesota. (2009)
+\bibitem[Rademacher, 2009]{ref_Branden}Branden J. LacyBranden James Rademacher, In-flight trajectory planning and guidance for autonomous parafoils, Ph.D. Dissertation, University of Minnesota. (2009), p.p.23-39. 
 
-\bibitem[Thierry他, 2004]{ref_CC_Dubins}Thierry Fraichard , Alexis Scheuer, From Reeds and Shepp’s to Continuous-Curvature Paths, IEEE TRANSACTIONS ON ROBOTICS, VOL. 20, NO. 6, DECEMBER 2004. (2004)
+\bibitem[Fraichard and Alexis, 2004]{ref_CC_Dubins}Thierry Fraichard, Alexis Scheuer, From Reeds and Shepp’s to Continuous-Curvature Paths, IEEE TRANSACTIONS ON ROBOTICS, VOL. 20, NO. 6, DECEMBER 2004. (2004), p.p.1026-1030. 
 
 
 
-\bibitem[Fari他, 2021]{ref_VF}Stefano Farì, Davide Grande, Vector Field-based Guidance Development for Launch Vehicle Re-entry via Actuated Parafoil, International Astronautical Congress, Dubai, United Arab Emirates, 25-29 October 2021.(2021)
+
 \end{thebibliography}
 
 
