@@ -32,15 +32,35 @@ classdef ParafoilAutopilot < handle
         LastDeltaR = 0;     
         LastDeltaL = 0;     
         IsReady = false;    
+        % ★追加: 縦制御のON/OFFフラグ
+        EnableLongitudinalControl = true;
+        % ★追加: Plannerで計算された基準滑空比 (トリムL/D)
+        NominalGlideRatio = 3.0; % 初期値 (適当な値、あとで上書きされる)
+        % ★追加: 物理モデルのインスタンス (厳密な迎角取得用)
+        Dynamics
+        % ★追加: 計画時に想定されていた風 (North, East)
+        BaseWindVector = [0; 0];
+
     end
     
     methods
+        % ★★★ ここに追加してください (public methods) ★★★
+        function set_longitudinal_control(obj, enable_flag)
+            obj.EnableLongitudinalControl = logical(enable_flag);
+            fprintf('Autopilot: Longitudinal Control set to %d\n', obj.EnableLongitudinalControl);
+        end
+        % ★★★ ここまで ★★★
+
         % =========================================================
         % コンストラクタ
         % =========================================================
-        function obj = ParafoilAutopilot(params, linearizer)
+        function obj = ParafoilAutopilot(params,dynamics_instance, linearizer)
             obj.Params = params;
-            if nargin > 1, obj.Linearizer = linearizer; end
+            % ★追加: Dynamicsを受け取る
+            if nargin > 1
+                obj.Dynamics = dynamics_instance;
+            end
+            if nargin > 2, obj.Linearizer = linearizer; end
             
             try
                 obj.AtmoModel = AtmoTempPressRho();
@@ -62,7 +82,8 @@ classdef ParafoilAutopilot < handle
             % 補助PID
             obj.Gains.kp_psi = 1.0; 
             obj.Gains.ki_psi = 0.0; 
-            
+            % ★追加: 高度制御ゲイン (フゴイド時定数相当: g/V ~ 0.5 - 1.0)
+            obj.Gains.Kp_alt = 1.0;
             % --- Yaw_Factor 計算 ---
             if isfield(params, 'prop'), b=params.prop.b; else, b=params.b; end
             if isfield(params, 'params')
@@ -104,11 +125,28 @@ classdef ParafoilAutopilot < handle
                     else
                         dk = zeros(size(dx)); % データがない場合は0 (直線扱い)
                     end
-                    
+
+                    % ★追加: 目標横滑り速度 v_ref (なければ 0)
+                    % Plannerが 'v' または 'v_ref' を出力していると仮定
+                    if isfield(d.dubins, 'v_ref')
+                        dv = [d.dubins.v_ref(:); d.final.v_ref(:)];
+                    elseif isfield(d.dubins, 'v')
+                        dv = [d.dubins.v(:); d.final.v(:)];
+                    else
+                        dv = zeros(size(dx));
+                    end
                     % 6列構成でセット
-                    obj.set_target_path([dx, dy, dz, dt, dpsi, dk]);
+                    obj.set_target_path([dx, dy, dz, dt, dpsi, dk, dv]);
                 end
             end
+
+            % ★追加: Plannerが持っている風速情報(計画風)を取り込む
+            if isprop(planner, 'WindVector')
+                w = planner.WindVector;
+                obj.BaseWindVector = [w(1); w(2)];
+                fprintf('Autopilot: Imported Base Wind = [%.1f, %.1f]\n', w(1), w(2));
+            end
+
         end
         
         function set_mode(obj, mode_str)
@@ -123,11 +161,17 @@ classdef ParafoilAutopilot < handle
                 end
             end
         end
+
+        % ★追加: 基準滑空比をセットするメソッド
+        function set_nominal_glide_ratio(obj, val)
+            obj.NominalGlideRatio = val;
+            fprintf('Autopilot: Nominal L/D set to %.2f\n', val);
+        end
         
         % =========================================================
         % ★★★ メイン更新ループ (Update) ★★★
         % =========================================================
-        function [delta_R, delta_L, log_struct] = update(obj, t, current_state, wind_vec, ~)
+        function [delta_R, delta_L, log_struct] = update(obj, t, current_state, wind_vec_est, ~)
             
             if ~obj.IsReady
                 delta_R=0; delta_L=0; log_struct=[]; return;
@@ -141,7 +185,9 @@ classdef ParafoilAutopilot < handle
             u=current_state(1); v=current_state(2); w=current_state(3);
             phi=current_state(7); theta=current_state(8); psi=current_state(9);
             pos_ned = current_state(10:12);
-            
+            % ★★★ 【修正】ここを追加してください ★★★
+            z_curr = pos_ned(3); % または z_curr = current_state(12);
+            % ★★★★★★★★★★★★★★★★★★★★★★★
             V_tas = sqrt(u^2+v^2+w^2);
             V_horiz = max(0.1, V_tas * cos(theta)); % 対気水平速度
             
@@ -151,10 +197,21 @@ classdef ParafoilAutopilot < handle
             Vg_n = Vel_ned(1);
             Vg_e = Vel_ned(2) ;
             Vg_horiz = sqrt(Vg_n^2 + Vg_e^2);
+            %Vg_vert = Vel_ned(3);
             chi_curr = atan2(Vg_e, Vg_n);
             
+            % ★変更: デフォルト値の設定
+            z_ref = z_curr; % 値がない場合は現在高度維持
+            v_ref = 0;      % 値がない場合は横滑りなし
             r_req = 0; cmd_chi = 0; cmd_psi = 0; % 初期化
-            
+            % =====================================================
+            % ★修正箇所: 風の差分計算 (Disturbanceのみ抽出)
+            % =====================================================
+            Wx_est = wind_vec_est(1); Wy_est = wind_vec_est(2);
+            Wx_base = obj.BaseWindVector(1); Wy_base = obj.BaseWindVector(2);
+            % 誘導則に渡す風速ベクトル = 「現在の推定風」 - 「計画時の風」
+            % 計画通りならゼロになり、カニ歩き補正は行われない（軌道形状で対応済みのため）
+            wind_for_guidance = [Wx_est - Wx_base; Wy_est - Wy_base];
             % =====================================================
             % Step 1: Geometry & Kinematics (誘導則)
             % =====================================================
@@ -174,13 +231,31 @@ classdef ParafoilAutopilot < handle
                 dot_chi_app = (p.lambda * k * dot_d) / (1 + (k * err)^2);
                 
                 dot_chi_cmd = dot_phi_pos + dot_chi_app;
+
+                % ★追加: Loiterパラメータから目標高度を取得
+                if isfield(p, 'z_ref')
+                    z_ref = p.z_ref;
+                else
+                    % パラメータにない場合は、Loiter開始時の高度などを保持するか、現在高度を使用
+                    z_ref = z_curr; 
+                end
+
+                % 2. 目標横滑り v_ref
+                if isfield(p, 'v_ref')
+                    v_ref = p.v_ref;
+                else
+                    % 指定がなければゼロ（Coordinated Turn）
+                    v_ref = 0;
+                end
                 
                 % 厳密風補正メソッドへ
                 % Loiter中はターゲット方位が刻々と変わるため、簡便に chi_curr をターゲットとみなすか
                 % または phi_pos + 90deg を使う
                 current_chi_target = chi_curr; 
+                % ★修正: wind_vec ではなく wind_for_guidance を渡す
                 [r_req, cmd_chi, cmd_psi] = obj.apply_wind_and_feedback(...
-                    dot_chi_cmd, Vg_horiz, wind_vec, psi, current_chi_target, phi, theta, V_tas);
+                    dot_chi_cmd, Vg_horiz, wind_for_guidance, psi, current_chi_target, phi, theta, V_tas);
+                
                 
             elseif strcmpi(obj.CurrentMode, 'Mission') && ~isempty(obj.ReferencePathMatrix)
                 % === Missionモード (厳密版) ===
@@ -188,14 +263,22 @@ classdef ParafoilAutopilot < handle
                 idx = obj.find_closest_index(pos_ned(1), pos_ned(2));
                 P = obj.ReferencePathMatrix;
                 path_x = P(idx, 1); path_y = P(idx, 2); path_psi = P(idx, 5);
-                
+                % ★目標高度 z_ref の取得 (3列目)
+                z_ref  = P(idx, 3);
+
                 % ★修正: 曲率 kappa の取得
                 if size(P, 2) >= 6
                     kappa_ref = P(idx, 6);
                 else
                     kappa_ref = 0;
                 end
-                
+
+                % ★追加: 目標横滑り v_ref の取得 (7列目)
+                if size(P, 2) >= 7
+                    v_ref = P(idx, 7);
+                else
+                    v_ref = 0;
+                end
                 dx = pos_ned(1) - path_x; dy = pos_ned(2) - path_y;
                 e_cross = -sin(path_psi)*dx + cos(path_psi)*dy;
                 chi_rel = obj.normalize_angle(chi_curr - path_psi);
@@ -224,10 +307,9 @@ classdef ParafoilAutopilot < handle
                 % (C) 目標コース角の算出 (ログ・補正用)
                 chi_app_val = -(chi_inf * 2 / pi) * atan(k_vf * e_cross);
                 current_chi_target = path_psi + chi_app_val;
-                
-                % 厳密風補正メソッドへ
+                % ★修正: wind_vec ではなく wind_for_guidance を渡す
                 [r_req, cmd_chi, cmd_psi] = obj.apply_wind_and_feedback(...
-                    dot_chi_cmd, Vg_horiz, wind_vec, psi, current_chi_target, phi, theta, V_tas);
+                    dot_chi_cmd, Vg_horiz, wind_for_guidance, psi, current_chi_target, phi, theta, V_tas);
             end
             
             % =====================================================
@@ -261,6 +343,29 @@ classdef ParafoilAutopilot < handle
             
             % ミキシング
             da_total = da_ref + dda_term + da_fb;
+
+            % -----------------------------------------------------
+            % Step 3: 縦制御 (Longitudinal Control) - 厳密版実装
+            % -----------------------------------------------------
+            delta_s = 0;
+            log_G_brake = 0; log_Zw = 0;
+            
+            if obj.EnableLongitudinalControl
+                % phi_trim は、旋回に必要なバンク角 (phi_ref) を使用
+                phi_trim = phi_ref;
+                
+                % ★変更: v_ref を固定の0ではなく、上で取得した変数を使用
+                % 厳密メソッドの呼び出し
+                [delta_s, log_G_brake, log_Zw] = obj.calc_strict_height_control(...
+                    current_state, z_ref, z_curr, phi_trim, v_ref, obj.Gains.Kp_alt);
+            end     
+                    
+            
+            % --- 3. 優先順位付きミキシング (修正) ---
+            % 横操作で使った残りを上限とする
+            max_ds = 1.0 - abs(da_total);
+            delta_s = max(0.0, min(max_ds, delta_s));
+            
             [delta_R, delta_L] = obj.apply_mixing(da_total, 0);
             
             % 更新
@@ -273,6 +378,11 @@ classdef ParafoilAutopilot < handle
             log_struct.phi_ref = phi_ref;
             log_struct.da_total= da_total;
             log_struct.mode    = obj.CurrentMode;
+            %log_struct.G_ground = G_req;
+            %log_struct.Target_CL_CD = Target_CL_CD;
+            % ログへの追加
+            log_struct.z_ref = z_ref; % ログに残す
+            log_struct.v_ref = v_ref; % ログに残す
         end
     end
     
@@ -404,6 +514,160 @@ classdef ParafoilAutopilot < handle
             delta_delta_a = max(-0.5, min(0.5, delta_delta_a));
         end
         
+        %{ 
+        ★完全新規追加
+        function ds = calc_longitudinal_control(obj, state, target_CL_CD, da_cmd, wind_vec)
+            % 引数: target_CL_CD は補正済みの目標揚抗比
+            
+            % 1. 厳密な迎角の取得 (Dynamicsを利用)
+            if ~isempty(obj.Dynamics)
+                if isfield(obj.Params, 'ang_psi_rigging')
+                    GAMMA = obj.Params.ang_psi_rigging;
+                else
+                    GAMMA = 0;
+                end
+                
+                % ★Dynamicsのメソッド呼び出し
+                [alpha, ~, ~] = obj.Dynamics.get_aerodynamic_state(state, wind_vec, GAMMA);
+            else
+                % フォールバック (簡易計算)
+                u=state(1); w=state(3);
+                alpha = atan2(w, u);
+            end
+            
+            p = obj.Params;
+    
+            % ベース空力係数 (A, E) の計算
+            % ★ポイント: 旋回操作 da_cmd による抗力増・揚力変化を「ベース」に含める
+            A = p.C_L_0 + p.C_L_alpha * alpha + p.C_L_delta_a * abs(da_cmd);
+            
+            % 抗力係数 (2乗則モデルなどを適用)
+            if isfield(p, 'C_D_alpha_sq')
+                CD_alpha_term = p.C_D_alpha_sq * alpha^2;
+            else
+                CD_alpha_term = p.C_D_alpha * alpha^2;
+            end
+            E = p.C_D_0 + CD_alpha_term + p.C_D_delta_a * abs(da_cmd);
+    
+            % 制御感度 (B, F)
+            B = p.C_L_delta_s;
+            F = p.C_D_delta_s;
+            target_G =target_CL_CD;
+            % 解析解: ds = (A - G*E) / (G*F - B)
+            numerator = A - target_G * E;
+            denominator = target_G * F - B;
+    
+            if abs(denominator) < 1e-6
+                ds = 0;
+            else
+                ds = numerator / denominator;
+            end
+            
+            ds = max(0.0, ds);
+        end
+        %}
+
+        % =========================================================
+        % ★★★ 厳密な高度制御メソッド (paramsエラー修正版) ★★★
+        % =========================================================
+        function [ds_cmd, G_brake, Zw_total] = calc_strict_height_control(obj, state, z_ref, z_curr, phi_trim, v_ref, Kp)
+            
+            % --- 1. 状態量とパラメータ ---
+            u = state(1); v = state(2); w = state(3);
+            phi = state(7); theta = state(8);
+            z_ned = state(12);
+            
+            % ★ここが重要: obj.Params を ローカル変数 p に入れる
+            p = obj.Params; 
+            
+            % 物理パラメータ取得 (構造体の階層チェック)
+            if isfield(p, 'prop')
+                S = p.prop.S; m = p.prop.TotalMass;
+            else
+                S = p.S_c; m = 1.0; 
+            end
+            g = 9.81;
+            
+            % 大気密度
+            if ~isempty(obj.AtmoModel)
+                rho = obj.AtmoModel.get_density(-z_ned/1000);
+            else
+                rho = 1.225;
+            end
+            
+            % 速度・迎角
+            V_sq = u^2 + v^2 + w^2;
+            if abs(u) < 0.1, u = 0.1; end
+            alpha = atan2(w, u);
+            c_a = cos(alpha); s_a = sin(alpha);
+            
+            % --- 2. 空力係数 (階層構造に対応) ---
+            % p.params がある場合と、p直下にある場合の両方に対応
+            if isfield(p, 'params') && isfield(p.params, 'C_L_alpha')
+                par = p.params;
+            else
+                par = p;
+            end
+            
+            CL = par.C_L_0 + par.C_L_alpha * alpha;
+            dCL_da = par.C_L_alpha;
+            
+            CD0 = par.C_D_0;
+            if isfield(par, 'C_D_alpha_sq')
+                CDa2 = par.C_D_alpha_sq;
+                CD = CD0 + CDa2 * alpha^2;
+                dCD_da = 2 * CDa2 * alpha; 
+            else
+                CDa = par.C_D_alpha;
+                CD = CD0 + CDa * alpha;
+                dCD_da = CDa;
+            end
+            
+            CL_ds = par.C_L_delta_s;
+            CD_ds = par.C_D_delta_s;
+            
+            % --- 3. 厳密な微係数の導出 ---
+            
+            % Z_w 第一項 (動圧変化項)
+            Zw1 = - (rho * w * S / m) * (CL * c_a + CD * s_a);
+            
+            % Z_w 第二項 (迎角変化項)
+            term_sideslip = 1.0 + (v^2) / (u^2 + w^2);
+            dCz_da_part = (dCL_da + CD) * c_a + (dCD_da - CL) * s_a;
+            
+            Zw2 = - (rho * u * S / (2*m)) * term_sideslip * dCz_da_part;
+            
+            Zw_total = Zw1 + Zw2;
+            if abs(Zw_total) < 1e-6, Zw_total = -1e-6; end
+            
+            % Z_delta_s
+            Z_ds = - (rho * V_sq * S / (2*m)) * (CL_ds * c_a + CD_ds * s_a);
+            
+            % --- 4. ゲイン計算 ---
+            cp = cos(phi); ct = cos(theta); sp = sin(phi);
+            
+            % G_brake
+            G_brake = (cp * ct) * (Z_ds / Zw_total);
+            if abs(G_brake) < 1e-3, G_brake = 1e-3; end
+            
+            % G_bank
+            term_gravity = (m * g * cp * ct) / abs(Zw_total);
+            G_bank = sp * ct * (term_gravity + w);
+            
+            % G_slip
+            G_slip = sp * ct;
+            
+            % --- 5. 制御則 ---
+            delta_z = z_curr - z_ref;
+            delta_phi = phi - phi_trim;
+            delta_v   = v - v_ref;
+            
+            %u_input = Kp * delta_z + G_bank * delta_phi + G_slip * delta_v;
+            u_input = Kp * delta_z + G_bank * delta_phi;
+            ds_cmd = u_input / G_brake;
+            ds_cmd = max(0.0, min(1.0, ds_cmd));
+        end
+
         function a = normalize_angle(~, a)
             a = mod(a + pi, 2*pi) - pi; 
         end

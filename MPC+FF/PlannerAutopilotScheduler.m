@@ -38,27 +38,26 @@ classdef PlannerAutopilotScheduler < handle
         function inputs = get_inputs(obj, t, y, ~)
             current_z = y(12); 
             
-            % === デバッグ: 挙動がおかしいときはここのコメントアウトを外す ===
-            % if mod(t, 1.0) < 0.05
-            %      fprintf('[Sch] T=%.1f | Mode:%s | Z:%.1f > Thr:%.1f ? %d\n', ...
-            %          t, obj.Autopilot.CurrentMode, current_z, obj.MissionSwitchAlt, (current_z > obj.MissionSwitchAlt));
-            % end
-            % ============================================================
-
+            % --- フェーズ管理 (変更なし) ---
             if strcmp(obj.Autopilot.CurrentMode, 'Loiter')
-                % 下向き正(NED)なので、地面に近づくと z は大きくなる
-                % 例: -400 > -300 (False), -200 > -300 (True)
                 if current_z > obj.MissionSwitchAlt
                     obj.Autopilot.set_mode('Mission');
                     fprintf('>>> PHASE CHANGE: Loiter -> MISSION (Alt: %.1f m) <<<\n', -current_z);
                 end
             end
             
+            % --- 制御量計算 ---
+            % ★修正1: Autopilotには「推定風 (Est)」を渡す
+            % (run_simulation_task で Est=[0;0] に設定されていれば、カニ歩きせず軌道誤差のみで制御する)
             [dR, dL, ~] = obj.Autopilot.update(t, y, obj.WindVector_Est, []);
             
             inputs.delta_R = dR;
             inputs.delta_L = dL;
+            
+            % ★修正2: 物理モデル (Dynamics) には「真の風 (Truth)」を渡す
+            % ParafoilDynamics は control_inputs.wind_I を見て流される計算を行う
             inputs.wind_I  = obj.WindVector_Truth; 
+            
             inputs.GAMMA   = 0;
             inputs.delta_a_cmd = dR - dL;
             inputs.delta_s_cmd = min(dR, dL);
