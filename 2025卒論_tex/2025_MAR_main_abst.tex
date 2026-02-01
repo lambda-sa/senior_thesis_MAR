@@ -1,83 +1,70 @@
-\documentclass[12pt]{ltjsarticle}%長文ならltjsreport
-%\documentclass[a4j]{jarticle} %ここは関係ない
-% ltjsarticle: lualatex 用の 日本語 documentclass
-% 他のタイプセットエンジンを使ってビルドする場合は， \documentclass[dvipdfmx]{jsarticle} などとする．
-% パッケージの読み込み
-% \usepackage[dvipdfmx]{graphicx}
-%\usepackage{listings，jvlisting} 
-\usepackage{graphicx}
-\usepackage{color}
-\usepackage{float}
-\usepackage{listings}
-\usepackage{amssymb, amsmath}
+\documentclass[12pt]{ltjsarticle} % LuaLaTeXでコンパイルしてください
+
+% --- パッケージ読み込み ---
+\usepackage{graphicx}       
+\usepackage{color}          
+\usepackage{float}          
+\usepackage{listings}       
+\usepackage{amssymb, amsmath} 
+\usepackage{longtable}      
+\usepackage{subcaption}     
+
+% ▼▼▼【追加】キャプションを9.5ptにする設定 ▼▼▼
+\usepackage{caption}
+% 9.5pt (行送り11.5pt) のフォントを定義
+\DeclareCaptionFont{customsize}{\fontsize{9.5pt}{11.5pt}\selectfont}
+% キャプション全体に適用 (ラベルは太字、本文は9.5pt)
+\captionsetup{font=customsize, labelfont=bf, labelsep=quad}
+% ▲▲▲ ここまで ▲▲▲
+
+% --- 余白設定 ---
 \usepackage[top=20truemm,bottom=15truemm,left=25truemm,right=10truemm]{geometry}
-\usepackage{longtable}
 
-\usepackage{graphicx}
-\usepackage{subcaption}
-%\usepackage[inline]{enumitem}
-%\usepackage{listings，jvlisting} 
-%\usepackage{lipsum} % ダミーテキストを挿入するため
+% --- フォント設定 ---
+% 1. 数式と本文(明朝/Times)の設定
+\usepackage{newtxtext, newtxmath} 
 
+% 2. 英文サンセリフ体をHelvetica (Arial近似) に設定
+\usepackage[scaled]{helvet}
 
+% --- ソースコード表示設定(listings) ---
 \lstset{
-	%プログラム言語(複数の言語に対応，C，C++も可)
  	language = Python,
- 	%背景色と透過度
  	backgroundcolor={\color[gray]{.90}},
- 	%枠外に行った時の自動改行
  	breaklines = true,
- 	%自動開業後のインデント量(デフォルトでは20[pt])	
  	breakindent = 10pt,
- 	%標準の書体
  	basicstyle = \ttfamily\scriptsize,
- 	%basicstyle = {\small}
- 	%コメントの書体
  	commentstyle = {\itshape \color[cmyk]{1,0.4,1,0}},
- 	%関数名等の色の設定
  	classoffset = 0,
- 	%キーワード(int， ifなど)の書体
  	keywordstyle = {\bfseries \color[cmyk]{0,1,0,0}},
- 	%""で囲まれたなどの"文字"の書体
  	stringstyle = {\ttfamily \color[rgb]{0,0,1}},
- 	%枠 "t"は上に線を記載， "T"は上に二重線を記載
-	%他オプション：leftline，topline，bottomline，lines，single，shadowbox
  	frame = TBrl,
- 	%frameまでの間隔(行番号とプログラムの間)
  	framesep = 5pt,
- 	%行番号の位置
  	numbers = left,
-	%行番号の間隔
  	stepnumber = 1,
-	%右マージン
- 	%xrightmargin=0zw，
- 	%左マージン
-	%xleftmargin=3zw，
-	%行番号の書体
  	numberstyle = \tiny,
-	%タブの大きさ
  	tabsize = 4,
- 	%キャプションの場所("tb"ならば上下両方に記載)
  	captionpos = t
 }
 
+% --- 文書設定 ---
 \setcounter{section}{-1}
 \setcounter{secnumdepth}{1}
 \renewcommand{\figurename}{Fig.}
 \renewcommand{\tablename}{Table}
 
-
+% --- 所属と著者の定義コマンド ---
 \makeatletter
 \newcommand{\affiliation}{\gdef\@affiliation}
 \affiliation{}
 \makeatother
 
+% --- タイトル(\maketitle)の再定義 ---
 \makeatletter
-
-
 \renewcommand{\maketitle}{
   \begin{center}
-    {\large\bfseries\@title}
+    % タイトル: 16pt, 太字
+    {\fontsize{16pt}{24pt}\selectfont\bfseries\@title}
     \vspace{0.5cm}
   \end{center}
 
@@ -90,22 +77,19 @@
   \end{minipage}
 
   \vspace{0.5cm}
-  %{\@date}
 }
 
-	
-	 
+% --- セクション見出しの再定義 ---
 \renewcommand{\section}{\@startsection{section}{1}{\z@}%
    {1.5\Cvs \@plus.5\Cdp \@minus.2\Cdp}%
    {.5\Cvs \@plus.3\Cdp}%
-   {\reset@font\centering\Large\bfseries}}       %センタリング．．
-	
-
+   {\reset@font\centering\Large\bfseries}}
 \makeatother
 
+% --- 論文情報 ---
 \title{Vector Field 法によるパラフォイル空中回収に向けた誘導の研究}
 \affiliation{[小笠原研究室]}
-\author{7522095 舟木悠太}  
+\author{7522095 舟木 悠太}  
 
 \begin{document}
 
@@ -119,7 +103,7 @@
 そこで, 本研究では,
 空中回収に適した軌道計画手法の構築及び,VF法の修正によるパラフォイルの誘導則の評価を目的として6自由度の運動モデルによるシミュレーションを行った. 
 
-シミュレーションにより, Dubins Pathで作成した軌道にクロゾイド曲線を緩和曲線として導入することでパラフォイルの誘導性能は向上する一方, ubins Path 単体の場合と比べて計算誤差が大き
+シミュレーションにより, Dubins Pathで作成した軌道にクロゾイド曲線を緩和曲線として導入することでパラフォイルの誘導性能は向上する一方, Dubins Path 単体の場合と比べて計算誤差が大き
 いので, 参照軌道と会合点自体に誤差は生じた.また, VF法を修正することで,  ゲインチューニングの手間を大幅に減らしたう
 えで, 空中回収を目的に計画された軌道に会合点との誤差が 4.50m になるまで追従させられ
 た. その一方, VF 法には積分項が存在しないため, 横風が吹いたときに定常偏差が残り続ける結果となった. 
@@ -135,9 +119,16 @@
 % --- ここから英語セクション ---
 \newpage
 
-% 英語タイトルの手動作成 (プリアンブルの maketitle 定義と同様のレイアウト)
+% 英語タイトル
 \begin{center}
-  {Study on Guidance for Parafoil Mid-Air Retrieval using Vector Field Method}
+  % ▼▼▼ ここでフォント設定 ▼▼▼
+  % \sffamily: サンセリフ体(Helvetica)
+  % \bfseries: 太字
+  % \fontsize{12pt}{18pt}: サイズ12pt
+  \sffamily\bfseries\fontsize{12pt}{18pt}\selectfont
+  
+  Study on Guidance for Parafoil Mid-Air Retrieval using Vector Field Method
+  
   \vspace{0.5cm}
 \end{center}
 

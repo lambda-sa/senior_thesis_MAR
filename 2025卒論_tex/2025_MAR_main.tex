@@ -29,7 +29,16 @@
 \captionsetup[figure]{labelsep=space}
 \counterwithin{figure}{section}
 \counterwithin{table}{section}
+% --- パッケージ読み込み部分に追加 ---
+%\usepackage{caption} % subcaptionの前に読み込まれるのが理想ですが、後でも動作します
 
+% --- キャプション設定 ---
+% 1. 9.5pt のフォントサイズを定義 (行送りはバランスを見て 11.5pt 程度に設定)
+\DeclareCaptionFont{customsize}{\fontsize{9.5pt}{11.5pt}\selectfont}
+
+% 2. 定義したサイズを適用
+% labelsep=quad は「Fig. 1」と「本文」の間を少し空ける設定（お好みで）
+\captionsetup{font=customsize, labelfont=bf, labelsep=quad}
 
 
 % --- 数式番号の修正 ---
@@ -783,7 +792,7 @@ Phase1でのパラフォイルの旋回回数をが$\eta$, すべてのPhaseで�
 \end{equation}
 ここで, $g$ は重力加速度, $V$ は対気速度, $\theta$ はピッチ角である. 
 \begin{equation}
-    \delta_a =  - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{g}{V(t)^2} \cos \theta(t) \sin \phi_{ref}(t)
+    \delta_a =  - \frac{db C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{g}{V(t)^2} \cos \theta(t) \sin \phi_{ref}(t)
     \label{eq:ff_law}
 \end{equation}
 \section{誘導方法}
@@ -831,7 +840,7 @@ $\chi_\mathrm{path}→\pi/2$のとき, $\chi_\mathrm{path}-\chi_\mathrm{cmd}$→
 \end{equation}
 とする. 式(\ref{eq:chi_vf})と直角三角形の関係より, $e_{\mathrm{py}}$の逆数を$k_{\mathrm{VF}}$とすると, $\chi_{\mathrm{cmd}}$は
 \begin{equation}
-    \chi_{\mathrm{cmd}} = \chi_{\mathrm{path}} - \chi_{\infty} \frac{2}{\pi} \tan^{-1}(k_{\mathrm{VF}} e_{\mathrm{py}})
+    \chi_{\mathrm{cmd}} = \chi_{\mathrm{path}} - \chi_{\infty} \frac{2}{\pi} \tan^{-1}(\frac{e_{\mathrm{py}}}{e_{\mathrm{LOS}}} )
     \label{eq:chi_d_mission}
 \end{equation}
 と書ける. 
@@ -965,7 +974,7 @@ Missionモードと同様に, 式(\ref{eq:chi_d_loiter})を時間微分してコ
 %\subsubsection{逆ダイナミクスに基づく操作量決定}
 式(\ref{eq:ff_r_cmd})を式(\ref{eq:moment_balance})に代入し, 操作量 $\delta_a$ について整理すると, 目標バンク角 $\phi_{ref}$ を実現するために必要な制御入力$\delta_a$は
 \begin{equation}
-    \delta_a =  - \frac{b C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{1}{V(t)}\frac{\cos \theta}{\cos \phi}    \left( 2- \frac{V_g}{V_a \cos \eta}  \right) \dot{\chi}_{\mathrm{cmd}}  
+    \delta_a =  - \frac{db C_{n_r}}{2 C_{n_{\delta_a}}}   \frac{1}{V(t)}\frac{\cos \theta}{\cos \phi}    \left( 2- \frac{V_g}{V_a \cos \eta}  \right) \dot{\chi}_{\mathrm{cmd}}  
     \label{eq:ff_law_VF}
 \end{equation}
 で与えられる. 
