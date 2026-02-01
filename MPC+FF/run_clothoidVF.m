@@ -3,7 +3,7 @@
 clear; clc; close all;
 
 %% --- 1. 共通設定 ---
-excelFileName = 'parafoil_parameters_ref_replan.xlsx'; % パラメータファイル
+excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
 wind_planned = [0; 0];  % 風速 (North, East) [m/s]
 wind_disturbance = [1;1];  % 予期せぬ外乱（未知の風）
 wind_actual = wind_planned + wind_disturbance; % 実際に吹いている風
@@ -38,10 +38,10 @@ params.prop = prop;
 
 %% --- 2. Phase A: 軌道計画 (Mission & Planner) ---
 fprintf('=== Phase A: Path Planning ===\n');
-mission = ParafoilMissionClothoid(excelFileName);
+mission = ParafoilMissionWind(excelFileName);
 
 % クロゾイド設定 (ロールレート10deg/s, 先行係数0.5, 助走30m)
-mission.set_clothoid_options(0.5, 0.5, 0.0);
+%mission.set_clothoid_options(0.5, 0.5, 0);
 
 % シミュレーション実行 (内部で風補正計算が行われる)
 mission.run_wind_simulation(target_pos, L_final, wind_planned);
@@ -124,6 +124,19 @@ comparator = WindTrajectoryComparator(...
 
 % (3) 描画
 comparator.plotAll();
+
+% B. ズームビュー (ラスト70秒) ★ここを追加
+fprintf('Plotting Zoomed Trajectory (Last 70s)...\n');
+comparatorZoom = WindTrajectoryComparatorZoomed(...
+    simData_NoWind, ...   % Case 1
+    simData_Wind, ...     % Case 2
+    trajPlanGnd, ...
+    trajPlanAir, ...
+    target_pos, ...
+    plan_trans_times, ...
+    100); % <--- ここで秒数を指定 (70秒)
+
+comparatorZoom.plotAll();
 
 fprintf('Comparison Done.\n');
 
