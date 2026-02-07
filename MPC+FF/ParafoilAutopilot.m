@@ -69,7 +69,7 @@ classdef ParafoilAutopilot < handle
             end
             
             % --- ゲイン設定 ---
-            obj.Gains.k_vf_loiter  = 0.001;
+            obj.Gains.k_vf_loiter  = 0.08;
             obj.Gains.k_vf_mission = 0.05;
             obj.Gains.chi_inf      = pi/2;
             
