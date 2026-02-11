@@ -17,6 +17,9 @@ classdef ParafoilPathPlanner < handle
         WindVector = [0; 0; 0];
         %追加: バンクによる速度補正を行うかどうかのフラグ
         EnableBankSpeedCorrection = true;
+
+        % ★追加: 助走距離 [m]
+        RunUpDistance = 100.0;
     end
     
     methods
@@ -101,70 +104,189 @@ classdef ParafoilPathPlanner < handle
             if isempty(data.dubins.x), dubins_len = inf; else, dubins_len = sum(sqrt(sum(diff([data.dubins.x(:), data.dubins.y(:)]).^2, 2))); end
         end
         
+        % =========================================================
+        % ★★★ 修正版 calc_core: 助走区間との整合性を確保 ★★★
+        % =========================================================
         function [final_z, data] = calc_core(obj, alpha, s3d, t3d, land_deg, Lf, step, V0, h0, R, tan_g_str, l_dir, d_dir)
+            
+            % 1. 初期化
             rho0 = obj.AtmoModel.get_density(h0/1000);
             g_ref = obj.AtmoModel.get_gravity(h0);
-            sx = s3d(1); sy = s3d(2); sz = s3d(3); syaw = s3d(4);
-            curr = struct('x',sx, 'y',sy, 'z',sz, 'yaw',syaw);
-            lx=[sx]; ly=[sy]; lz=[sz]; lt=[0]; lpsi=[syaw];
-            rho_st = obj.AtmoModel.get_density(max(0, sz/1000));
-            data.V_start = V0 * sqrt(rho0 / rho_st);
             
-            % 1. Loiter
-            tot = 0; current_time = 0;
-            if strcmp(l_dir, 'L'), l_sign = -1; else, l_sign = 1; end
+            % シミュレーション開始状態
+            curr = struct('x',s3d(1), 'y',s3d(2), 'z',s3d(3), 'yaw',s3d(4));
+            current_time = 0;
+            
+            data.V_start = V0; % 基準EAS
+            
+            % =========================================================
+            % Phase 0: Run-up (助走区間)
+            % =========================================================
+            rx=[]; ry=[]; rz=[]; rt=[]; rpsi=[]; rk=[];
+            dist_run = 0;
+            
+            while dist_run < obj.RunUpDistance
+                h_now = max(0, curr.z);
+                rho = obj.AtmoModel.get_density(h_now/1000);
+                V_TAS = V0 * sqrt(rho0 / rho);
+                
+                % 直進 = バンク0 = 基本沈下率
+                dz_ds = tan_g_str;
+                
+                % 保存 (kappa=0)
+                rx(end+1)=curr.x; ry(end+1)=curr.y; rz(end+1)=curr.z;
+                rt(end+1)=current_time; rpsi(end+1)=curr.yaw; 
+                rk(end+1)=0;
+                
+                % 更新
+                curr.x = curr.x + step * cos(curr.yaw);
+                curr.y = curr.y + step * sin(curr.yaw);
+                curr.z = curr.z + step * dz_ds;
+                % curr.yaw は維持
+                
+                current_time = current_time + step / V_TAS;
+                dist_run = dist_run + step;
+            end
+            data.runup = struct('x',rx, 'y',ry, 'z',rz, 't',rt, 'psi',rpsi, 'kappa',rk);
+            
+            % =========================================================
+            % Phase 1: Loiter
+            % =========================================================
+            lx=[]; ly=[]; lz=[]; lt=[]; lpsi=[]; lk=[];
+            
+            % 以前のコードではここで lx=[sx] と初期位置に戻してしまっていたため不整合が発生
+            % → Run-up終了時点の curr から継続するように修正
+            
+            % 曲率符号: NED (左=負, 右=正)
+            if strcmp(l_dir, 'L'), k_loiter = -1.0/R; else, k_loiter = 1.0/R; end
+            
+            tot = 0;
             while tot < alpha
-                if curr.z <= 0, final_z = -9999; data.loiter.x=[]; data.dubins.x=[]; data.final.x=[]; return; end
-                h_km = curr.z/1000;
-                rho = obj.AtmoModel.get_density(max(0, h_km));
-                V = V0 * sqrt(rho0 / rho); % EAS -> TAS conversion for path integration
-                sigma = atan(V^2 / (g_ref * R));
-                tan_g = tan_g_str / cos(sigma);
-                d_ang = step / R;
-                if tot + d_ang > alpha, d_ang = alpha - tot; move = d_ang * R; else, move = step; end
-                cos_gamma = 1 / sqrt(1 + tan_g^2); V_horiz = V * cos_gamma;
-                dt = move / V_horiz; current_time = current_time + dt;
-                if l_sign == -1, curr.yaw = curr.yaw + d_ang; else, curr.yaw = curr.yaw - d_ang; end
-                curr.x = curr.x + move * cos(curr.yaw); curr.y = curr.y + move * sin(curr.yaw); curr.z = curr.z + move * tan_g;
-                lx(end+1)=curr.x; ly(end+1)=curr.y; lz(end+1)=curr.z; lt(end+1)=current_time; lpsi(end+1)=curr.yaw;
-                tot = tot + d_ang;
+                if curr.z <= 0
+                    final_z = -9999; 
+                    data.loiter.x=[]; data.dubins.x=[]; data.final.x=[]; 
+                    return; 
+                end
+                
+                h_now = max(0, curr.z/1000);
+                rho = obj.AtmoModel.get_density(h_now);
+                V_TAS = V0 * sqrt(rho0 / rho);
+                
+                % バンクによる沈下増 (EnableBankSpeedCorrectionフラグがあれば速度も変えるべきだが
+                % ここでは簡易的に沈下率のみ補正)
+                tan_phi = abs(k_loiter) * V_TAS^2 / g_ref;
+                cos_phi = 1.0 / sqrt(1 + tan_phi^2);
+                dz_ds = tan_g_str / cos_phi;
+                
+                % 保存
+                lx(end+1)=curr.x; ly(end+1)=curr.y; lz(end+1)=curr.z; 
+                lt(end+1)=current_time; lpsi(end+1)=curr.yaw;
+                lk(end+1)=k_loiter; % ★kappaを追加
+                
+                % ステップ計算
+                move = step;
+                if tot + step/R > alpha, move = (alpha - tot)*R; end
+                
+                d_psi = move * k_loiter; % NED符号付き
+                
+                curr.x = curr.x + move * cos(curr.yaw);
+                curr.y = curr.y + move * sin(curr.yaw);
+                curr.z = curr.z + move * dz_ds;
+                curr.yaw = curr.yaw + d_psi;
+                
+                dt = move / (V_TAS * cos_phi);
+                current_time = current_time + dt;
+                tot = tot + abs(d_psi);
             end
-            data.loiter.x=lx; data.loiter.y=ly; data.loiter.z=lz; data.loiter.t=lt; data.loiter.psi=lpsi;
+            data.loiter = struct('x',lx, 'y',ly, 'z',lz, 't',lt, 'psi',lpsi, 'kappa',lk);
             
-            % 2. Dubins
+            % =========================================================
+            % Phase 2: Dubins Path
+            % =========================================================
             psi_land = deg2rad(land_deg);
-            fix_x = t3d(1) - Lf*cos(psi_land); fix_y = t3d(2) - Lf*sin(psi_land);
-            [px, py, pyaw, mode, lengths] = obj.dubins_solve([curr.x, curr.y, mod(curr.yaw, 2*pi)], [fix_x, fix_y, psi_land], 1/R, step, d_dir);
-            if isempty(px), final_z = -99999; data.dubins.x=[]; data.final.x=[]; return; end
-            dz = zeros(size(px)); dz(1) = curr.z; dt_dub = zeros(size(px)); dt_dub(1) = current_time;
-            d_s = sqrt([0, diff(px).^2 + diff(py).^2]);
-            cum = cumsum(d_s); L1 = lengths(1); L2 = lengths(2);
-            for i=2:length(px)
-                dist_step = d_s(i);
-                if cum(i)<=L1, m=mode{1}; elseif cum(i)<=L1+L2, m=mode{2}; else, m=mode{3}; end
-                is_turn = ~strcmp(m, 'S');
-                h_prev = max(0, dz(i-1));
-                rho = obj.AtmoModel.get_density(h_prev/1000);
-                V = V0 * sqrt(rho0 / rho);
-                if ~is_turn, bg = tan_g_str; else, sig = atan(V^2 / (g_ref * R)); bg = tan_g_str / cos(sig); end
-                dz(i) = dz(i-1) + dist_step*bg; dt_dub(i) = current_time + dist_step/V; current_time = dt_dub(i);
-            end
-            data.dubins.x=px; data.dubins.y=py; data.dubins.z=dz; data.dubins.t=dt_dub; data.dubins.psi=pyaw;
-            curr.z = dz(end);
+            fix_x = t3d(1) - Lf*cos(psi_land); 
+            fix_y = t3d(2) - Lf*sin(psi_land);
             
-            % 3. Final
-            df = 0:step:Lf;
-            data.final.x = px(end) + df*cos(psi_land); data.final.y = py(end) + df*sin(psi_land); data.final.psi = repmat(psi_land, size(df));
-            tf = zeros(size(df)); tf(1) = current_time; zf = zeros(size(df)); zf(1) = curr.z;
-            for k=2:length(df)
-                dist = df(k)-df(k-1); h_prev = max(0, zf(k-1)); rho = obj.AtmoModel.get_density(h_prev/1000);
-                V = V0 * sqrt(rho0 / rho);
-                tf(k) = current_time + dist/V; current_time = tf(k);
-                zf(k) = zf(k-1) + dist*tan_g_str;
+            [px, py, pyaw, mode, lengths] = obj.dubins_solve(...
+                [curr.x, curr.y, mod(curr.yaw, 2*pi)], [fix_x, fix_y, psi_land], 1/R, step, d_dir);
+            
+            if isempty(px)
+                final_z = -99999; 
+                data.dubins.x=[]; data.final.x=[]; 
+                return; 
             end
-            data.final.z = zf; data.final.t = tf; final_z = zf(end);
+            
+            % Dubins経路の積分 (曲率を記録しながら再計算)
+            dx=[]; dy=[]; dz=[]; dt=[]; dpsi=[]; dk=[];
+            
+            for i = 1:3
+                seg_len = lengths(i);
+                seg_mode = mode{i}; 
+                
+                % 曲率決定 (NED)
+                if strcmp(seg_mode, 'L'), seg_k = -1.0/R;
+                elseif strcmp(seg_mode, 'R'), seg_k = 1.0/R;
+                else, seg_k = 0; end
+                
+                dist_in_seg = 0;
+                while dist_in_seg < seg_len
+                    h_now = max(0, curr.z);
+                    rho = obj.AtmoModel.get_density(h_now/1000);
+                    V_TAS = V0 * sqrt(rho0 / rho);
+                    
+                    if abs(seg_k) > 1e-6
+                        tan_phi = abs(seg_k) * V_TAS^2 / g_ref;
+                        cos_phi = 1.0 / sqrt(1 + tan_phi^2);
+                        dz_ds = tan_g_str / cos_phi;
+                    else
+                        cos_phi = 1.0;
+                        dz_ds = tan_g_str; 
+                    end
+                    
+                    d_step = step;
+                    if dist_in_seg + d_step > seg_len, d_step = seg_len - dist_in_seg; end
+                    
+                    dx(end+1)=curr.x; dy(end+1)=curr.y; dz(end+1)=curr.z; 
+                    dt(end+1)=current_time; dpsi(end+1)=curr.yaw; 
+                    dk(end+1)=seg_k;
+                    
+                    curr.x = curr.x + d_step * cos(curr.yaw);
+                    curr.y = curr.y + d_step * sin(curr.yaw);
+                    curr.z = curr.z + d_step * dz_ds;
+                    curr.yaw = curr.yaw + d_step * seg_k;
+                    
+                    current_time = current_time + d_step / (V_TAS * cos_phi);
+                    dist_in_seg = dist_in_seg + d_step;
+                end
+            end
+            data.dubins = struct('x',dx, 'y',dy, 'z',dz, 't',dt, 'psi',dpsi, 'kappa',dk);
+            
+            % =========================================================
+            % Phase 3: Final
+            % =========================================================
+            df = 0:step:Lf;
+            % Finalは直線(kappa=0)
+            fx = curr.x + df*cos(psi_land); 
+            fy = curr.y + df*sin(psi_land); 
+            fpsi = repmat(psi_land, size(df));
+            fkappa = zeros(size(df));
+            
+            ft = zeros(size(df)); ft(1) = current_time; 
+            fz = zeros(size(df)); fz(1) = curr.z;
+            
+            for k=2:length(df)
+                dist = df(k)-df(k-1); 
+                h_prev = max(0, fz(k-1)); 
+                rho = obj.AtmoModel.get_density(h_prev/1000);
+                V_TAS = V0 * sqrt(rho0 / rho);
+                
+                ft(k) = ft(k-1) + dist/V_TAS; 
+                fz(k) = fz(k-1) + dist*tan_g_str;
+            end
+            data.final = struct('x',fx, 'y',fy, 'z',fz, 't',ft, 'psi',fpsi, 'kappa',fkappa);
+            
+            final_z = fz(end);
         end
-        
         function [px, py, pyaw, mode, lengths] = dubins_solve(~, s, e, c, step, start_cons)
              [px, py, pyaw, mode, lengths, ~] = dubins_path_planning(s, e, c, 1.0, step, start_cons);
         end
