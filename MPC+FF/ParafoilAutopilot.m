@@ -37,6 +37,15 @@ classdef ParafoilAutopilot < handle
         % --- 環境・物理パラメータ ---
         BaseWindVector = [0; 0]; % 計画時の風
         NominalGlideRatio = 3.0; % ★追加: 基準滑空比
+
+        % ▼▼▼▼▼▼ 追加・変更 ▼▼▼▼▼▼
+        % 先読み時間 [秒] (推奨: 2.0 ~ 3.0)
+        LookAheadTime = 2.5;       
+        
+        % 操舵反転フラグ (false:通常, true:反転)
+        ReverseControlInput = false; 
+        % ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+        
     end
     
     methods
@@ -181,14 +190,39 @@ classdef ParafoilAutopilot < handle
             % Step 1: Geometry & Kinematics (統合誘導則)
             % =====================================================
             
+            % 1. 現在位置の検索
             idx = obj.find_closest_index(pos_ned(1), pos_ned(2));
             P = obj.ReferencePathMatrix;
             
+            % 現在位置に対応する参照値 (位置誤差計算用)
             path_x   = P(idx, 1);
             path_y   = P(idx, 2);
             z_ref    = P(idx, 3);
             path_psi = P(idx, 5);
-            kappa_ref= P(idx, 6);
+            
+            % ▼▼▼▼▼▼ 先読みロジック (Lookahead) に差し替え ▼▼▼▼▼▼
+            if obj.LookAheadTime > 0
+                % 未来の距離を計算 (速度 x 先読み時間)
+                dist_lookahead = Vg_horiz * obj.LookAheadTime;
+                
+                idx_future = idx;
+                dist_acc = 0;
+                
+                % 経路に沿って未来のインデックスを探す
+                while dist_acc < dist_lookahead && idx_future < size(P, 1) - 1
+                    d_step = norm(P(idx_future+1, 1:2) - P(idx_future, 1:2));
+                    if d_step < 1e-3, d_step = 0.5; end % 安全策
+                    dist_acc = dist_acc + d_step;
+                    idx_future = idx_future + 1;
+                end
+                
+                % ★未来の点の曲率を採用する
+                kappa_ref = P(idx_future, 6); 
+            else
+                % 先読みオフ
+                kappa_ref = P(idx, 6); 
+            end
+            % ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
             v_ref    = P(idx, 7);
             
             dx = pos_ned(1) - path_x; 
@@ -247,7 +281,13 @@ classdef ParafoilAutopilot < handle
             da_fb = obj.Gains.kp_phi * (phi_cmd_final - phi);
             
             da_total = da_ref + dda_term + da_fb;
-            
+            % ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+            % ★★★ 追加: 操舵反転ロジック (ここが抜けていました) ★★★
+            % ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+            if obj.ReverseControlInput
+                da_total = -da_total;
+            end
+            % ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
             % =====================================================
             % Step 3: Longitudinal Control (縦制御)
             % =====================================================

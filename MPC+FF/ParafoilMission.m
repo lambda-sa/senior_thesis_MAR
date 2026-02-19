@@ -90,7 +90,8 @@ classdef ParafoilMission < handle
             if isfield(params.guidance, 'nominal_bank_deg')
                 phi_plan = deg2rad(params.guidance.nominal_bank_deg);
             else
-                phi_plan = deg2rad(15); % デフォルトバンク角
+                 warning('初期バンク角を読み込めない.');
+                phi_plan = deg2rad(2); % デフォルトバンク角
             end
             R_calc = V_trim_TAS^2 / (g * tan(phi_plan));
             
