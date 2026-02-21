@@ -64,7 +64,7 @@ classdef ParafoilAutopilot < handle
             end
             
             % --- ゲイン設定 ---
-            obj.Gains.k_vf       = 0.06;   % 統合VFゲイン
+            obj.Gains.k_vf       = 0.08;   % 統合VFゲイン
             obj.Gains.chi_inf    = pi/2;
             obj.Gains.K_guidance = 0.0;    % レートFB
             obj.Gains.K_linear   = 1.0;    % 線形化FF有効

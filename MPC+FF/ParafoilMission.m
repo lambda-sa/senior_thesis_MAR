@@ -152,7 +152,7 @@ classdef ParafoilMission < handle
             if isempty(d), error('No Path Data'); end
             
             % データの結合 (runup が含まれていることに注意)
-            fs = {'runup', 'loiter', 'dubins', 'final'};
+            fs = {'runup', 'loiter', 'runup_mid', 'dubins', 'final'};
             t=[]; x=[]; y=[]; z=[]; psi=[]; kappa=[];
             
             for i=1:length(fs)
