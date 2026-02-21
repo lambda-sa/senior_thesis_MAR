@@ -232,7 +232,7 @@ classdef ParafoilAutopilot < handle
             chi_rel = obj.normalize_angle(chi_curr - path_psi);
             
             % (A) 経路追従項
-            denom = 1.0 - kappa_ref * e_cross;
+            denom = abs(1.0 - kappa_ref * e_cross);
             if abs(denom) < 0.1, denom = sign(denom) * 0.1; end
             scale_factor = 1.0 / denom;
             
