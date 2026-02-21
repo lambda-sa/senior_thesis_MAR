@@ -40,7 +40,7 @@ classdef ParafoilAutopilot < handle
 
         % ▼▼▼▼▼▼ 追加・変更 ▼▼▼▼▼▼
         % 先読み時間 [秒] (推奨: 2.0 ~ 3.0)
-        LookAheadTime = 2.5;       
+        LookAheadTime = 0.0;       
         
         % 操舵反転フラグ (false:通常, true:反転)
         ReverseControlInput = false; 
@@ -64,7 +64,7 @@ classdef ParafoilAutopilot < handle
             end
             
             % --- ゲイン設定 ---
-            obj.Gains.k_vf       = 0.08;   % 統合VFゲイン
+            obj.Gains.k_vf       = 0.06;   % 統合VFゲイン
             obj.Gains.chi_inf    = pi/2;
             obj.Gains.K_guidance = 0.0;    % レートFB
             obj.Gains.K_linear   = 1.0;    % 線形化FF有効
@@ -232,7 +232,7 @@ classdef ParafoilAutopilot < handle
             chi_rel = obj.normalize_angle(chi_curr - path_psi);
             
             % (A) 経路追従項
-            denom = abs(1.0 - kappa_ref * e_cross);
+            denom = 1.0 - kappa_ref * e_cross;
             if abs(denom) < 0.1, denom = sign(denom) * 0.1; end
             scale_factor = 1.0 / denom;
             
