@@ -1,42 +1,71 @@
 classdef ParafoilPathPlanner < handle
-    % PARAFOILPATHPLANNER (Based on Original Logic + Pure Dubins Fixes)
+    % PARAFOILPATHPLANNER (Integrated Curvature & Column-Vector Version)
     
     properties
         AtmoModel
-        ResultData      
+        ResultData      % .x, .y, .z, .t, .psi, .kappa
         FinalError
         StartV
         
-        % パラメータ
         V0 = 15.0; 
         R_fixed = 50.0;
         MinLoiterAngle = 0;
         
-        % ★追加: 助走距離
-        RunUpDistance = 100.0; 
-        
+        RunUpDistance = 0.0;
         WindVector = [0; 0; 0];
         EnableBankSpeedCorrection = true;
     end
     
     methods
-        function set_speed_correction(obj, enable_flag)
-            obj.EnableBankSpeedCorrection = enable_flag;
-        end
         function obj = ParafoilPathPlanner(atmo_model)
             obj.AtmoModel = atmo_model;
         end
+
+        function set_speed_correction(obj, enable_flag)
+            obj.EnableBankSpeedCorrection = enable_flag;
+        end
+
         function set_min_loiter_turn(obj, num_turns)
             obj.MinLoiterAngle = num_turns * 2 * pi;
         end
+
         % =========================================================
-        % オリジナルの最適化ロジック (そのまま維持)
+        % 曲率・物理計算の一括管理メソッド (New)
+        % =========================================================
+        function [kappa, tan_g_banked, cos_phi] = compute_curv_and_glide(obj, mode_char, V_TAS, z_now, R, tan_g_str)
+            % NED座標系: 右旋回(R)=正, 左旋回(L)=負, 直線(S)=0
+            g_ref = obj.AtmoModel.get_gravity(z_now);
+            
+            switch mode_char
+                case 'R'
+                    kappa = 1.0 / R;
+                case 'L'
+                    kappa = -1.0 / R;
+                otherwise % 'S' (Straight)
+                    kappa = 0;
+            end
+            
+            if kappa ~= 0
+                % tan(phi) = V^2 * kappa / g
+                tan_phi = (V_TAS^2 * abs(kappa)) / g_ref;
+                cos_phi = 1.0 / sqrt(1 + tan_phi^2);
+            else
+                cos_phi = 1.0;
+            end
+            
+            % 滑空比の補正: バンク中は沈下率が増えるため滑空角tan(gamma)を補正
+            tan_g_banked = tan_g_str / cos_phi;
+        end
+
+        % =========================================================
+        % 最適経路探索 (メイン)
         % =========================================================
         function chosen_dir = plan_optimal_trajectory(obj, start_3d, target_3d, land_deg, L_final, V0, glide_ratio, R_fixed)
             obj.V0 = V0;
             obj.R_fixed = R_fixed;
             fprintf('--- Path Planning Optimization (R=%.1fm) ---\n', R_fixed);
             
+            % L/R両方のLoiter方向を試す
             [resLL, errLL, lenLL] = obj.try_combination('L', 'L', start_3d, target_3d, land_deg, L_final, V0, glide_ratio, R_fixed);
             [resRR, errRR, lenRR] = obj.try_combination('R', 'R', start_3d, target_3d, land_deg, L_final, V0, glide_ratio, R_fixed);
             
@@ -68,7 +97,7 @@ classdef ParafoilPathPlanner < handle
             chosen_dir = best.res.l_dir;
             fprintf('  >>> Selected: %s-Loiter (DubinsLen: %.1f, Err: %.1f)\n', chosen_dir, best.len, best.err);
         end
-        
+
         function [res, final_err, dubins_len] = try_combination(obj, l_dir, d_dir, start_3d, target_3d, land_deg, Lf, V0, gr, R)
             h0 = start_3d(3); step = 0.5; target_z = target_3d(3); tan_g_str = -1.0 / gr;
             cost_func = @(alpha) obj.calc_core(alpha, start_3d, target_3d, land_deg, Lf, step, V0, h0, R, tan_g_str, l_dir, d_dir) - target_z;
@@ -78,16 +107,7 @@ classdef ParafoilPathPlanner < handle
                 min_a = obj.MinLoiterAngle;
                 z_at_min = obj.calc_core(min_a, start_3d, target_3d, land_deg, Lf, step, V0, h0, R, tan_g_str, l_dir, d_dir);
                 if z_at_min >= target_z
-                     % 探索初期値の推定 (Run-up考慮)
-                    z_run_loss = obj.RunUpDistance * abs(tan_g_str);
-                    h_avg = (h0 - z_run_loss + target_z)/2;
-                    g = obj.AtmoModel.get_gravity(h_avg);
-                    rho0 = obj.AtmoModel.get_density(h0/1000);
-                    rho_avg = obj.AtmoModel.get_density(h_avg/1000);
-                    V_avg = V0 * sqrt(rho0 / rho_avg);
-                    sigma_avg = atan(V_avg^2 / (g * R));
-                    tan_g_avg = tan_g_str / cos(sigma_avg);
-                    guess_add = (z_at_min - target_z) / (R * abs(tan_g_avg));
+                    guess_add = (z_at_min - target_z) / (R * abs(tan_g_str) * 1.1);
                     guess = min_a + guess_add;
                     best_alpha = fzero(cost_func, [min_a, max(min_a + 4*pi, guess*5)], optimset('Display','off','TolX',1e-4));
                 end
@@ -97,196 +117,137 @@ classdef ParafoilPathPlanner < handle
             [z_fin, data] = obj.calc_core(best_alpha, start_3d, target_3d, land_deg, Lf, step, V0, h0, R, tan_g_str, l_dir, d_dir);
             res.data = data; res.l_dir = l_dir; res.d_dir = d_dir;
             final_err = z_fin - target_z;
-            
-            if isempty(data.dubins.x)
-                dubins_len = inf; 
-            else
-                % 厳密な長さを計算
-                dubins_len = sum(sqrt(diff(data.dubins.x).^2 + diff(data.dubins.y).^2));
-            end
+            if isempty(data.dubins.x), dubins_len = inf; else, dubins_len = sum(sqrt(sum(diff([data.dubins.x(:), data.dubins.y(:)]).^2, 2))); end
         end
-        
+
         % =========================================================
-        % ★★★ 修正版 calc_core ★★★
-        % オリジナルのロジックを維持しつつ、Run-upとKappa出力を追加
+        % 軌道計算コアロジック (統合版)
         % =========================================================
         function [final_z, data] = calc_core(obj, alpha, s3d, t3d, land_deg, Lf, step, V0, h0, R, tan_g_str, l_dir, d_dir)
             
             rho0 = obj.AtmoModel.get_density(h0/1000);
-            g_ref = obj.AtmoModel.get_gravity(h0);
-            
-            % シミュレーションカーソル
             curr = struct('x',s3d(1), 'y',s3d(2), 'z',s3d(3), 'yaw',s3d(4));
             current_time = 0;
             data.V_start = V0;
-            
-            % ----------------------------------------------------
-            % 0. Run-up (助走区間) - 新規追加
-            % ----------------------------------------------------
+
+            % -----------------------------------------------------
+            % 0. Run-up (助走)
+            % -----------------------------------------------------
             rx=[]; ry=[]; rz=[]; rt=[]; rpsi=[]; rk=[];
             dist_run = 0;
             while dist_run < obj.RunUpDistance
-                h_now = max(0, curr.z);
-                rho = obj.AtmoModel.get_density(h_now/1000);
+                rho = obj.AtmoModel.get_density(max(0, curr.z)/1000);
                 V_TAS = V0 * sqrt(rho0 / rho);
-                dz_ds = tan_g_str; % バンクなし
                 
                 rx(end+1)=curr.x; ry(end+1)=curr.y; rz(end+1)=curr.z;
                 rt(end+1)=current_time; rpsi(end+1)=curr.yaw; rk(end+1)=0;
                 
                 curr.x = curr.x + step * cos(curr.yaw);
                 curr.y = curr.y + step * sin(curr.yaw);
-                curr.z = curr.z + step * dz_ds;
+                curr.z = curr.z + step * tan_g_str;
                 current_time = current_time + step / V_TAS;
                 dist_run = dist_run + step;
             end
-            data.runup = struct('x',rx, 'y',ry, 'z',rz, 't',rt, 'psi',rpsi, 'kappa',rk);
-            
-            % ----------------------------------------------------
-            % 1. Loiter (定常旋回) - オリジナル改修
-            % ----------------------------------------------------
+            data.runup = struct('x',rx(:), 'y',ry(:), 'z',rz(:), 't',rt(:), 'psi',rpsi(:), 'kappa',rk(:));
+
+            % -----------------------------------------------------
+            % 1. Loiter (待機旋回)
+            % -----------------------------------------------------
             lx=[]; ly=[]; lz=[]; lt=[]; lpsi=[]; lk=[];
-            
-            % 旋回方向の符号 (NED: 右=正, 左=負)
-            % 元コード: L_dir -> l_sign=-1 (yawが増える?減る?確認)
-            % 通常、yaw += d_ang は数学的正(左)。NEDではyawは右回りが正。
-            % ここでは「NED座標で統一」するため、以下のように設定
-            if strcmp(l_dir, 'L')
-                k_loiter = -1.0/R; % 左旋回 (NEDで負)
-                d_ang_sign = -1.0; % NEDでyawを減らす
-            else
-                k_loiter = 1.0/R;  % 右旋回 (NEDで正)
-                d_ang_sign = 1.0;  % NEDでyawを増やす
-            end
-            
             tot = 0;
             while tot < alpha
-                if curr.z <= 0, final_z = -9999; data.loiter.x=[]; data.dubins.x=[]; data.final.x=[]; return; end
+                if curr.z <= 0, final_z = -9999; data.loiter=[]; data.dubins=[]; data.final=[]; return; end
                 
-                h_km = max(0, curr.z/1000);
-                rho = obj.AtmoModel.get_density(h_km);
-                V_TAS = V0 * sqrt(rho0 / rho);
+                rho = obj.AtmoModel.get_density(max(0, curr.z)/1000);
+                V = V0 * sqrt(rho0 / rho);
                 
-                % バンクによる沈下増
-                tan_phi = abs(k_loiter) * V_TAS^2 / g_ref;
-                cos_phi = 1.0 / sqrt(1 + tan_phi^2);
-                dz_ds = tan_g_str / cos_phi;
+                % 一括計算関数を使用
+                [k_val, tan_g, cp] = obj.compute_curv_and_glide(l_dir, V, curr.z, R, tan_g_str);
                 
-                % 保存
+                d_ang = step / R;
+                if tot + d_ang > alpha, d_ang = alpha - tot; move = d_ang * R; else, move = step; end
+                
                 lx(end+1)=curr.x; ly(end+1)=curr.y; lz(end+1)=curr.z; 
-                lt(end+1)=current_time; lpsi(end+1)=curr.yaw; lk(end+1)=k_loiter;
+                lt(end+1)=current_time; lpsi(end+1)=curr.yaw; lk(end+1)=k_val;
                 
-                % ステップ移動
-                move = step;
-                if tot + step/R > alpha, move = (alpha - tot)*R; end
-                
-                d_ang = (move / R); % 角度変化量(絶対値)
+                % 方位更新 (Lなら減少、Rなら増加)
+                if strcmp(l_dir, 'L'), curr.yaw = curr.yaw - d_ang; else, curr.yaw = curr.yaw + d_ang; end
                 
                 curr.x = curr.x + move * cos(curr.yaw);
                 curr.y = curr.y + move * sin(curr.yaw);
-                curr.z = curr.z + move * dz_ds;
-                curr.yaw = curr.yaw + d_ang_sign * d_ang; % NED方向へ更新
-                
-                current_time = current_time + move / (V_TAS * cos_phi);
+                curr.z = curr.z + move * tan_g;
+                current_time = current_time + move / (V * cp);
                 tot = tot + d_ang;
             end
-            data.loiter = struct('x',lx, 'y',ly, 'z',lz, 't',lt, 'psi',lpsi, 'kappa',lk);
-            
-            % ----------------------------------------------------
-            % 2. Dubins - オリジナルの dubins_solve を使用して再積分
-            % ----------------------------------------------------
+            data.loiter = struct('x',lx(:), 'y',ly(:), 'z',lz(:), 't',lt(:), 'psi',lpsi(:), 'kappa',lk(:));
+
+            % -----------------------------------------------------
+            % 2. Dubins (経路生成)
+            % -----------------------------------------------------
             psi_land = deg2rad(land_deg);
             fix_x = t3d(1) - Lf*cos(psi_land); 
             fix_y = t3d(2) - Lf*sin(psi_land);
             
-            % 元のSolverを呼ぶ (数学座標で計算される可能性があるため注意)
-            % dubins_path_planning は通常「最短経路」を返す
-            % ここでは始点・終点・曲率半径を与えて、モードと長さを取得するのが目的
-            [~, ~, ~, mode, lengths] = obj.dubins_solve(...
+            [px, py, pyaw, mode, lengths] = obj.dubins_solve(...
                 [curr.x, curr.y, mod(curr.yaw, 2*pi)], ...
                 [fix_x, fix_y, psi_land], ...
                 1/R, step, d_dir);
             
-            if isempty(mode)
-                final_z = -99999; data.dubins.x=[]; data.final.x=[]; return; 
-            end
+            if isempty(px), final_z = -99999; data.dubins=[]; data.final=[]; return; end
             
-            dx=[]; dy=[]; dz=[]; dt=[]; dpsi=[]; dk=[];
+            px = px(:); py = py(:); pyaw = pyaw(:);
+            dz = zeros(size(px)); dz(1) = curr.z; 
+            dt_dub = zeros(size(px)); dt_dub(1) = current_time;
+            dk = zeros(size(px));
             
-            % Solverの結果(長さとモード)を使って、自前で積分する
-            % これにより形状崩れを防ぎ、kappaを正確に出す
-            for i = 1:3
-                seg_len = lengths(i);
-                seg_mode = mode{i}; 
+            d_s = sqrt([0; diff(px).^2 + diff(py).^2]);
+            cum_dist = cumsum(d_s);
+            L1 = lengths(1); L2 = lengths(2);
+            
+            for i=2:length(px)
+                dist_now = cum_dist(i);
+                if dist_now < (L1 - 1e-5), m = mode{1};
+                elseif dist_now < (L1 + L2 - 1e-5), m = mode{2};
+                else, m = mode{3}; end
                 
-                % NEDの曲率
-                if strcmp(seg_mode, 'L'), seg_k = -1.0/R;
-                elseif strcmp(seg_mode, 'R'), seg_k = 1.0/R;
-                else, seg_k = 0; end
+                rho = obj.AtmoModel.get_density(max(0, dz(i-1))/1000);
+                V = V0 * sqrt(rho0 / rho);
                 
-                dist_in = 0;
-                while dist_in < seg_len
-                    h_now = max(0, curr.z);
-                    rho = obj.AtmoModel.get_density(h_now/1000);
-                    V_TAS = V0 * sqrt(rho0 / rho);
-                    
-                    if abs(seg_k) > 1e-6
-                        tan_phi = abs(seg_k) * V_TAS^2 / g_ref;
-                        cos_phi = 1.0 / sqrt(1 + tan_phi^2);
-                        dz_ds = tan_g_str / cos_phi;
-                    else
-                        cos_phi = 1.0;
-                        dz_ds = tan_g_str; 
-                    end
-                    
-                    d_step = step;
-                    if dist_in + d_step > seg_len, d_step = seg_len - dist_in; end
-                    
-                    dx(end+1)=curr.x; dy(end+1)=curr.y; dz(end+1)=curr.z; 
-                    dt(end+1)=current_time; dpsi(end+1)=curr.yaw; dk(end+1)=seg_k;
-                    
-                    curr.x = curr.x + d_step * cos(curr.yaw);
-                    curr.y = curr.y + d_step * sin(curr.yaw);
-                    curr.z = curr.z + d_step * dz_ds;
-                    curr.yaw = curr.yaw + d_step * seg_k;
-                    
-                    current_time = current_time + d_step / (V_TAS * cos_phi);
-                    dist_in = dist_in + d_step;
-                end
+                % 一括計算関数を使用
+                [k_val, tan_g, cp] = obj.compute_curv_and_glide(m, V, dz(i-1), R, tan_g_str);
+                
+                dk(i) = k_val;
+                dz(i) = dz(i-1) + d_s(i) * tan_g;
+                dt_dub(i) = dt_dub(i-1) + d_s(i) / (V * cp);
             end
-            data.dubins = struct('x',dx, 'y',dy, 'z',dz, 't',dt, 'psi',dpsi, 'kappa',dk);
+            if length(dk) > 1, dk(1) = dk(2); end % 始点の曲率補間
             
-            % ----------------------------------------------------
-            % 3. Final - 直線
-            % ----------------------------------------------------
-            df = 0:step:Lf;
-            fx = curr.x + df*cos(psi_land); 
-            fy = curr.y + df*sin(psi_land); 
-            fz = curr.z + df*tan_g_str;
-            ft = zeros(size(df)); ft(1)=current_time;
+            data.dubins = struct('x',px, 'y',py, 'z',dz, 't',dt_dub, 'psi',pyaw, 'kappa',-dk);
+            current_time = dt_dub(end); curr.z = dz(end);
+
+            % -----------------------------------------------------
+            % 3. Final (最終直線)
+            % -----------------------------------------------------
+            df = (0:step:Lf)';
+            fx = px(end) + df * cos(psi_land); 
+            fy = py(end) + df * sin(psi_land);
+            zf = zeros(size(fx)); zf(1) = curr.z;
+            tf = zeros(size(fx)); tf(1) = current_time;
             
-            % 時間計算
-            for k=2:length(df)
-                 h_now = max(0, fz(k-1));
-                 rho = obj.AtmoModel.get_density(h_now/1000);
-                 V_TAS = V0 * sqrt(rho0 / rho);
-                 ft(k) = ft(k-1) + (df(k)-df(k-1))/V_TAS;
+            for k=2:length(fx)
+                dist = sqrt((fx(k)-fx(k-1))^2 + (fy(k)-fy(k-1))^2);
+                rho = obj.AtmoModel.get_density(max(0, zf(k-1))/1000);
+                V = V0 * sqrt(rho0 / rho);
+                tf(k) = tf(k-1) + dist/V; 
+                zf(k) = zf(k-1) + dist*tan_g_str;
             end
-            
-            fpsi = repmat(psi_land, size(df));
-            fkappa = zeros(size(df));
-            
-            data.final = struct('x',fx, 'y',fy, 'z',fz, 't',ft, 'psi',fpsi, 'kappa',fkappa);
-            final_z = fz(end);
+            data.final = struct('x',fx, 'y',fy, 'z',zf, 't',tf, ...
+                                'psi',repmat(psi_land, size(fx)), 'kappa',zeros(size(fx)));
+            final_z = zf(end);
         end
         
-        % 既存ヘルパー (変更なし)
         function [px, py, pyaw, mode, lengths] = dubins_solve(~, s, e, c, step, start_cons)
              [px, py, pyaw, mode, lengths, ~] = dubins_path_planning(s, e, c, 1.0, step, start_cons);
-        end
-        
-        function plan_simple_physics_based(obj, type, duration, start_pos, V_EAS_trim, glide_ratio, bank_angle_deg)
-             % (以前提示したコードと同じ内容であればここに記述。省略時は元のファイルを使用)
         end
     end
 end

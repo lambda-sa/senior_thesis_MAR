@@ -5,7 +5,7 @@ clear; clc; close all;
 %% --- 1. 共通設定 ---
 excelFileName = 'parafoil_parameters_ref.xlsx'; % パラメータファイル
 wind_planned = [0; 0];  % 風速 (North, East) [m/s]
-wind_disturbance = [0;0];  % 予期せぬ外乱（未知の風）
+wind_disturbance = [1;1];  % 予期せぬ外乱（未知の風）
 wind_actual = wind_planned + wind_disturbance; % 実際に吹いている風
 
 target_pos = [0, 600, 2743]; % 目標 [N, E, Alt]
@@ -124,19 +124,6 @@ comparator = WindTrajectoryComparator(...
 
 % (3) 描画
 comparator.plotAll();
-
-% B. ズームビュー (ラスト70秒) ★ここを追加
-fprintf('Plotting Zoomed Trajectory (Last 70s)...\n');
-comparatorZoom = WindTrajectoryComparatorZoomed(...
-    simData_NoWind, ...   % Case 1
-    simData_Wind, ...     % Case 2
-    trajPlanGnd, ...
-    trajPlanAir, ...
-    target_pos, ...
-    plan_trans_times, ...
-    100); % <--- ここで秒数を指定 (70秒)
-
-comparatorZoom.plotAll();
 
 fprintf('Comparison Done.\n');
 

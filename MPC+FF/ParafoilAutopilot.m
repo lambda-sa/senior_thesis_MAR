@@ -40,7 +40,7 @@ classdef ParafoilAutopilot < handle
 
         % ▼▼▼▼▼▼ 追加・変更 ▼▼▼▼▼▼
         % 先読み時間 [秒] (推奨: 2.0 ~ 3.0)
-        LookAheadTime = 2.5;       
+        LookAheadTime = 0.0;       
         
         % 操舵反転フラグ (false:通常, true:反転)
         ReverseControlInput = false; 
